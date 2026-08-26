@@ -1,0 +1,345 @@
+<?php
+declare(strict_types=1);
+
+namespace App\service;
+
+use App\support\Logger;
+use App\support\payment\PaymentAdapter;
+use App\service\DataScopeService;
+use support\think\Db;
+
+/**
+ * OrderService — Phase 6 / US3. Owns the order book and the lifecycle
+ * from pending → succeeded|failed|cancelled|unknown. Mediates between
+ * the OrderController (creates pending orders + reads), the payment
+ * adapter (issues the QR / scan parameters), and EntitlementService
+ * (issues the purchase grant on succeeded).
+ *
+ * Invariants enforced here (and at the schema where possible):
+ *   1. Order rows are immutable snapshots — list_price_snapshot,
+ *      sale_price_snapshot, paid_amount are stamped at create time and
+ *      never re-derived from the course.
+ *   2. Only one pending order per (learner, course) — a second POST
+ *      while the first is still pending returns the existing order
+ *      with its original code_url, so the user can resume the same
+ *      scan instead of paying twice.
+ *   3. The status machine is: pending → {succeeded|failed|cancelled|unknown}.
+ *      succeeded is the only state that grants an entitlement, and it
+ *      can only be set by PaymentAdapter::onNotify() (the callback path
+ *      that we route through markSucceeded()).
+ *   4. succeeded_at is set on the same transaction that flips status
+ *      to succeeded; nothing else ever writes it.
+ */
+final class OrderService
+{
+    public function __construct(
+        private readonly EntitlementService $entitlements,
+        private readonly PaymentAdapter $payment,
+    ) {}
+
+    /**
+     * Create a pending order for a paid course. Idempotent per
+     * (learner, course) when an existing pending order exists. Caller
+     * is responsible for the 409-already-entitled short-circuit; this
+     * method assumes the learner is NOT yet entitled.
+     *
+     * Returns the API envelope: { order_id, status, payment: {...} }.
+     */
+    /** @return array<string, mixed> */
+    public function createPending(int $learnerId, int $courseId): array
+    {
+        $course = Db::name('courses')->where('id', $courseId)->find();
+        if (!$course || $course['status'] !== 'published') {
+            throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
+        }
+        if ((string) $course['price_mode'] !== 'paid') {
+            throw new BusinessException('CONFLICT', 'COURSE_FREE');
+        }
+        if ((float) ($course['list_price'] ?? 0) <= 0) {
+            throw new BusinessException('VALIDATION_FAILED', 'COURSE_PRICE_INVALID');
+        }
+
+        // Sale window check: if a sale price is declared it must be in
+        // an open window to count as the snapshot.
+        $now = time();
+        $saleStart = $course['sale_start_at'] ? strtotime((string) $course['sale_start_at']) : null;
+        $saleEnd   = $course['sale_end_at']   ? strtotime((string) $course['sale_end_at'])   : null;
+        $saleOpen  = (float) ($course['sale_price'] ?? 0) > 0
+            && $saleStart !== null && $saleEnd !== null
+            && $now >= $saleStart && $now < $saleEnd;
+
+        $listPrice = (float) $course['list_price'];
+        $salePrice = $saleOpen ? (float) $course['sale_price'] : 0.0;
+        $paidAmount = $saleOpen ? $salePrice : $listPrice;
+
+        $nowDt = date('Y-m-d H:i:s');
+
+        $row = Db::transaction(function () use ($learnerId, $courseId, $listPrice, $salePrice, $paidAmount, $nowDt) {
+            // Idempotency: if a pending order for this (learner, course)
+            // exists, return it as-is.
+            $existing = Db::name('orders')
+                ->where('learner_id', $learnerId)
+                ->where('course_id', $courseId)
+                ->where('status', 'pending')
+                ->lock(true)
+                ->find();
+            if ($existing) {
+                return $existing;
+            }
+
+            return Db::name('orders')->insertGetId([
+                'learner_id'           => $learnerId,
+                'course_id'            => $courseId,
+                'list_price_snapshot'  => $listPrice,
+                'sale_price_snapshot'  => $salePrice,
+                'paid_amount'          => $paidAmount,
+                'currency'             => 'CNY',
+                'status'               => 'pending',
+                'provider'             => 'fake',
+                'provider_ref'         => null,
+                'succeeded_at'         => null,
+                'created_at'           => $nowDt,
+                'updated_at'           => $nowDt,
+            ]);
+        });
+
+        $orderId = is_array($row) ? (int) $row['id'] : (int) $row;
+        $orderRow = is_array($row) ? $row : Db::name('orders')->where('id', $orderId)->find();
+
+        Logger::info('order.created', [
+            'order_id'   => $orderId,
+            'learner_id' => $learnerId,
+            'course_id'  => $courseId,
+            'paid_amount'=> $paidAmount,
+        ]);
+
+        $paymentEnvelope = $this->payment->createCharge($orderId, $paidAmount, 'CNY');
+        return [
+            'order_id' => $orderId,
+            'status'   => 'pending',
+            'payment'  => $paymentEnvelope,
+        ];
+    }
+
+    /**
+     * POST /courses/{id}/orders list endpoint. status=null returns every
+     * status; status=pending/succeeded/... narrows. Sort is newest first.
+     */
+    /** @return list<array<string, mixed>> */
+    public function listForLearner(int $learnerId, ?string $status, int $page, int $limit): array
+    {
+        $q = Db::name('orders')->where('learner_id', $learnerId);
+        if ($status !== null && $status !== '') {
+            $q->where('status', $status);
+        }
+        $rows = $q->order('id', 'desc')->page($page, $limit)->select()->toArray();
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = $this->shapeOrder($r);
+        }
+        return $out;
+    }
+
+    public function countForLearner(int $learnerId, ?string $status): int
+    {
+        $q = Db::name('orders')->where('learner_id', $learnerId);
+        if ($status !== null && $status !== '') {
+            $q->where('status', $status);
+        }
+        return (int) $q->count();
+    }
+
+    /**
+     * Look up a single order, enforcing ownership. Returns null when
+     * the order doesn't exist OR belongs to a different learner — we
+     * don't distinguish the two at the API surface.
+     */
+    /** @return array<string, mixed>|null */
+    public function findForLearner(int $learnerId, int $orderId): ?array
+    {
+        $row = Db::name('orders')->where('id', $orderId)->find();
+        if (!$row || (int) $row['learner_id'] !== $learnerId) {
+            return null;
+        }
+        return $this->shapeOrder($row);
+    }
+
+    /**
+     * Mark an order as succeeded. Idempotent — second call is a no-op.
+     * Stamps succeeded_at + creates the purchase entitlement in the
+     * same transaction. Only PaymentAdapter::onNotify() should call
+     * this; OrderController must not.
+     */
+    public function markSucceeded(int $orderId, string $providerRef): void
+    {
+        Db::transaction(function () use ($orderId, $providerRef) {
+            $row = Db::name('orders')->where('id', $orderId)->lock(true)->find();
+            if (!$row) {
+                throw new BusinessException('NOT_FOUND', 'ORDER_NOT_FOUND');
+            }
+            if ((string) $row['status'] === 'succeeded') {
+                // Idempotent re-delivery from the payment provider.
+                return;
+            }
+            // Per rule 3: only pending orders can transition to succeeded.
+            if ((string) $row['status'] !== 'pending') {
+                Logger::warning('order.notify.skipped', [
+                    'order_id' => $orderId,
+                    'status'   => $row['status'],
+                ]);
+                return;
+            }
+            $nowDt = date('Y-m-d H:i:s');
+            Db::name('orders')->where('id', $orderId)->update([
+                'status'       => 'succeeded',
+                'provider_ref' => $providerRef,
+                'succeeded_at' => $nowDt,
+                'updated_at'   => $nowDt,
+            ]);
+            $this->entitlements->grant(
+                (int) $row['learner_id'],
+                (int) $row['course_id'],
+                'purchase',
+                $orderId,
+            );
+            Logger::info('order.succeeded', [
+                'order_id'   => $orderId,
+                'learner_id' => (int) $row['learner_id'],
+                'course_id'  => (int) $row['course_id'],
+            ]);
+        });
+    }
+
+    /**
+     * Mark an order as failed/cancelled/unknown. Idempotent. Does NOT
+     * grant an entitlement. status must be one of failed|cancelled|unknown.
+     */
+    public function markFailed(int $orderId, string $status, ?string $providerRef = null): void
+    {
+        if (!in_array($status, ['failed', 'cancelled', 'unknown'], true)) {
+            throw new BusinessException('VALIDATION_FAILED', 'ORDER_STATUS_INVALID');
+        }
+        $nowDt = date('Y-m-d H:i:s');
+        $patch = [
+            'status'     => $status,
+            'updated_at' => $nowDt,
+        ];
+        if ($providerRef !== null) {
+            $patch['provider_ref'] = $providerRef;
+        }
+        Db::transaction(function () use ($orderId, $status, $patch) {
+            $row = Db::name('orders')->where('id', $orderId)->lock(true)->find();
+            if (!$row) {
+                throw new BusinessException('NOT_FOUND', 'ORDER_NOT_FOUND');
+            }
+            if ((string) $row['status'] === 'succeeded') {
+                // A succeeded order cannot be rolled back via notify.
+                return;
+            }
+            if ((string) $row['status'] === $status) {
+                return;
+            }
+            Db::name('orders')->where('id', $orderId)->update($patch);
+            Logger::info('order.' . $status, ['order_id' => $orderId]);
+        });
+    }
+
+    /**
+     * Admin read-only listing (Phase 14 / US10 — T077).
+     *
+     * Read-only by design — there is no admin mark-as-paid path.
+     * Payment state transitions are exclusively driven by
+     * PaymentAdapter::onNotify() → markSucceeded / markFailed.
+     */
+    /** @return array<string, mixed> */
+    public function adminList(
+        int $staffId,
+        ?string $status,
+        ?int $courseId,
+        ?int $learnerId,
+        int $page,
+        int $limit,
+        DataScopeService $scope,
+    ): array {
+        $page = max(1, $page);
+        $limit = max(1, min(200, $limit));
+        $q = Db::name('orders as o')->join('courses c', 'o.course_id = c.id');
+        if ($status !== null && $status !== '') {
+            $q->where('o.status', $status);
+        }
+        if ($courseId !== null && $courseId > 0) {
+            $q->where('o.course_id', $courseId);
+        }
+        if ($learnerId !== null && $learnerId > 0) {
+            $q->where('o.learner_id', $learnerId);
+        }
+        $allowed = $scope->allowedDepartmentIds($staffId, 'order.view');
+        if ($allowed !== null) {
+            $q->where('c.department_id', 'in', $allowed);
+        }
+        $total = (clone $q)->count();
+        $rows = $q->order('o.id', 'desc')->page($page, $limit)->select()->toArray();
+        $items = array_map(fn($r) => $this->shapeAdminOrder($r), $rows);
+        return [
+            'items' => $items,
+            'total' => (int) $total,
+            'page' => $page,
+            'limit' => $limit,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function adminShow(int $staffId, int $orderId, DataScopeService $scope): array
+    {
+        $row = Db::name('orders as o')
+            ->join('courses c', 'o.course_id = c.id')
+            ->where('o.id', $orderId)
+            ->find();
+        if (!$row) {
+            throw new BusinessException('NOT_FOUND', 'ORDER_NOT_FOUND');
+        }
+        $allowed = $scope->allowedDepartmentIds($staffId, 'order.view');
+        if ($allowed !== null && !in_array((int) $row['department_id'], $allowed, true)) {
+            throw new BusinessException('FORBIDDEN', 'DEPARTMENT_OUT_OF_SCOPE');
+        }
+        return $this->shapeAdminOrder($row);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function shapeOrder(array $row): array
+    {
+        return [
+            'order_id'             => (int) $row['id'],
+            'course_id'            => (int) $row['course_id'],
+            'list_price_snapshot'  => (float) $row['list_price_snapshot'],
+            'sale_price_snapshot'  => (float) $row['sale_price_snapshot'],
+            'paid_amount'          => (float) $row['paid_amount'],
+            'currency'             => (string) $row['currency'],
+            'status'               => (string) $row['status'],
+            'provider'             => (string) $row['provider'],
+            'succeeded_at'         => $row['succeeded_at'] ? (string) $row['succeeded_at'] : null,
+            'created_at'           => (string) $row['created_at'],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function shapeAdminOrder(array $row): array
+    {
+        $base = $this->shapeOrder($row);
+        return [
+            ...$base,
+            'order_id'         => (int) ($row['o.id'] ?? $row['id'] ?? $base['order_id']),
+            'learner_id'       => (int) $row['learner_id'],
+            'department_id'    => isset($row['department_id']) ? (int) $row['department_id'] : null,
+            'course_title'     => isset($row['title']) ? (string) $row['title'] : null,
+            'provider_ref'     => isset($row['provider_ref']) ? (string) $row['provider_ref'] : null,
+            'failed_reason'    => isset($row['failed_reason']) ? (string) $row['failed_reason'] : null,
+        ];
+    }
+}

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+    <testsuites>
+        <testsuite name="Auth">
+            <file>tests/AuthTokenTest.php</file>
+            <file>tests/StaffGuardTest.php</file>
+            <file>tests/AuthorizeLeakTest.php</file>
+            <file>tests/DataScopeTest.php</file>
+            <file>tests/CourseScopeIntegrationTest.php</file>
+            <file>tests/DashboardTest.php</file>
+            <file>tests/ContainerTest.php</file>
+            <file>tests/ImageStorageTest.php</file>
+            <file>tests/CourseCoverControllerTest.php</file>
+        </testsuite>
+        <testsuite name="Orm">
+            <file>tests/ThinkOrmStackTest.php</file>
+            <file>tests/QaSchemaIntegrationTest.php</file>
+            <file>tests/MapSchemaIntegrationTest.php</file>
+            <file>tests/LearningMapServiceIntegrationTest.php</file>
+            <file>tests/QuestionServiceIntegrationTest.php</file>
+        </testsuite>
+        <testsuite name="Home">
+            <file>tests/HomeServiceTest.php</file>
+        </testsuite>
+        <testsuite name="Review">
+            <file>tests/ReviewBugsTest.php</file>
+            <file>tests/ReviewSchemaIntegrationTest.php</file>
+            <file>tests/ReviewServiceIntegrationTest.php</file>
+            <file>tests/LearningMapRouteTest.php</file>
+        </testsuite>
+        <testsuite name="Contract">
+            <file>tests/CatalogContractTest.php</file>
+            <file>tests/PaymentContractTest.php</file>
+            <file>tests/OrderAdminTest.php</file>
+            <file>tests/OrderReadOnlyRouteTest.php</file>
+            <file>tests/PermissionOverrideServiceIntegrationTest.php</file>
+            <file>tests/StaffOverrideApiTest.php</file>
+            <file>tests/RbacScopeTest.php</file>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+    </php>
+</phpunit>
