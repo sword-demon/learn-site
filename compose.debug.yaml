@@ -1,0 +1,10 @@
+# Debug overlay: expose MySQL 3306 on the host. Default stack still starts MySQL.
+#
+# docker compose -f compose.yaml -f compose.debug.yaml up -d
+
+name: learn-site
+
+services:
+  mysql:
+    ports:
+      - '3306:3306'

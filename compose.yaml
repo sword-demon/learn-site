@@ -1,0 +1,167 @@
+# Docker Compose for the personal learning site.
+#
+# Constitution §II: every image is pinned to an index digest. Never use `latest`.
+# Webman listens on 8787 inside the api container (official default).
+#
+# compose up -d --build
+# compose exec api php vendor/bin/phinx migrate
+# compose exec api php vendor/bin/phinx seed:run
+
+name: learn-site
+
+services:
+  mysql:
+    image: mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ:-UTC}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      # CMD-SHELL is required here so the container shell expands the escaped
+      # Compose variable at health-check time. Quoting keeps the password one
+      # mysqladmin argument, including when it contains shell metacharacters.
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7.4.11@sha256:91d0f7e8c748ec7a4c2b4fb2c4f84edab794dd91d01e095e38dc906db9d684ab
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: runtime
+    image: learn-site/api:local
+    restart: unless-stopped
+    stop_grace_period: 10s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      TZ: ${TZ:-UTC}
+      WEBMAN_WORKERS: ${WEBMAN_WORKERS:-2}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-900}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-604800}
+      CAPTCHA_TTL: ${CAPTCHA_TTL:-120}
+      FAKE_PAYMENT: ${FAKE_PAYMENT:-1}
+      FAKE_PAYMENT_DELAY_MS: ${FAKE_PAYMENT_DELAY_MS:-3000}
+      SUPER_ADMIN_ACCOUNT: ${SUPER_ADMIN_ACCOUNT}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
+    volumes:
+      - api_runtime:/app/runtime
+      - uploads:/app/uploads
+    networks:
+      - backend
+      - frontend
+    ports:
+      - '${API_PORT:-8787}:8787'
+    healthcheck:
+      test: ['CMD', 'php', '-r', "exit(@file_get_contents('http://127.0.0.1:8787/health') === false ? 1 : 0);"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    expose:
+      - '8787'
+
+  admin:
+    build:
+      context: .
+      dockerfile: docker/admin/Dockerfile
+    image: learn-site/admin:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_UPSTREAM: http://api:8787
+      TZ: ${TZ:-UTC}
+    ports:
+      - '${ADMIN_PORT:-8081}:80'
+    networks:
+      - frontend
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    image: learn-site/web:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_UPSTREAM: http://api:8787
+      TZ: ${TZ:-UTC}
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    networks:
+      - frontend
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mysql_data:
+  redis_data:
+  api_runtime:
+  uploads:
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge

@@ -1,0 +1,84 @@
+# Learn Site — 日常命令走 Docker Compose (OrbStack).
+# 宿主机直接跑 PHP / Node 不构成验收.
+
+COMPOSE      := docker compose
+COMPOSE_TEST := docker compose -f compose.yaml -f compose.test.yaml --profile test
+COMPOSE_DBG  := docker compose -f compose.yaml -f compose.debug.yaml
+SERVICE      ?= api
+API_PORT     ?= 8787
+
+.DEFAULT_GOAL := help
+
+.PHONY: help env bootstrap up down restart ps logs build \
+	migrate seed health sh-api test test-api test-web debug prototype
+
+help:
+	@echo "make bootstrap   # .env + 构建启动 + 迁移 + 种子 + 健康检查"
+	@echo "make up          # docker compose up -d --build"
+	@echo "make down        # 停栈 (保留卷)"
+	@echo "make restart     # 重启 SERVICE=$(SERVICE)"
+	@echo "make ps          # 容器状态"
+	@echo "make logs        # 跟日志 SERVICE=$(SERVICE)"
+	@echo "make health      # curl API /health"
+	@echo "make migrate     # phinx migrate"
+	@echo "make seed        # phinx seed:run"
+	@echo "make sh-api      # 进入 api 容器"
+	@echo "make test        # api-test + frontend-test"
+	@echo "make test-api    # PHPUnit (compose test profile)"
+	@echo "make test-web    # 前端 typecheck + build"
+	@echo "make debug       # 额外暴露 MySQL 3306"
+	@echo "make prototype   # 打开 throwaway HTML 原型 :4173"
+
+.env:
+	test -f .env || cp .env.example .env
+
+env: .env
+
+bootstrap: .env up migrate seed health
+
+up: .env
+	$(COMPOSE) up -d --build
+
+down:
+	$(COMPOSE) down
+
+restart:
+	$(COMPOSE) restart $(SERVICE)
+
+ps:
+	$(COMPOSE) ps
+
+logs:
+	$(COMPOSE) logs -f --tail=100 $(SERVICE)
+
+build:
+	$(COMPOSE) build
+
+migrate:
+	$(COMPOSE) exec -T api php vendor/bin/phinx migrate
+
+seed:
+	$(COMPOSE) exec -T api php vendor/bin/phinx seed:run
+
+health:
+	curl -sf http://127.0.0.1:$(API_PORT)/health && echo
+
+sh-api:
+	$(COMPOSE) exec api bash
+
+test: test-api test-web test-fmt
+
+test-api: .env
+	$(COMPOSE_TEST) run --rm api-test
+
+test-web: .env
+	$(COMPOSE_TEST) run --rm frontend-test
+
+test-fmt: .env
+	$(COMPOSE_TEST) run --rm api-fmt
+
+debug: .env
+	$(COMPOSE_DBG) up -d
+
+prototype:
+	sh scripts/prototype.sh

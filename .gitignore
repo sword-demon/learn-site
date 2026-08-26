@@ -1,0 +1,85 @@
+# 操作系统文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE 与编辑器本地状态
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# 环境变量与本地密钥
+.env
+.env.*
+!.env.example
+!.env.*.example
+auth.json
+secrets/
+*.key
+*.p12
+*.pfx
+
+# PHP、Composer 与 Webman 运行产物
+vendor/
+apps/api/vendor/
+composer.phar
+runtime/
+.phpunit.cache/
+.phpunit.result.cache
+.php-cs-fixer.cache
+.phpstan.cache/
+
+# Node.js、pnpm 与 Vue 构建产物
+node_modules/
+.pnpm-store/
+.npm/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# 测试与覆盖率产物
+coverage/
+.nyc_output/
+playwright-report/
+blob-report/
+test-results/
+
+# 日志、进程与临时文件
+*.log
+*.tmp
+*.pid
+*.pid.lock
+tmp/
+temp/
+.cache/
+
+# Docker、OrbStack 与 MySQL 本地持久化数据
+docker-data/
+.docker-data/
+mysql-data/
+.orbstack/
+
+# 本地备份与数据库导出
+backups/
+*.sql.gz
+*.dump
+*.bak
+
+# 一次性原型(make prototype 生成的 throwaway HTML)
+apps/web/prototype/
+apps/admin/prototype/
+
+# unplugin-auto-import / unplugin-vue-components 自动生成的类型声明
+auto-imports.d.ts
+**/components.d.ts
+
+# Docker Compose 本地覆盖
+compose.override.yaml

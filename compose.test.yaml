@@ -1,0 +1,64 @@
+# Test overlay: api image target=test (composer --dev) plus a Node image for
+# frontend lint/typecheck/build. Does not require host PHP or Node.
+#
+# Usage from `make test`:
+#   docker compose -f compose.yaml -f compose.test.yaml --profile test run --rm api-test
+#   docker compose -f compose.yaml -f compose.test.yaml --profile test run --rm frontend-test
+#
+# T111 evidence: this overlay covers formatter, PHPStan, PHPUnit, ESLint,
+# vue-tsc, and prod builds — all inside Compose, no host PHP/Node needed.
+
+name: learn-site
+
+x-common-db: &common-db
+  APP_ENV: testing
+  TZ: ${TZ:-UTC}
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: ${MYSQL_DATABASE}
+  DB_USER: ${MYSQL_USER}
+  DB_PASSWORD: ${MYSQL_PASSWORD}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+
+services:
+  api-test:
+    profiles: ['test']
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: test
+    image: learn-site/api-test:local
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: *common-db
+    networks:
+      - backend
+    command: ['sh', '-c', 'php vendor/bin/phpunit && php vendor/bin/phpstan analyse app --no-progress --memory-limit=512M']
+
+  api-fmt:
+    profiles: ['test']
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: test
+    image: learn-site/api-test:local
+    environment: *common-db
+    networks: []
+    command: ['sh', '-c', 'php vendor/bin/php-cs-fixer fix --dry-run --diff']
+
+  frontend-test:
+    profiles: ['test']
+    image: node:22.11.0-alpine@sha256:b64ced2e7cd0a4816699fe308ce6e8a08ccba463c757c00c14cd372e3d2c763e
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    environment:
+      CI: '1'
+    command:
+      - sh
+      - -c
+      - corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @learn-site/contracts lint && pnpm --filter @learn-site/contracts test && pnpm --filter @learn-site/contracts build && pnpm --filter @learn-site/web lint && pnpm --filter @learn-site/admin lint && pnpm --filter @learn-site/web typecheck && pnpm --filter @learn-site/admin typecheck && pnpm --filter @learn-site/web test && pnpm --filter @learn-site/admin test && pnpm --filter @learn-site/web build && pnpm --filter @learn-site/admin build
