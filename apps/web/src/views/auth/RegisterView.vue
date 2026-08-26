@@ -1,0 +1,108 @@
+<template>
+  <div class="campus auth-page">
+    <header class="topnav">
+      <router-link to="/" class="brand">
+        <span class="latin">Linjian</span>
+        <strong class="display">林间课室</strong>
+      </router-link>
+    </header>
+    <main class="auth-card">
+      <p class="badge">学员注册</p>
+      <h1 class="display">领一张课室学号</h1>
+      <p class="lede">只用大陆手机号. 后台账号进不来这里.</p>
+      <el-form :model="form" @submit.prevent="onSubmit">
+        <label class="field">
+          手机号
+          <el-input v-model="form.phone" maxlength="11" autocomplete="username" placeholder="11 位大陆手机号" />
+        </label>
+        <label class="field">
+          密码
+          <el-input v-model="form.password" type="password" autocomplete="new-password" show-password />
+        </label>
+        <label class="field">
+          图形验证码
+          <div class="captcha-row">
+            <el-input v-model="form.captcha_answer" maxlength="8" autocomplete="off" />
+            <button type="button" class="captcha-btn" :disabled="loadingCaptcha" @click="loadCaptcha">
+              <img v-if="captcha.image" :src="captcha.image" alt="点击刷新验证码" />
+              <span v-else>加载验证码</span>
+            </button>
+          </div>
+        </label>
+        <p v-if="error" class="notice">{{ errorLabel }}</p>
+        <el-button type="primary" native-type="submit" :loading="busy" round>注册并进入</el-button>
+      </el-form>
+      <p class="switch">
+        已经有学号?
+        <router-link to="/login">登录</router-link>
+      </p>
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { fetchCaptcha, registerLearner } from '@/api/learner'
+import { useLoginFamilyStore } from '@/api/login'
+
+const router = useRouter()
+const session = useLoginFamilyStore()
+
+const form = reactive({
+  phone: '',
+  password: '',
+  captcha_id: '',
+  captcha_answer: '',
+})
+const captcha = reactive({ image: '' })
+const busy = ref(false)
+const loadingCaptcha = ref(false)
+const error = ref('')
+
+const errorLabel = computed(() => {
+  const map: Record<string, string> = {
+    CAPTCHA_INVALID: '验证码无效, 请换一张再试',
+    PHONE_TAKEN: '这个手机号已经注册',
+    CONFLICT: '这个手机号已经注册',
+    INVALID_PHONE: '请输入 11 位大陆手机号',
+    PASSWORD_LENGTH: '密码需要 8 到 72 位',
+    VALIDATION_FAILED: '请检查手机号和密码',
+  }
+  return map[error.value] ?? '暂时无法注册'
+})
+
+async function loadCaptcha(): Promise<void> {
+  loadingCaptcha.value = true
+  error.value = ''
+  try {
+    const challenge = await fetchCaptcha()
+    form.captcha_id = challenge.captcha_id
+    form.captcha_answer = ''
+    captcha.image = challenge.image
+  } catch {
+    error.value = 'INTERNAL'
+  } finally {
+    loadingCaptcha.value = false
+  }
+}
+
+async function onSubmit(): Promise<void> {
+  busy.value = true
+  error.value = ''
+  try {
+    const pair = await registerLearner({ ...form })
+    session.signIn(pair)
+    await router.replace('/')
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'INTERNAL'
+    await loadCaptcha()
+  } finally {
+    busy.value = false
+  }
+}
+
+onMounted(() => {
+  void loadCaptcha()
+})
+</script>
