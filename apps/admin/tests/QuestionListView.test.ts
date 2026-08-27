@@ -78,6 +78,20 @@ describe('QuestionListView', () => {
     expect(wrapper.get<HTMLSelectElement>('select[name="status"]').element.value).toBe('pending');
   });
 
+  it('shows the empty state when an inbox payload has no items array', async () => {
+    qaApi.fetchInbox.mockResolvedValueOnce({
+      total: 0,
+      page: 1,
+      limit: 20,
+      status: 'pending',
+    } as unknown as AdminInboxDTO);
+    const wrapper = mount(QuestionListView);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('当前筛选下暂无问答。');
+    expect(wrapper.text()).not.toContain('Cannot read properties of undefined');
+  });
+
   it('loads lessons for the selected course and applies both filters', async () => {
     qaApi.fetchInbox.mockImplementation(async (params: Record<string, unknown>) =>
       params.course_id === course.id && params.lesson_id === lesson.id

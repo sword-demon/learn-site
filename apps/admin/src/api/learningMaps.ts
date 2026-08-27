@@ -1,13 +1,21 @@
 import http from './http'
+import { z } from 'zod'
 import type {
   AddCourseToStageInput,
   AdminMapDetailDTO,
   AdminMapListDTO,
   CreateMapInput,
   CreateStageInput,
+  MapStageDTO,
   MapStatus,
   UpdateMapInput,
   UpdateStageInput,
+} from '@learn-site/contracts'
+import {
+  AdminMapDetailDTO as AdminMapDetailSchema,
+  AdminMapListDTO as AdminMapListSchema,
+  ApiOk,
+  MapStageDTO as MapStageSchema,
 } from '@learn-site/contracts'
 
 /**
@@ -23,65 +31,86 @@ export interface AdminListMapParams {
   limit?: number
 }
 
+const AdminMapListEnvelope = ApiOk(AdminMapListSchema)
+const AdminMapDetailEnvelope = ApiOk(AdminMapDetailSchema)
+const MapStageEnvelope = ApiOk(MapStageSchema)
+const DeleteMapEnvelope = ApiOk(z.object({ id: z.number().int().positive() }))
+const DeleteStageEnvelope = ApiOk(z.object({
+  id: z.number().int().positive(),
+  stage_id: z.number().int().positive(),
+}))
+const CourseStepEnvelope = ApiOk(z.object({
+  id: z.number().int().positive(),
+  stage_id: z.number().int().positive(),
+  course_id: z.number().int().positive(),
+  sort_order: z.number().int().nonnegative(),
+}))
+const RemoveCourseEnvelope = ApiOk(z.object({
+  stage_id: z.number().int().positive(),
+  course_id: z.number().int().positive(),
+}))
+
 export async function listMaps(params: AdminListMapParams = {}): Promise<AdminMapListDTO> {
-  const { data } = await http.get<AdminMapListDTO>('/learning-maps', { params })
-  return data
+  const response = await http.get<unknown>('/learning-maps', { params })
+  return AdminMapListEnvelope.parse(response.data).data
 }
 
 export async function getMap(id: number): Promise<AdminMapDetailDTO> {
-  const { data } = await http.get<AdminMapDetailDTO>(`/learning-maps/${id}`)
-  return data
+  const response = await http.get<unknown>(`/learning-maps/${id}`)
+  return AdminMapDetailEnvelope.parse(response.data).data
 }
 
 export async function createMap(input: CreateMapInput): Promise<AdminMapDetailDTO> {
-  const { data } = await http.post<AdminMapDetailDTO>('/learning-maps', input)
-  return data
+  const response = await http.post<unknown>('/learning-maps', input)
+  return AdminMapDetailEnvelope.parse(response.data).data
 }
 
 export async function updateMap(id: number, input: UpdateMapInput): Promise<AdminMapDetailDTO> {
-  const { data } = await http.patch<AdminMapDetailDTO>(`/learning-maps/${id}`, input)
-  return data
+  const response = await http.patch<unknown>(`/learning-maps/${id}`, input)
+  return AdminMapDetailEnvelope.parse(response.data).data
 }
 
 export async function deleteMap(id: number): Promise<void> {
-  await http.delete(`/learning-maps/${id}`)
+  const response = await http.delete<unknown>(`/learning-maps/${id}`)
+  DeleteMapEnvelope.parse(response.data)
 }
 
 export async function publishMap(id: number): Promise<AdminMapDetailDTO> {
-  const { data } = await http.post<AdminMapDetailDTO>(`/learning-maps/${id}/publish`)
-  return data
+  const response = await http.post<unknown>(`/learning-maps/${id}/publish`)
+  return AdminMapDetailEnvelope.parse(response.data).data
 }
 
 export async function unpublishMap(id: number): Promise<AdminMapDetailDTO> {
-  const { data } = await http.post<AdminMapDetailDTO>(`/learning-maps/${id}/unpublish`)
-  return data
+  const response = await http.post<unknown>(`/learning-maps/${id}/unpublish`)
+  return AdminMapDetailEnvelope.parse(response.data).data
 }
 
 export async function addStage(
   mapId: number,
   input: CreateStageInput,
-): Promise<AdminMapDetailDTO['stages'][number]> {
-  const { data } = await http.post<AdminMapDetailDTO['stages'][number]>(
+): Promise<MapStageDTO> {
+  const response = await http.post<unknown>(
     `/learning-maps/${mapId}/stages`,
     input,
   )
-  return data
+  return MapStageEnvelope.parse(response.data).data
 }
 
 export async function updateStage(
   mapId: number,
   stageId: number,
   input: UpdateStageInput,
-): Promise<AdminMapDetailDTO['stages'][number]> {
-  const { data } = await http.patch<AdminMapDetailDTO['stages'][number]>(
+): Promise<MapStageDTO> {
+  const response = await http.patch<unknown>(
     `/learning-maps/${mapId}/stages/${stageId}`,
     input,
   )
-  return data
+  return MapStageEnvelope.parse(response.data).data
 }
 
 export async function deleteStage(mapId: number, stageId: number): Promise<void> {
-  await http.delete(`/learning-maps/${mapId}/stages/${stageId}`)
+  const response = await http.delete<unknown>(`/learning-maps/${mapId}/stages/${stageId}`)
+  DeleteStageEnvelope.parse(response.data)
 }
 
 export async function addCourseToStage(
@@ -89,11 +118,11 @@ export async function addCourseToStage(
   stageId: number,
   input: AddCourseToStageInput,
 ): Promise<{ id: number; stage_id: number; course_id: number; sort_order: number }> {
-  const { data } = await http.post<{ id: number; stage_id: number; course_id: number; sort_order: number }>(
+  const response = await http.post<unknown>(
     `/learning-maps/${mapId}/stages/${stageId}/courses`,
     input,
   )
-  return data
+  return CourseStepEnvelope.parse(response.data).data
 }
 
 export async function removeCourseFromStage(
@@ -101,5 +130,8 @@ export async function removeCourseFromStage(
   stageId: number,
   courseId: number,
 ): Promise<void> {
-  await http.delete(`/learning-maps/${mapId}/stages/${stageId}/courses/${courseId}`)
+  const response = await http.delete<unknown>(
+    `/learning-maps/${mapId}/stages/${stageId}/courses/${courseId}`,
+  )
+  RemoveCourseEnvelope.parse(response.data)
 }

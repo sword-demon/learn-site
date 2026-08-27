@@ -15,23 +15,39 @@ import {
   fetchThread,
 } from '@/api/qa';
 
+const question = {
+  id: 56,
+  course_id: 12,
+  chapter_id: null,
+  lesson_id: null,
+  learner_id: 78,
+  title: '如何理解条件类型？',
+  status: 'pending' as const,
+  answered_at: '',
+  created_at: '2026-08-25 10:30:00',
+  updated_at: '2026-08-25 10:30:00',
+};
+
+const thread = { question, messages: [] };
+
 describe('admin Q&A API boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('uses the questions contract path and forwards all inbox filters', async () => {
+    const inbox = { items: [], total: 0, page: 2, limit: 20, status: 'answered' };
     mockHttp.get.mockResolvedValueOnce({
-      data: { items: [], total: 0, page: 2, limit: 20, status: 'answered' },
+      data: { ok: true, data: inbox },
     });
 
-    await fetchInbox({
+    await expect(fetchInbox({
       status: 'answered',
       course_id: 12,
       lesson_id: 34,
       page: 2,
       limit: 20,
-    });
+    })).resolves.toEqual(inbox);
 
     expect(mockHttp.get).toHaveBeenCalledWith('/questions', {
       params: {
@@ -47,20 +63,25 @@ describe('admin Q&A API boundary', () => {
   it('loads scoped filter options from the Q&A permission boundary', async () => {
     mockHttp.get.mockResolvedValueOnce({
       data: {
-        courses: [{ id: 12, title: 'TypeScript 深入实践' }],
-        lessons: [{ id: 34, title: '条件类型' }],
+        ok: true,
+        data: {
+          courses: [{ id: 12, title: 'TypeScript 深入实践' }],
+          lessons: [{ id: 34, title: '条件类型' }],
+        },
       },
     });
-    await fetchFilterOptions(12);
+    await expect(fetchFilterOptions(12)).resolves.toEqual({
+      courses: [{ id: 12, title: 'TypeScript 深入实践' }],
+      lessons: [{ id: 34, title: '条件类型' }],
+    });
     expect(mockHttp.get).toHaveBeenCalledWith('/questions/filter-options', {
       params: { course_id: 12 },
     });
   });
 
   it('uses the questions contract paths for thread actions', async () => {
-    const thread = { question: { id: 56 }, messages: [] };
-    mockHttp.get.mockResolvedValueOnce({ data: thread });
-    mockHttp.post.mockResolvedValue({ data: thread });
+    mockHttp.get.mockResolvedValueOnce({ data: { ok: true, data: thread } });
+    mockHttp.post.mockResolvedValue({ data: { ok: true, data: thread } });
 
     await fetchThread(56);
     await answerQuestion(56, { body: '补充说明' });

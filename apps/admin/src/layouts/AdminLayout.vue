@@ -1,9 +1,7 @@
+<!-- Build timestamp: 20260827170030 -->
 <template>
   <el-container class="admin-shell">
-    <el-aside
-      :width="collapsed ? '64px' : '220px'"
-      class="aside"
-    >
+    <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
       <div class="brand">
         <span v-if="!collapsed">学习平台 · 管理端</span>
         <span v-else>管理</span>
@@ -19,30 +17,20 @@
       >
         <template v-for="entry in entries" :key="entry.path">
           <el-sub-menu
-            v-if="'children' in entry && entry.children && entry.children.length"
+            v-if="'children' in entry && Array.isArray(entry.children) && entry.children.length"
             :index="entry.path"
           >
             <template #title>
-              <el-icon><i-ep-office-building /></el-icon>
+              <el-icon><component :is="iconFor(entry.path)" /></el-icon>
               <span>{{ entry.label }}</span>
             </template>
-            <el-menu-item
-              v-for="child in entry.children"
-              :key="child.path"
-              :index="child.path"
-            >
+            <el-menu-item v-for="child in entry.children" :key="child.path" :index="child.path">
+              <el-icon><component :is="iconFor(child.path)" /></el-icon>
               <template #title>{{ child.label }}</template>
             </el-menu-item>
           </el-sub-menu>
-          <el-menu-item
-            v-else
-            :index="entry.path"
-          >
-            <el-icon>
-              <i-ep-monitor v-if="entry.path === '/'" />
-              <i-ep-folder v-else-if="entry.path === '/categories'" />
-              <i-ep-reading v-else-if="entry.path === '/courses'" />
-            </el-icon>
+          <el-menu-item v-else :index="entry.path">
+            <el-icon><component :is="iconFor(entry.path)" /></el-icon>
             <template #title>{{ entry.label }}</template>
           </el-menu-item>
         </template>
@@ -50,23 +38,18 @@
     </el-aside>
     <el-container>
       <el-header class="header">
-        <el-button
-          text
-          @click="collapsed = !collapsed"
-        >
-          <el-icon><i-ep-expand v-if="collapsed" /><i-ep-fold v-else /></el-icon>
+        <el-button text @click="collapsed = !collapsed">
+          <el-icon><component :is="collapsed ? Expand : Fold" /></el-icon>
         </el-button>
         <div class="spacer" />
         <el-dropdown @command="onCommand">
           <span class="user">
-            <el-icon><i-ep-user /></el-icon>
+            <el-icon><User /></el-icon>
             <span>{{ label }}</span>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="logout">
-                退出登录
-              </el-dropdown-item>
+              <el-dropdown-item command="logout"> 退出登录 </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -79,63 +62,102 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { http, clearTokens, permissionCodes } from '@/api/http'
-import { visibleEntries, type AdminMenuEntry } from '@/layouts/AdminMenu'
+import { computed, ref } from 'vue';
+import type { Component } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import {
+  ChatLineSquare,
+  Expand,
+  Files,
+  Fold,
+  Folder,
+  Management,
+  MapLocation,
+  Message,
+  Monitor,
+  Notebook,
+  OfficeBuilding,
+  Reading,
+  ShoppingCart,
+  User,
+} from '@element-plus/icons-vue';
+import { http, clearTokens, permissionCodes } from '@/api/http';
+import { visibleEntries, type AdminMenuEntry } from '@/layouts/AdminMenu';
 
-const route = useRoute()
-const router = useRouter()
-const collapsed = ref(false)
+const route = useRoute();
+const router = useRouter();
+const collapsed = ref(false);
 
-const entries = computed<AdminMenuEntry[]>(() => visibleEntries(permissionCodes()))
+const menuIcons: Record<string, Component> = {
+  '/': Monitor,
+  '/categories': Folder,
+  '/courses': Reading,
+  '/qa': Message,
+  '/reviews': ChatLineSquare,
+  '/maps': MapLocation,
+  '/orders': ShoppingCart,
+  '/learners': User,
+  '/site/profile': OfficeBuilding,
+  '/site/audit': Files,
+  '/org': OfficeBuilding,
+  '/org/departments': Folder,
+  '/org/posts': Notebook,
+  '/org/roles': Management,
+  '/org/staff': User,
+};
+
+function iconFor(path: string): Component {
+  return menuIcons[path] ?? Files;
+}
+
+const entries = computed<AdminMenuEntry[]>(() => visibleEntries(permissionCodes()));
 
 const active = computed(() => {
   // Pick the longest matching leaf path so /org/departments beats /org when
   // both happen to be in the menu; falls back to '/' when nothing matches
   // (e.g. while the router-guard redirect is in flight).
-  const p = route.path
-  let best = '/'
-  let bestLen = -1
+  const p = route.path;
+  let best = '/';
+  let bestLen = -1;
   for (const e of entries.value) {
     if ('children' in e && e.children) {
       for (const c of e.children) {
         if ((p === c.path || p.startsWith(c.path + '/')) && c.path.length > bestLen) {
-          best = c.path
-          bestLen = c.path.length
+          best = c.path;
+          bestLen = c.path.length;
         }
       }
     } else if (p === e.path || p.startsWith(e.path + '/')) {
       if (e.path.length > bestLen) {
-        best = e.path
-        bestLen = e.path.length
+        best = e.path;
+        bestLen = e.path.length;
       }
     }
   }
-  return best
-})
+  return best;
+});
 
 const label = computed(() => {
-  if (typeof route.meta.title === 'string') return route.meta.title
-  return '管理员'
-})
+  if (typeof route.meta.title === 'string') return route.meta.title;
+  return '管理员';
+});
 
 async function onCommand(cmd: string): Promise<void> {
-  if (cmd !== 'logout') return
+  if (cmd !== 'logout') return;
   try {
-    await ElMessageBox.confirm('确定退出登录吗？', '退出', { type: 'warning' })
+    await ElMessageBox.confirm('确定退出登录吗？', '退出', { type: 'warning' });
   } catch {
-    return
+    return;
   }
   try {
-    await http.post('/auth/logout')
+    await http.post('/auth/logout');
   } catch {
     // ponytail: best-effort; token revoked on server next refresh.
   }
-  clearTokens()
-  ElMessage.success('已退出')
-  await router.push('/login')
+  clearTokens();
+  ElMessage.success('已退出');
+  await router.push('/login');
 }
 </script>
 

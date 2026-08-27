@@ -11,6 +11,10 @@ export default defineConfig({
     AutoImport({ resolvers: [ElementPlusResolver()] }),
     Components({ resolvers: [ElementPlusResolver()] }),
   ],
+  build: {
+    target: 'es2022',
+    sourcemap: false,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
@@ -35,9 +39,5 @@ export default defineConfig({
         inline: ['element-plus'],
       },
     },
-  },
-  build: {
-    target: 'es2022',
-    sourcemap: false,
   },
 });

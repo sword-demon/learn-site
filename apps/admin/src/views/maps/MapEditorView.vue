@@ -370,7 +370,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
         </form>
 
         <h2>地图列表</h2>
-        <ol v-if="list && list.items.length" class="map-list">
+        <ol v-if="list?.items?.length" class="map-list">
           <li
             v-for="m in list.items"
             :key="m.id"
@@ -411,7 +411,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                 class="btn"
                 data-action="publish"
                 :disabled="
-                  submitting || (active.status === 'draft' && active.publish_issues.length > 0)
+                  submitting || (active.status === 'draft' && active.publish_issues?.length > 0)
                 "
                 @click="publishToggle"
               >
@@ -430,7 +430,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
           </header>
 
           <section
-            v-if="active.publish_issues.length"
+            v-if="active.publish_issues?.length"
             data-role="publish-issues"
             class="publish-issues"
             aria-labelledby="publish-issues-title"
@@ -569,7 +569,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                   @change="updateStageSummary(stage.id, $event)"
                 ></textarea>
               </label>
-              <ol v-if="stage.courses.length" class="course-list">
+              <ol v-if="stage.courses?.length" class="course-list">
                 <li v-for="sc in stage.courses" :key="sc.map_stage_course_id" class="course">
                   <span class="course-title">{{
                     sc.course?.title ?? `课程 #${sc.course_id}`

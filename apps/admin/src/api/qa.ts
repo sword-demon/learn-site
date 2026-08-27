@@ -6,12 +6,18 @@ import type {
   QuestionStatus,
   QuestionThreadDTO,
 } from '@learn-site/contracts';
+import {
+  AdminInboxDTO as AdminInboxSchema,
+  ApiOk,
+  QuestionFilterOptionsDTO as QuestionFilterOptionsSchema,
+  QuestionThreadDTO as QuestionThreadSchema,
+} from '@learn-site/contracts';
 
 /**
  * Admin Q&A inbox API (Phase 11 / US4 — T068).
  * Endpoint shapes live in apps/api/app/controller/admin/QuestionController.php
- * and packages/contracts/src/qa.ts. Errors propagate via axios so views
- * can branch on the response body `{ error: { code, message } }`.
+ * and packages/contracts/src/qa.ts. Every successful response is unwrapped
+ * from the canonical `{ ok: true, data }` envelope at this boundary.
  */
 
 export interface InboxParams {
@@ -22,29 +28,33 @@ export interface InboxParams {
   limit?: number;
 }
 
+const AdminInboxEnvelope = ApiOk(AdminInboxSchema);
+const QuestionFilterOptionsEnvelope = ApiOk(QuestionFilterOptionsSchema);
+const QuestionThreadEnvelope = ApiOk(QuestionThreadSchema);
+
 export async function fetchInbox(params: InboxParams = {}): Promise<AdminInboxDTO> {
-  const { data } = await http.get<AdminInboxDTO>('/questions', { params });
-  return data;
+  const { data } = await http.get<unknown>('/questions', { params });
+  return AdminInboxEnvelope.parse(data).data;
 }
 
 export async function fetchFilterOptions(courseId?: number): Promise<QuestionFilterOptionsDTO> {
-  const { data } = await http.get<QuestionFilterOptionsDTO>('/questions/filter-options', {
+  const { data } = await http.get<unknown>('/questions/filter-options', {
     params: courseId === undefined ? {} : { course_id: courseId },
   });
-  return data;
+  return QuestionFilterOptionsEnvelope.parse(data).data;
 }
 
 export async function fetchThread(id: number): Promise<QuestionThreadDTO> {
-  const { data } = await http.get<QuestionThreadDTO>(`/questions/${id}`);
-  return data;
+  const { data } = await http.get<unknown>(`/questions/${id}`);
+  return QuestionThreadEnvelope.parse(data).data;
 }
 
 export async function answerQuestion(id: number, input: AnswerInput): Promise<QuestionThreadDTO> {
-  const { data } = await http.post<QuestionThreadDTO>(`/questions/${id}/answer`, input);
-  return data;
+  const { data } = await http.post<unknown>(`/questions/${id}/answer`, input);
+  return QuestionThreadEnvelope.parse(data).data;
 }
 
 export async function closeQuestion(id: number): Promise<QuestionThreadDTO> {
-  const { data } = await http.post<QuestionThreadDTO>(`/questions/${id}/close`);
-  return data;
+  const { data } = await http.post<unknown>(`/questions/${id}/close`);
+  return QuestionThreadEnvelope.parse(data).data;
 }

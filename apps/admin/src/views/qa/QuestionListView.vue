@@ -240,7 +240,7 @@ onMounted(() => {
       <aside class="inbox">
         <p v-if="loading" class="notice">加载中...</p>
         <p v-else-if="listError" class="notice error">问答暂时读不到（{{ listError }}）。</p>
-        <ol v-else-if="inbox && inbox.items.length" class="thread-list">
+        <ol v-else-if="inbox?.items?.length" class="thread-list">
           <li
             v-for="question in inbox.items"
             :key="question.id"
