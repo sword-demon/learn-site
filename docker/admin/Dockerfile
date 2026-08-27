@@ -10,11 +10,14 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY apps/admin apps/admin
 COPY packages/contracts packages/contracts
 
+# Cache-busting: touch a file to invalidate layer cache when source changes
+RUN date +%s > /workspace/.build-timestamp
+
 RUN corepack enable \
- && corepack prepare pnpm@9.12.0 --activate \
- && pnpm install --frozen-lockfile \
- && pnpm --filter @learn-site/contracts build \
- && pnpm --filter @learn-site/admin build
+    && corepack prepare pnpm@9.12.0 --activate \
+    && pnpm install --frozen-lockfile \
+    && pnpm --filter @learn-site/contracts build \
+    && pnpm --filter @learn-site/admin build
 
 # ---- runtime stage ----
 FROM nginx:1.27.3-alpine@sha256:814a8e88df978ade80e584cc5b333144b9372a8e3c98872d07137dbf3b44d0e4 AS runtime
