@@ -1,28 +1,40 @@
 <template>
-  <main class="page">
-    <p class="badge">
-      <router-link to="/">首页</router-link>
-      <span aria-hidden="true"> / </span>
-      <span>{{ category?.name ?? '分类' }}</span>
-    </p>
-    <h1 class="display">{{ category?.name ?? '分类课程' }}</h1>
-    <p class="lede">{{ lede }}</p>
+  <main class="page catalog-archive">
+    <header class="archive-head">
+      <div>
+        <p class="badge">
+          <router-link to="/">首页</router-link>
+          <span aria-hidden="true"> / </span>
+          <span>{{ category?.name ?? '分类' }}</span>
+        </p>
+        <h1 class="display">{{ category?.name ?? '分类课程' }}</h1>
+        <p class="lede">{{ lede }}</p>
+      </div>
+      <p v-if="!loading && !loadError" class="archive-count">
+        <strong>{{ total }}</strong> 门课程
+      </p>
+    </header>
 
     <p v-if="loading" class="notice">课程加载中…</p>
-    <p v-else-if="loadError" class="notice error">分类暂时读不到, 请稍后再试.</p>
-    <p v-else-if="items.length === 0" class="empty">此分类下还没有公开课程.</p>
+    <p v-else-if="loadError" class="notice error">分类暂时读不到，请稍后再试。</p>
+    <p v-else-if="items.length === 0" class="empty">此分类下还没有公开课程。</p>
     <ul v-else class="course-grid">
-      <li v-for="course in items" :key="course.id" class="course-card">
+      <li v-for="(course, index) in items" :key="course.id" class="course-card">
         <router-link :to="`/courses/${course.id}`" class="cover">
+          <span class="course-index latin">{{
+            String(index + 1 + (page - 1) * limit).padStart(2, '0')
+          }}</span>
           <img v-if="course.cover_url" :src="course.cover_url" :alt="course.title" />
-          <span v-else class="cover-fallback" aria-hidden="true">{{ course.title.slice(0, 2) }}</span>
+          <span v-else class="cover-fallback display" aria-hidden="true">{{
+            course.title.slice(0, 2)
+          }}</span>
         </router-link>
         <div class="body">
           <h2 class="title">
             <router-link :to="`/courses/${course.id}`">{{ course.title }}</router-link>
           </h2>
           <p class="teacher">讲师 · {{ course.teacher_name }}</p>
-          <p class="summary">{{ course.summary || '讲师还没有写简介.' }}</p>
+          <p class="summary">{{ course.summary || '讲师还没有写简介。' }}</p>
           <p class="meta">
             <span v-if="course.price_mode === 'free'" class="tag free">免费</span>
             <template v-else>
@@ -37,168 +49,281 @@
     </ul>
 
     <nav v-if="totalPages > 1" class="pager" aria-label="分页">
-      <button type="button" class="btn" :disabled="page <= 1" @click="goto(page - 1)">上一页</button>
-      <span class="page-indicator">{{ page }} / {{ totalPages }}</span>
-      <button type="button" class="btn" :disabled="page >= totalPages" @click="goto(page + 1)">下一页</button>
+      <button type="button" class="btn btn-ghost" :disabled="page <= 1" @click="goto(page - 1)">
+        上一页
+      </button>
+      <span class="page-indicator">第 {{ page }} / {{ totalPages }} 页</span>
+      <button
+        type="button"
+        class="btn btn-ghost"
+        :disabled="page >= totalPages"
+        @click="goto(page + 1)"
+      >
+        下一页
+      </button>
     </nav>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type {
-  CategoryBreadcrumbDTO,
-  CourseListItemDTO,
-} from '@learn-site/contracts'
-import { fetchCategoryCourses } from '@/api/learner'
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { CategoryBreadcrumbDTO, CourseListItemDTO } from '@learn-site/contracts';
+import { fetchCategoryCourses } from '@/api/learner';
 
-defineOptions({ name: 'CategoryView' })
+defineOptions({ name: 'CategoryView' });
 
-const route = useRoute()
-const router = useRouter()
-const category = ref<CategoryBreadcrumbDTO | null>(null)
-const items = ref<CourseListItemDTO[]>([])
-const total = ref(0)
-const page = ref(1)
-const limit = 20
-const loading = ref(true)
-const loadError = ref(false)
+const route = useRoute();
+const router = useRouter();
+const category = ref<CategoryBreadcrumbDTO | null>(null);
+const items = ref<CourseListItemDTO[]>([]);
+const total = ref(0);
+const page = ref(1);
+const limit = 20;
+const loading = ref(true);
+const loadError = ref(false);
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)))
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)));
 
 const lede = computed(() => {
-  if (loading.value) return '正在铺开课程…'
-  if (loadError.value) return '分类暂时读不到, 课室还在.'
-  if (total.value === 0) return '还没有发布中的课程. 管理员发布后会出现在这里.'
-  return `共 ${total.value} 门已发布课程, 默认按更新时间倒序.`
-})
+  if (loading.value) return '正在铺开课程…';
+  if (loadError.value) return '分类暂时读不到，课室还在。';
+  if (total.value === 0) return '还没有发布中的课程，管理员发布后会出现在这里。';
+  return `共 ${total.value} 门已发布课程，默认按更新时间倒序。`;
+});
 
 function formatPrice(n: number): string {
-  return n.toFixed(2)
+  return n.toFixed(2);
 }
 
 function goto(next: number): void {
-  if (next === page.value) return
-  router.replace({ query: { ...route.query, page: String(next) } })
+  if (next === page.value) return;
+  router.replace({ query: { ...route.query, page: String(next) } });
 }
 
 async function load(): Promise<void> {
-  const id = Number(route.params.id)
+  const id = Number(route.params.id);
   if (!Number.isFinite(id) || id <= 0) {
-    loadError.value = true
-    loading.value = false
-    return
+    loadError.value = true;
+    loading.value = false;
+    return;
   }
-  const queryPage = Number(route.query.page)
-  page.value = Number.isFinite(queryPage) && queryPage > 0 ? queryPage : 1
-  loading.value = true
-  loadError.value = false
+  const queryPage = Number(route.query.page);
+  page.value = Number.isFinite(queryPage) && queryPage > 0 ? queryPage : 1;
+  loading.value = true;
+  loadError.value = false;
   try {
-    const { category: cat, list } = await fetchCategoryCourses(id, page.value, limit)
-    category.value = cat
-    items.value = list.items
-    total.value = list.total
+    const { category: cat, list } = await fetchCategoryCourses(id, page.value, limit);
+    category.value = cat;
+    items.value = list.items;
+    total.value = list.total;
   } catch {
-    loadError.value = true
+    loadError.value = true;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-onMounted(load)
-watch(() => [route.params.id, route.query.page], load)
+onMounted(load);
+watch(() => [route.params.id, route.query.page], load);
 </script>
 
 <style scoped>
-.page { display: grid; gap: 16px; }
-.badge a { color: inherit; text-decoration: none; }
-.display { margin: 0; }
-.lede { color: var(--color-text-muted, #5b6472); margin: 0; }
-.empty, .notice { color: var(--color-text-muted, #5b6472); }
-.notice.error { color: #b42318; }
+.catalog-archive {
+  display: grid;
+  gap: 28px;
+}
+
+.archive-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid var(--line);
+}
+
+.archive-head .badge {
+  margin-bottom: 17px;
+}
+
+.archive-head .display {
+  margin: 0 0 9px;
+  color: var(--pine-deep);
+  font-size: 2.8rem;
+  line-height: 1.12;
+}
+
+.archive-count {
+  flex-shrink: 0;
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.archive-count strong {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+}
 
 .course-grid {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: grid;
-  gap: 16px;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
+
 .course-card {
-  border: 1px solid var(--color-border, #e3e6ee);
-  border-radius: 10px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--color-surface, #fff);
-}
-.cover {
-  display: block;
-  aspect-ratio: 16 / 9;
-  background: var(--color-bg-soft, #eef1f7);
   overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 10px 26px rgba(31, 60, 48, 0.07);
+  transition:
+    transform 0.24s ease,
+    box-shadow 0.24s ease;
 }
-.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.course-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 17px 34px rgba(31, 60, 48, 0.12);
+}
+
+.cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.course-card:hover .cover img {
+  transform: scale(1.035);
+}
+
+.course-index {
+  position: absolute;
+  top: 11px;
+  left: 12px;
+  z-index: 1;
+  color: #fffefa;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.42);
+}
+
 .cover-fallback {
   display: flex;
   width: 100%;
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  color: var(--color-text-muted, #5b6472);
+  color: var(--pine);
+  font-size: 2rem;
 }
-.body { padding: 12px 14px 14px; display: grid; gap: 6px; }
-.title { margin: 0; font-size: 16px; }
-.title a { color: inherit; text-decoration: none; }
-.teacher { margin: 0; font-size: 13px; color: var(--color-text-muted, #5b6472); }
+
+.body {
+  display: grid;
+  gap: 7px;
+  padding: 15px 16px 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+
+.title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.title a:hover {
+  color: var(--accent);
+}
+
+.teacher,
 .summary {
   margin: 0;
-  font-size: 13px;
-  color: var(--color-text-muted, #5b6472);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
+
+.summary {
+  display: -webkit-box;
+  min-height: 2.5em;
+  overflow: hidden;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-  margin: 4px 0 0 0;
-  font-size: 13px;
+  margin: 4px 0 0;
+  font-size: 0.77rem;
 }
-.price-now { font-weight: 600; }
-.price-was { color: var(--color-text-muted, #5b6472); text-decoration: line-through; }
-.tag {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  background: var(--color-bg-soft, #eef1f7);
+
+.price-now {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
 }
-.tag.free { background: #e7f6ec; color: #137a3c; }
-.tag.preview { background: #e6efff; color: #1e3a8a; }
-.learners { color: var(--color-text-muted, #5b6472); margin-left: auto; }
+
+.price-was {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  text-decoration: line-through;
+}
+
+.learners {
+  margin-left: auto;
+  color: var(--muted);
+}
 
 .pager {
   display: flex;
-  gap: 12px;
   align-items: center;
   justify-content: center;
-  margin-top: 8px;
+  gap: 14px;
 }
-.btn {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
+
+.page-indicator {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
-.btn[disabled] { opacity: 0.55; cursor: not-allowed; }
-.page-indicator { color: var(--color-text-muted, #5b6472); }
+
+@media (max-width: 560px) {
+  .archive-head .display {
+    font-size: 2.25rem;
+  }
+
+  .archive-head {
+    display: grid;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .archive-count {
+    margin: 0;
+  }
+}
 </style>

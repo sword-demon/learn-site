@@ -63,20 +63,20 @@ function formattedAt(value: string): string {
   display: grid;
   gap: 8px;
   padding-left: 12px;
-  border-left: 3px solid var(--color-border, #d0d4dc);
+  border-left: 2px solid var(--line);
 }
 .reply[data-kind='admin'] {
-  border-left-color: #2563eb;
+  border-left-color: var(--pine);
 }
 .reply[data-kind='system'] {
-  border-left-color: #94a3b8;
+  border-left-color: var(--muted);
 }
 .reply-body {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  background: var(--color-bg-soft, #fafbfd);
-  border-radius: 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
 }
 .meta {
   display: flex;
@@ -84,15 +84,15 @@ function formattedAt(value: string): string {
   gap: 6px 10px;
   align-items: center;
   margin: 0;
-  color: var(--color-text-muted, #5b6472);
+  color: var(--muted);
   font-size: 0.82rem;
 }
 .status {
-  padding: 1px 6px;
-  border: 1px solid #acd5bd;
-  border-radius: 4px;
-  color: #17683a;
-  background: #edf8f1;
+  padding: 2px 6px;
+  border: 1px solid #bad4c1;
+  border-radius: 999px;
+  color: var(--pine-deep);
+  background: #eef7f0;
 }
 .body {
   margin: 0;
@@ -104,7 +104,7 @@ function formattedAt(value: string): string {
   justify-self: start;
   padding: 0;
   border: 0;
-  color: var(--color-primary, #2563eb);
+  color: var(--accent);
   background: transparent;
   font: inherit;
   cursor: pointer;
@@ -112,7 +112,7 @@ function formattedAt(value: string): string {
 .children summary {
   width: fit-content;
   margin-bottom: 8px;
-  color: var(--color-text-muted, #5b6472);
+  color: var(--muted);
   font-size: 0.82rem;
   cursor: pointer;
 }

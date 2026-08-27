@@ -3,26 +3,35 @@
     <p class="badge">
       <router-link to="/">首页</router-link>
       <span aria-hidden="true"> / </span>
-      <span>{{ detail?.course.category_name ?? '分类' }}</span>
+      <span>{{ detail?.course.category_name ?? '课程详情' }}</span>
     </p>
 
     <p v-if="loading" class="notice">课程加载中…</p>
-    <p v-else-if="loadError" class="notice error">课程暂时读不到, 请稍后再试.</p>
+    <p v-else-if="loadError" class="notice error">课程暂时读不到，请稍后再试。</p>
     <template v-else-if="detail">
-      <section class="hero">
-        <div class="hero-text">
+      <section class="course-overview">
+        <div class="course-copy">
+          <p class="eyebrow">
+            <span class="eyebrow-rule" />课程档案 · {{ detail.course.category_name ?? '公开课程' }}
+          </p>
           <h1 class="display">{{ detail.course.title }}</h1>
-          <p class="lede teacher">讲师 · {{ detail.course.teacher_name }}</p>
-          <p class="lede summary">{{ detail.course.summary || '讲师还没有写简介.' }}</p>
-          <p class="price">
-            <span v-if="detail.course.price_mode === 'free'" class="tag free">免费</span>
+          <p class="course-teacher">讲师 · {{ detail.course.teacher_name }}</p>
+          <p class="lede course-summary">{{ detail.course.summary || '讲师还没有写简介。' }}</p>
+          <div class="course-facts">
+            <span>{{ detail.course.learner_count }} 位学员</span>
+            <span>{{ chapters.length }} 个章节</span>
+            <span
+              v-if="chapters.some((chapter) => chapter.lessons.some((lesson) => lesson.is_preview))"
+            >支持试看</span>
+          </div>
+          <div class="course-price">
+            <span v-if="detail.course.price_mode === 'free'" class="tag free">免费课程</span>
             <template v-else>
               <span class="price-now">¥ {{ formatPrice(detail.course.sale_price || detail.course.list_price) }}</span>
               <span v-if="detail.course.sale_price > 0" class="price-was">¥ {{ formatPrice(detail.course.list_price) }}</span>
               <span v-if="saleWindowOpen" class="tag sale">限时优惠</span>
             </template>
-            <span class="learners">已有 {{ detail.course.learner_count }} 位学员</span>
-          </p>
+          </div>
           <div class="hero-actions">
             <button
               v-if="firstLesson && detail.course.viewer_authorized"
@@ -50,26 +59,45 @@
             >
               {{ buying ? '下单中…' : '立即购买' }}
             </button>
-            <span v-else class="notice">这门课还没有可学习的课节.</span>
+            <span v-else class="notice">这门课还没有可学习的课节。</span>
           </div>
         </div>
-        <div v-if="detail.course.cover_url" class="hero-cover">
-          <img :src="detail.course.cover_url" :alt="detail.course.title" />
+        <div class="hero-cover">
+          <img
+            v-if="detail.course.cover_url"
+            :src="detail.course.cover_url"
+            :alt="detail.course.title"
+          />
+          <span v-else class="cover-fallback display">{{ detail.course.title.slice(0, 2) }}</span>
         </div>
       </section>
 
-      <section v-if="detail.course.intro_html" class="intro">
-        <h2 class="section-title">课程介绍</h2>
-        <!-- server is the sanitizer's single source of truth (FR-009) -->
+      <section v-if="detail.course.intro_html" class="section-frame intro">
+        <p class="eyebrow"><span class="eyebrow-rule" />课程说明</p>
+        <h2 class="section-title display">课程介绍</h2>
         <div class="prose" v-html="detail.course.intro_html" />
       </section>
 
-      <section class="lessons">
-        <h2 class="section-title">课程目录</h2>
-        <p v-if="chapters.length === 0" class="empty">讲师还没有发布课节.</p>
+      <section class="section-frame lessons">
+        <header class="section-heading">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-rule" />课程目录</p>
+            <h2 class="section-title display">按章节展开学习</h2>
+          </div>
+          <span class="lesson-count">{{ chapters.length }} 个章节</span>
+        </header>
+        <p v-if="chapters.length === 0" class="empty">讲师还没有发布课节。</p>
         <ol v-else class="chapter-list">
           <li v-for="chapter in chapters" :key="chapter.id" class="chapter">
-            <h3 class="chapter-title">{{ chapter.sort + 1 }}. {{ chapter.title }}</h3>
+            <div class="chapter-heading">
+              <span class="chapter-number latin">{{
+                String(chapter.sort + 1).padStart(2, '0')
+              }}</span>
+              <div>
+                <h3 class="chapter-title">{{ chapter.title }}</h3>
+                <p class="chapter-meta">{{ chapter.lessons.length }} 个课节</p>
+              </div>
+            </div>
             <ol class="lesson-list">
               <li
                 v-for="lesson in chapter.lessons"
@@ -78,7 +106,8 @@
                 :data-locked="lesson.locked"
               >
                 <span class="lesson-title">
-                  {{ lesson.sort + 1 }}. {{ lesson.title }}
+                  <span class="lesson-number">{{ lesson.sort + 1 }}.</span>
+                  {{ lesson.title }}
                   <span v-if="lesson.is_preview" class="tag preview">试看</span>
                   <span class="kind">{{ kindLabel(lesson.content_type) }}</span>
                 </span>
@@ -90,7 +119,7 @@
                   :lesson-title="lesson.title"
                 >
                   <router-link :to="`/learn/${detail.course.id}/${lesson.id}`" class="btn btn-link">
-                    打开
+                    打开课节 <span aria-hidden="true">→</span>
                   </router-link>
                 </AccessGate>
               </li>
@@ -99,12 +128,11 @@
         </ol>
       </section>
 
-      <ReviewTree
-        :course-id="detail?.course.id ?? 0"
-        :authorized="detail.course.viewer_authorized"
-      />
+      <section class="section-frame feedback-frame">
+        <ReviewTree :course-id="detail.course.id" :authorized="detail.course.viewer_authorized" />
+      </section>
 
-      <ShareBar :course-id="detail?.course.id ?? 0" :course-title="detail?.course.title ?? ''" />
+      <ShareBar :course-id="detail.course.id" :course-title="detail.course.title" />
     </template>
   </main>
 </template>
@@ -127,27 +155,23 @@ const loading = ref(true);
 const loadError = ref(false);
 const starting = ref(false);
 const buying = ref(false);
-
 const chapters = computed(() => detail.value?.chapters ?? []);
 
 const firstLesson = computed(() => {
-  for (const ch of chapters.value) {
-    for (const ls of ch.lessons) {
-      return { id: ls.id, courseId: detail.value!.course.id };
-    }
+  for (const chapter of chapters.value) {
+    const lesson = chapter.lessons[0];
+    if (lesson && detail.value) return { id: lesson.id, courseId: detail.value.course.id };
   }
   return null;
 });
 
 const saleWindowOpen = computed(() => {
-  const c = detail.value?.course;
-  if (!c || c.price_mode !== 'paid') return false;
-  if (!(c.sale_price > 0)) return false;
-  const now = Date.now();
-  const start = c.sale_start_at ? Date.parse(c.sale_start_at) : NaN;
-  const end = c.sale_end_at ? Date.parse(c.sale_end_at) : NaN;
+  const course = detail.value?.course;
+  if (!course || course.price_mode !== 'paid' || !(course.sale_price > 0)) return false;
+  const start = course.sale_start_at ? Date.parse(course.sale_start_at) : NaN;
+  const end = course.sale_end_at ? Date.parse(course.sale_end_at) : NaN;
   if (Number.isNaN(start) || Number.isNaN(end)) return false;
-  return now >= start && now < end;
+  return Date.now() >= start && Date.now() < end;
 });
 
 onMounted(async () => {
@@ -168,8 +192,7 @@ onMounted(async () => {
 
 function openFirst(): void {
   const target = firstLesson.value;
-  if (!target) return;
-  router.push(`/learn/${target.courseId}/${target.id}`);
+  if (target) router.push(`/learn/${target.courseId}/${target.id}`);
 }
 
 async function startFree(): Promise<void> {
@@ -178,11 +201,10 @@ async function startFree(): Promise<void> {
   try {
     const result = await startCourse(detail.value.course.id);
     detail.value.course.viewer_authorized = true;
-    if (result.first_lesson) {
+    if (result.first_lesson)
       router.push(`/learn/${detail.value.course.id}/${result.first_lesson.id}`);
-    }
   } catch {
-    /* surfaced inline via loadError path */
+    loadError.value = true;
   } finally {
     starting.value = false;
   }
@@ -195,7 +217,7 @@ async function buy(): Promise<void> {
     await createCourseOrder(detail.value.course.id);
     router.push('/me/orders');
   } catch {
-    /* surfaced via orders page */
+    loadError.value = true;
   } finally {
     buying.value = false;
   }
@@ -224,154 +246,266 @@ function kindLabel(kind: string): string {
   display: grid;
   gap: 28px;
 }
-.hero {
+
+.course-detail > .badge {
+  margin-bottom: -9px;
+}
+
+.course-overview {
   display: grid;
-  gap: 18px;
-  grid-template-columns: 1fr;
-}
-@media (min-width: 768px) {
-  .hero {
-    grid-template-columns: 2fr 1fr;
-    align-items: start;
-  }
-}
-.hero-text .display {
-  margin: 0 0 4px 0;
-}
-.teacher {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0 0 6px 0;
-}
-.summary {
-  margin: 0 0 12px 0;
-}
-.price {
-  display: flex;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.85fr);
+  gap: 54px;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 0 0 16px 0;
+  padding: 26px 0 42px;
+  border-bottom: 1px solid var(--line);
 }
-.price-now {
-  font-size: 22px;
-  font-weight: 600;
+
+.course-copy {
+  min-width: 0;
 }
-.price-was {
-  color: var(--color-text-muted, #5b6472);
-  text-decoration: line-through;
+
+.course-copy .display {
+  max-width: 15ch;
+  margin: 0 0 10px;
+  color: var(--pine-deep);
+  font-size: 3rem;
+  line-height: 1.16;
 }
-.learners {
-  color: var(--color-text-muted, #5b6472);
-  font-size: 13px;
-}
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  background: var(--color-bg-soft, #eef1f7);
-}
-.tag.free {
-  background: #e7f6ec;
-  color: #137a3c;
-}
-.tag.sale {
-  background: #fff1d6;
-  color: #8a5a00;
-}
-.tag.preview {
-  background: #e6efff;
-  color: #1e3a8a;
-  margin-left: 8px;
-}
-.kind {
-  color: var(--color-text-muted, #5b6472);
-  margin-left: 8px;
-  font-size: 12px;
-}
-.hero-cover img {
-  width: 100%;
-  max-height: 240px;
-  object-fit: cover;
-  border-radius: 12px;
-}
-.section-title {
-  margin: 0 0 12px 0;
-}
-.intro .prose {
-  line-height: 1.7;
-}
-.chapter-list {
-  list-style: none;
-  padding: 0;
+
+.course-teacher,
+.course-summary {
   margin: 0;
-  display: grid;
-  gap: 16px;
 }
-.chapter {
-  border: 1px solid var(--color-border, #e3e6ee);
-  border-radius: 10px;
-  padding: 14px 16px;
+
+.course-teacher {
+  color: var(--muted);
+  font-size: 0.83rem;
 }
-.chapter-title {
-  margin: 0 0 8px 0;
+
+.course-summary {
+  max-width: 52ch;
+  margin-top: 17px;
 }
-.lesson-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 6px;
-}
-.lesson-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 8px;
-  border-radius: 6px;
-}
-.lesson-row[data-locked='true'] {
-  background: var(--color-bg-soft, #f7f8fb);
-}
-.lesson-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  font: inherit;
-  cursor: pointer;
-  text-decoration: none;
-}
-.btn-primary {
-  background: var(--color-primary, #2563eb);
-  color: #fff;
-}
-.btn-link {
-  color: var(--color-primary, #2563eb);
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.empty,
-.notice {
-  color: var(--color-text-muted, #5b6472);
-}
-.notice.error {
-  color: #b42318;
-}
+
+.course-facts,
+.course-price,
 .hero-actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
 }
-.badge a {
-  color: inherit;
-  text-decoration: none;
+
+.course-facts {
+  margin-top: 21px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.course-facts span + span::before {
+  margin-right: 10px;
+  color: var(--line);
+  content: '/';
+}
+
+.course-price {
+  margin-top: 22px;
+}
+
+.price-now {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.price-was {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-decoration: line-through;
+}
+
+.course-copy .hero-actions {
+  margin-top: 22px;
+}
+
+.hero-cover {
+  aspect-ratio: 1.35;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  box-shadow:
+    14px 14px 0 var(--paper-deep),
+    var(--shadow);
+  transform: rotate(1deg);
+}
+
+.hero-cover img,
+.cover-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pine);
+  font-size: 3rem;
+}
+
+.section-frame {
+  padding: 24px 26px 28px;
+  border-top: 3px solid var(--pine);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 254, 250, 0.66);
+}
+
+.section-title {
+  margin: 5px 0 14px;
+  color: var(--pine-deep);
+  font-size: 1.55rem;
+}
+
+.intro .prose {
+  max-width: 72ch;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lesson-count {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.chapter-list {
+  display: grid;
+  gap: 15px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter {
+  padding: 17px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.chapter-heading {
+  display: flex;
+  gap: 13px;
+  align-items: start;
+  margin-bottom: 9px;
+}
+
+.chapter-number {
+  padding-top: 2px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.chapter-title {
+  margin: 0;
+  color: var(--pine-deep);
+  font-size: 1rem;
+}
+
+.chapter-meta {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.lesson-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lesson-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 46px;
+  padding: 7px 10px;
+  border-left: 2px solid transparent;
+}
+
+.lesson-row:hover {
+  border-left-color: var(--accent);
+  background: var(--surface-muted);
+}
+
+.lesson-row[data-locked='true'] {
+  color: var(--muted);
+}
+
+.lesson-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 0.87rem;
+}
+
+.lesson-number,
+.kind {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.kind {
+  padding-left: 5px;
+  border-left: 1px solid var(--line);
+}
+
+.feedback-frame {
+  padding-bottom: 20px;
+}
+
+@media (max-width: 820px) {
+  .course-overview {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+
+  .hero-cover {
+    max-width: 520px;
+  }
+}
+
+@media (max-width: 560px) {
+  .course-copy .display {
+    font-size: 2.35rem;
+  }
+
+  .section-frame {
+    padding: 20px 16px 22px;
+  }
+
+  .section-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .lesson-row {
+    align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
 }
 </style>

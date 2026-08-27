@@ -1,11 +1,10 @@
 <template>
-  <!-- 分类树节点：小径标记样式 -->
   <li class="trail-node" :class="{ leaf: node.children.length === 0 }">
     <details :open="depth < 2 && node.children.length > 0">
       <summary class="trail-summary">
         <span class="marker" aria-hidden="true" />
         <router-link :to="`/categories/${node.id}`" class="trail-link">{{ node.name }}</router-link>
-        <span v-if="node.children.length" class="branch-count latin">{{ node.children.length }}</span>
+        <span v-if="node.children.length" class="branch-count">{{ node.children.length }} 个子类</span>
       </summary>
       <ul v-if="node.children.length > 0" class="trail-children">
         <CategoryBranch
@@ -20,21 +19,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { CategoryNode } from '@learn-site/contracts'
+import { computed } from 'vue';
+import type { CategoryNode } from '@learn-site/contracts';
 
-defineOptions({ name: 'CategoryBranch' })
+defineOptions({ name: 'CategoryBranch' });
 
 const props = withDefaults(
   defineProps<{
-    node: CategoryNode
-    depth?: number
+    node: CategoryNode;
+    depth?: number;
   }>(),
   { depth: 1 },
-)
+);
 
-const depth = computed(() => props.depth)
-const childDepth = computed(() => props.depth + 1)
+const depth = computed(() => props.depth);
+const childDepth = computed(() => props.depth + 1);
 </script>
 
 <style scoped>
@@ -46,12 +45,15 @@ const childDepth = computed(() => props.depth + 1)
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  min-height: 45px;
   margin: 2px 0;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(212, 221, 211, 0.7);
   cursor: pointer;
   list-style: none;
-  transition: background 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    padding-left 0.2s ease;
 }
 
 .trail-summary::-webkit-details-marker {
@@ -59,23 +61,23 @@ const childDepth = computed(() => props.depth + 1)
 }
 
 .trail-summary:hover {
-  background: rgba(31, 157, 108, 0.08);
+  padding-left: 14px;
+  background: var(--surface-muted);
 }
 
 .marker {
   flex-shrink: 0;
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--leaf);
-  box-shadow: 0 0 0 3px rgba(31, 157, 108, 0.18);
+  background: var(--accent);
 }
 
 .leaf .marker {
-  width: 8px;
-  height: 8px;
-  background: var(--cyan);
-  box-shadow: 0 0 0 2px rgba(18, 196, 200, 0.2);
+  width: 5px;
+  height: 5px;
+  margin-left: 1px;
+  background: var(--pine);
 }
 
 .trail-link {
@@ -87,23 +89,19 @@ const childDepth = computed(() => props.depth + 1)
 }
 
 .trail-link:hover {
-  color: var(--leaf);
+  color: var(--accent);
 }
 
 .branch-count {
+  flex-shrink: 0;
   font-size: 0.68rem;
-  letter-spacing: 0.1em;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--line);
-  padding: 1px 6px;
-  border-radius: 999px;
 }
 
 .trail-children {
   list-style: none;
   margin: 0;
   padding: 0 0 0 18px;
-  border-left: 1px dashed rgba(31, 157, 108, 0.35);
+  border-left: 1px solid var(--line);
 }
 </style>

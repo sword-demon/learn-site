@@ -14,32 +14,20 @@
           <p class="lede">{{ kindLabel }}</p>
         </div>
         <nav class="pager" aria-label="上下节">
-          <button
-            v-if="prev"
-            type="button"
-            class="btn"
-            @click="goSibling(prev)"
-          >
-            上一节
-          </button>
-          <button
-            v-if="next"
-            type="button"
-            class="btn"
-            @click="goSibling(next)"
-          >
-            下一节
-          </button>
+          <button v-if="prev" type="button" class="btn" @click="goSibling(prev)">上一节</button>
+          <button v-if="next" type="button" class="btn" @click="goSibling(next)">下一节</button>
         </nav>
       </header>
 
-      <section v-if="delivery.kind === 'markdown'" class="prose markdown-body" v-html="delivery.html" />
+      <section
+        v-if="delivery.kind === 'markdown'"
+        class="prose markdown-body"
+        v-html="delivery.html"
+      />
 
       <section v-else-if="delivery.kind === 'pdf'" class="asset-block">
         <p>这是一份 PDF 课节, 请点击下方按钮在新窗口打开.</p>
-        <button type="button" class="btn btn-primary" @click="openPdf">
-          查看 PDF
-        </button>
+        <button type="button" class="btn btn-primary" @click="openPdf">查看 PDF</button>
         <p v-if="delivery.status !== 'ready'" class="notice">
           资源尚未处理完成 ({{ delivery.status }}), 可能无法打开.
         </p>
@@ -82,75 +70,83 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import type {
   ChapterWithLessonSummariesDTO,
   LessonDeliveryDTO,
   PublicCourseDetailDTO,
-} from '@learn-site/contracts'
-import { fetchCourseDetail, fetchLesson, reportLessonProgress } from '@/api/learner'
-import QuestionPanel from '@/views/learn/QuestionPanel.vue'
+} from '@learn-site/contracts';
+import { fetchCourseDetail, fetchLesson, reportLessonProgress } from '@/api/learner';
+import QuestionPanel from '@/views/learn/QuestionPanel.vue';
 
-defineOptions({ name: 'LessonView' })
+defineOptions({ name: 'LessonView' });
 
-const route = useRoute()
-const router = useRouter()
-const delivery = ref<LessonDeliveryDTO | null>(null)
-const loading = ref(true)
-const loadError = ref(false)
-const errorMessage = ref('')
-const deliveryTitle = ref('')
-const courseChapters = ref<ChapterWithLessonSummariesDTO[]>([])
-const completionPending = ref(false)
-const completed = ref(false)
-const completionError = ref('')
+const route = useRoute();
+const router = useRouter();
+const delivery = ref<LessonDeliveryDTO | null>(null);
+const loading = ref(true);
+const loadError = ref(false);
+const errorMessage = ref('');
+const deliveryTitle = ref('');
+const courseChapters = ref<ChapterWithLessonSummariesDTO[]>([]);
+const completionPending = ref(false);
+const completed = ref(false);
+const completionError = ref('');
 
-const courseId = computed(() => Number(route.params.courseId))
-const lessonId = computed(() => Number(route.params.lessonId))
+const courseId = computed(() => Number(route.params.courseId));
+const lessonId = computed(() => Number(route.params.lessonId));
 
-const prev = computed<Sibling | null>(() => findSibling(-1))
-const next = computed<Sibling | null>(() => findSibling(+1))
+const prev = computed<Sibling | null>(() => findSibling(-1));
+const next = computed<Sibling | null>(() => findSibling(+1));
 
 const kindLabel = computed(() => {
-  if (!delivery.value) return ''
+  if (!delivery.value) return '';
   switch (delivery.value.kind) {
-    case 'markdown': return '图文课节'
-    case 'pdf': return 'PDF 课节'
-    case 'video': return '视频课节'
-    default: return ''
+    case 'markdown':
+      return '图文课节';
+    case 'pdf':
+      return 'PDF 课节';
+    case 'video':
+      return '视频课节';
+    default:
+      return '';
   }
-})
+});
 
-interface Sibling { courseId: number; lessonId: number; title: string }
+interface Sibling {
+  courseId: number;
+  lessonId: number;
+  title: string;
+}
 
 function findSibling(direction: -1 | 1): Sibling | null {
-  const flat: Array<{ id: number; title: string }> = []
+  const flat: Array<{ id: number; title: string }> = [];
   for (const ch of courseChapters.value) {
     for (const ls of ch.lessons) {
-      flat.push({ id: ls.id, title: ls.title })
+      flat.push({ id: ls.id, title: ls.title });
     }
   }
-  const idx = flat.findIndex((l) => l.id === lessonId.value)
-  if (idx < 0) return null
-  const target = flat[idx + direction]
-  if (!target) return null
-  return { courseId: courseId.value, lessonId: target.id, title: target.title }
+  const idx = flat.findIndex((l) => l.id === lessonId.value);
+  if (idx < 0) return null;
+  const target = flat[idx + direction];
+  if (!target) return null;
+  return { courseId: courseId.value, lessonId: target.id, title: target.title };
 }
 
 function goSibling(s: Sibling): void {
-  router.push(`/learn/${s.courseId}/${s.lessonId}`)
+  router.push(`/learn/${s.courseId}/${s.lessonId}`);
 }
 
 async function loadCourseMeta(): Promise<void> {
   try {
-    const detail: PublicCourseDetailDTO = await fetchCourseDetail(courseId.value)
-    courseChapters.value = detail.chapters
+    const detail: PublicCourseDetailDTO = await fetchCourseDetail(courseId.value);
+    courseChapters.value = detail.chapters;
     for (const ch of detail.chapters) {
       for (const ls of ch.lessons) {
         if (ls.id === lessonId.value) {
-          deliveryTitle.value = ls.title
-          return
+          deliveryTitle.value = ls.title;
+          return;
         }
       }
     }
@@ -160,188 +156,275 @@ async function loadCourseMeta(): Promise<void> {
 }
 
 async function loadLesson(): Promise<void> {
-  if (!Number.isFinite(courseId.value) || courseId.value <= 0
-      || !Number.isFinite(lessonId.value) || lessonId.value <= 0) {
-    loadError.value = true
-    errorMessage.value = '无效的课节地址.'
-    loading.value = false
-    return
+  if (
+    !Number.isFinite(courseId.value) ||
+    courseId.value <= 0 ||
+    !Number.isFinite(lessonId.value) ||
+    lessonId.value <= 0
+  ) {
+    loadError.value = true;
+    errorMessage.value = '无效的课节地址.';
+    loading.value = false;
+    return;
   }
-  loading.value = true
-  loadError.value = false
-  errorMessage.value = ''
+  loading.value = true;
+  loadError.value = false;
+  errorMessage.value = '';
   try {
-    delivery.value = await fetchLesson(courseId.value, lessonId.value)
+    delivery.value = await fetchLesson(courseId.value, lessonId.value);
   } catch (err: unknown) {
-    loadError.value = true
-    const code = (err as { code?: string }).code
+    loadError.value = true;
+    const code = (err as { code?: string }).code;
     if (code === 'FORBIDDEN') {
-      errorMessage.value = '这节课需要先获得访问权, 请回到课程页.'
+      errorMessage.value = '这节课需要先获得访问权, 请回到课程页.';
     } else if (code === 'TOKEN_EXPIRED' || code === 'UNAUTHENTICATED') {
-      errorMessage.value = '登录状态已过期, 请重新登录.'
+      errorMessage.value = '登录状态已过期, 请重新登录.';
     } else if (code === 'NOT_FOUND') {
-      errorMessage.value = '课节不存在或已下架.'
+      errorMessage.value = '课节不存在或已下架.';
     } else {
-      errorMessage.value = '课节暂时读不到, 请稍后再试.'
+      errorMessage.value = '课节暂时读不到, 请稍后再试.';
     }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-const videoEl = ref<HTMLVideoElement | null>(null)
-let videoTimer: number | null = null
-let markdownOpened = false
+const videoEl = ref<HTMLVideoElement | null>(null);
+let videoTimer: number | null = null;
+let markdownOpened = false;
 
 async function completeLesson(): Promise<void> {
-  if (!delivery.value || (delivery.value.kind !== 'markdown' && delivery.value.kind !== 'pdf')) return
-  completionPending.value = true
-  completionError.value = ''
+  if (!delivery.value || (delivery.value.kind !== 'markdown' && delivery.value.kind !== 'pdf'))
+    return;
+  completionPending.value = true;
+  completionError.value = '';
   try {
     const progress = await reportLessonProgress(lessonId.value, {
       content_type: delivery.value.kind,
       position_seconds: 1,
       completed: true,
-    })
-    completed.value = progress.completed
+    });
+    completed.value = progress.completed;
   } catch {
-    completionError.value = '完成状态提交失败, 请稍后重试.'
+    completionError.value = '完成状态提交失败, 请稍后重试.';
   } finally {
-    completionPending.value = false
+    completionPending.value = false;
   }
 }
 
 async function openPdf(): Promise<void> {
-  if (delivery.value?.kind !== 'pdf') return
+  if (delivery.value?.kind !== 'pdf') return;
   // Open in a new tab and report the open event so the lesson can be
   // marked complete later. The server only marks md/pdf complete once
   // the lesson has been opened at least once (rule in ProgressService).
-  window.open(delivery.value.storage_path, '_blank', 'noopener,noreferrer')
+  window.open(delivery.value.storage_path, '_blank', 'noopener,noreferrer');
   try {
     const progress = await reportLessonProgress(lessonId.value, {
       content_type: 'pdf',
       position_seconds: 1,
-    })
-    completed.value = progress.completed
+    });
+    completed.value = progress.completed;
   } catch {
     /* best-effort */
   }
 }
 
 function onVideoTimeUpdate(): void {
-  if (delivery.value?.kind !== 'video' || !videoEl.value) return
-  const dur = Math.floor(videoEl.value.duration || 0)
-  const pos = Math.floor(videoEl.value.currentTime || 0)
+  if (delivery.value?.kind !== 'video' || !videoEl.value) return;
+  const dur = Math.floor(videoEl.value.duration || 0);
+  const pos = Math.floor(videoEl.value.currentTime || 0);
   // Throttle: report every ~30 seconds while playing.
-  if (videoTimer !== null) return
+  if (videoTimer !== null) return;
   videoTimer = window.setTimeout(() => {
-    videoTimer = null
-    if (!videoEl.value || delivery.value?.kind !== 'video') return
+    videoTimer = null;
+    if (!videoEl.value || delivery.value?.kind !== 'video') return;
     void reportLessonProgress(lessonId.value, {
       content_type: 'video',
       position_seconds: Math.floor(videoEl.value.currentTime || 0),
       duration_seconds: Math.floor(videoEl.value.duration || 0),
-    }).catch(() => undefined)
-  }, 30_000) as unknown as number
+    }).catch(() => undefined);
+  }, 30_000) as unknown as number;
   // Suppress the unused-var lint while keeping the read-side vars in scope.
-  void dur; void pos
+  void dur;
+  void pos;
 }
 
 watch(videoEl, (el) => {
-  if (!el) return
-  el.addEventListener('timeupdate', onVideoTimeUpdate)
-  el.addEventListener('ended', onVideoEnded)
-})
+  if (!el) return;
+  el.addEventListener('timeupdate', onVideoTimeUpdate);
+  el.addEventListener('ended', onVideoEnded);
+});
 
 function onVideoEnded(): void {
-  if (delivery.value?.kind !== 'video' || !videoEl.value) return
+  if (delivery.value?.kind !== 'video' || !videoEl.value) return;
   void reportLessonProgress(lessonId.value, {
     content_type: 'video',
     position_seconds: Math.floor(videoEl.value.duration || 0),
     duration_seconds: Math.floor(videoEl.value.duration || 0),
-  }).catch(() => undefined)
+  }).catch(() => undefined);
 }
 
 onUnmounted(() => {
   if (videoTimer !== null) {
-    window.clearTimeout(videoTimer)
-    videoTimer = null
+    window.clearTimeout(videoTimer);
+    videoTimer = null;
   }
   if (videoEl.value) {
-    videoEl.value.removeEventListener('timeupdate', onVideoTimeUpdate)
-    videoEl.value.removeEventListener('ended', onVideoEnded)
+    videoEl.value.removeEventListener('timeupdate', onVideoTimeUpdate);
+    videoEl.value.removeEventListener('ended', onVideoEnded);
   }
-})
+});
 
 onMounted(async () => {
-  await Promise.all([loadCourseMeta(), loadLesson()])
+  await Promise.all([loadCourseMeta(), loadLesson()]);
   // For markdown lessons we record an open event so they can be marked
   // complete on a subsequent explicit "complete" report. The server
   // only accepts completed=true for md/pdf once opened_at is set.
   if (delivery.value?.kind === 'markdown' && !markdownOpened) {
-    markdownOpened = true
+    markdownOpened = true;
     try {
       const progress = await reportLessonProgress(lessonId.value, {
         content_type: 'markdown',
         position_seconds: 1,
-      })
-      completed.value = progress.completed
+      });
+      completed.value = progress.completed;
     } catch {
       /* best-effort */
     }
   }
-})
+});
 </script>
 
 <style scoped>
-.lesson-page { display: grid; gap: 20px; }
+.lesson-page {
+  display: grid;
+  gap: 24px;
+}
+
 .lesson-head {
   display: flex;
-  align-items: flex-start;
+  align-items: end;
   justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 20px;
+  padding: 22px 0 25px;
+  border-bottom: 1px solid var(--line);
 }
-.head-text .display { margin: 4px 0 4px 0; }
-.lede { color: var(--color-text-muted, #5b6472); margin: 0; }
-.badge a { color: inherit; text-decoration: none; }
-.pager { display: flex; gap: 8px; }
-.btn {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-  text-decoration: none;
+
+.head-text .display {
+  max-width: 18ch;
+  margin: 7px 0 7px;
+  color: var(--pine-deep);
+  font-size: 2.55rem;
+}
+
+.lede {
+  margin: 0;
+  color: var(--muted);
+}
+
+.badge a {
   color: inherit;
+  text-decoration: none;
 }
-.btn-primary {
-  background: var(--color-primary, #2563eb);
-  color: #fff;
-  border-color: transparent;
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.markdown-body { line-height: 1.7; }
+
+.markdown-body,
+.asset-block {
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: 28px 32px 34px;
+  border-top: 3px solid var(--pine);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 254, 250, 0.78);
+}
+
+.markdown-body {
+  color: #34443d;
+  line-height: 1.95;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3) {
+  color: var(--pine-deep);
+  font-family: var(--font-display);
+  line-height: 1.35;
+}
+
 .markdown-body :deep(pre) {
-  background: var(--color-bg-soft, #f5f6fa);
-  padding: 12px;
-  border-radius: 8px;
   overflow-x: auto;
+  padding: 15px;
+  border: 1px solid #24362f;
+  border-radius: 5px;
+  background: #1d2a25;
+  color: #eff7ef;
 }
+
 .markdown-body :deep(code) {
-  background: var(--color-bg-soft, #f5f6fa);
   padding: 1px 4px;
   border-radius: 3px;
+  background: var(--surface-muted);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  background: transparent;
+}
+
 .markdown-body :deep(blockquote) {
-  border-left: 3px solid var(--color-border, #d0d4dc);
-  padding-left: 12px;
-  color: var(--color-text-muted, #5b6472);
+  margin: 20px 0;
+  padding: 4px 0 4px 17px;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
 }
-.asset-block { display: grid; gap: 10px; }
-.lesson-completion { display: grid; gap: 8px; justify-items: start; }
-.player { width: 100%; max-height: 70vh; background: #000; border-radius: 8px; }
-.notice { color: var(--color-text-muted, #5b6472); }
-.notice.error { color: #b42318; }
-.notice.success { color: #16794a; }
+
+.asset-block {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.asset-block p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.lesson-completion {
+  display: grid;
+  justify-items: start;
+  gap: 9px;
+}
+
+.player {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  background: #15201c;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+@media (max-width: 560px) {
+  .lesson-head {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .head-text .display {
+    font-size: 2.2rem;
+  }
+
+  .markdown-body,
+  .asset-block {
+    padding: 22px 17px 26px;
+  }
+}
 </style>

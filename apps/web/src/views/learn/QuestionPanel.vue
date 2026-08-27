@@ -1,135 +1,138 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue';
 import {
   askLessonQuestion,
   fetchLessonQuestions,
   fetchQuestion,
   postFollowup,
-} from '@/api/learner'
+} from '@/api/learner';
 import type {
   QuestionListDTO,
   QuestionMessageDTO,
   QuestionStatus,
   QuestionSummaryDTO,
   QuestionThreadDTO,
-} from '@learn-site/contracts'
+} from '@learn-site/contracts';
 
 const props = defineProps<{
-  lessonId: number
-  authorized?: boolean
-}>()
+  lessonId: number;
+  authorized?: boolean;
+}>();
 
-const list = ref<QuestionListDTO>({ items: [], total: 0, page: 1, limit: 20 })
-const loading = ref(false)
-const loadError = ref<string | null>(null)
-const statusFilter = ref<'' | QuestionStatus>('')
+const list = ref<QuestionListDTO>({ items: [], total: 0, page: 1, limit: 20 });
+const loading = ref(false);
+const loadError = ref<string | null>(null);
+const statusFilter = ref<'' | QuestionStatus>('');
 
-const composing = ref(false)
-const newTitle = ref('')
-const newBody = ref('')
-const submitting = ref(false)
-const submitError = ref<string | null>(null)
+const composing = ref(false);
+const newTitle = ref('');
+const newBody = ref('');
+const submitting = ref(false);
+const submitError = ref<string | null>(null);
 
-const openThread = ref<QuestionThreadDTO | null>(null)
-const followupBody = ref('')
-const followupSubmitting = ref(false)
+const openThread = ref<QuestionThreadDTO | null>(null);
+const followupBody = ref('');
+const followupSubmitting = ref(false);
 
 const statusOptions: Array<{ value: '' | QuestionStatus; label: string }> = [
   { value: '', label: '全部' },
   { value: 'pending', label: '待回复' },
   { value: 'answered', label: '已回复' },
   { value: 'closed', label: '已关闭' },
-]
+];
 
 async function loadList(): Promise<void> {
-  loading.value = true
-  loadError.value = null
+  loading.value = true;
+  loadError.value = null;
   try {
-    const params: { status?: string } = {}
-    if (statusFilter.value) params.status = statusFilter.value
-    list.value = await fetchLessonQuestions(props.lessonId, params)
+    const params: { status?: string } = {};
+    if (statusFilter.value) params.status = statusFilter.value;
+    list.value = await fetchLessonQuestions(props.lessonId, params);
   } catch (err) {
-    loadError.value = (err as Error).message || 'load_failed'
+    loadError.value = (err as Error).message || 'load_failed';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function openQuestion(q: QuestionSummaryDTO): Promise<void> {
   try {
-    openThread.value = await fetchQuestion(q.id)
-    followupBody.value = ''
+    openThread.value = await fetchQuestion(q.id);
+    followupBody.value = '';
   } catch (err) {
-    loadError.value = (err as Error).message || 'open_failed'
+    loadError.value = (err as Error).message || 'open_failed';
   }
 }
 
 async function submitAsk(): Promise<void> {
-  if (submitting.value) return
-  submitError.value = null
-  const title = newTitle.value.trim()
-  const body = newBody.value.trim()
+  if (submitting.value) return;
+  submitError.value = null;
+  const title = newTitle.value.trim();
+  const body = newBody.value.trim();
   if (!title || !body) {
-    submitError.value = 'TITLE_BODY_REQUIRED'
-    return
+    submitError.value = 'TITLE_BODY_REQUIRED';
+    return;
   }
-  submitting.value = true
+  submitting.value = true;
   try {
-    const thread = await askLessonQuestion(props.lessonId, { title, body })
-    openThread.value = thread
-    composing.value = false
-    newTitle.value = ''
-    newBody.value = ''
-    await loadList()
+    const thread = await askLessonQuestion(props.lessonId, { title, body });
+    openThread.value = thread;
+    composing.value = false;
+    newTitle.value = '';
+    newBody.value = '';
+    await loadList();
   } catch (err) {
-    submitError.value = (err as Error).message || 'ASK_FAILED'
+    submitError.value = (err as Error).message || 'ASK_FAILED';
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 
 async function submitFollowup(): Promise<void> {
-  if (!openThread.value || followupSubmitting.value) return
-  const body = followupBody.value.trim()
-  if (!body) return
-  followupSubmitting.value = true
+  if (!openThread.value || followupSubmitting.value) return;
+  const body = followupBody.value.trim();
+  if (!body) return;
+  followupSubmitting.value = true;
   try {
-    openThread.value = await postFollowup(openThread.value.question.id, { body })
-    followupBody.value = ''
-    await loadList()
+    openThread.value = await postFollowup(openThread.value.question.id, { body });
+    followupBody.value = '';
+    await loadList();
   } catch (err) {
-    submitError.value = (err as Error).message || 'FOLLOWUP_FAILED'
+    submitError.value = (err as Error).message || 'FOLLOWUP_FAILED';
   } finally {
-    followupSubmitting.value = false
+    followupSubmitting.value = false;
   }
 }
 
 watch(
   () => props.lessonId,
   () => {
-    openThread.value = null
-    loadList()
+    openThread.value = null;
+    loadList();
   },
   { immediate: true },
-)
+);
 
 const statusBadge = (s: QuestionStatus): string => {
   switch (s) {
-    case 'pending': return '待回复'
-    case 'answered': return '已回复'
-    case 'closed': return '已关闭'
+    case 'pending':
+      return '待回复';
+    case 'answered':
+      return '已回复';
+    case 'closed':
+      return '已关闭';
   }
-}
+};
 
 const authorLabel = (m: QuestionMessageDTO): string => {
-  if (m.kind === 'admin') return '管理员'
-  if (m.kind === 'system') return '系统'
-  return m.author_learner_id === null ? '同学' : '我'
-}
+  if (m.kind === 'admin') return '管理员';
+  if (m.kind === 'system') return '系统';
+  return m.author_learner_id === null ? '同学' : '我';
+};
 
-const formattedAt = (s: string): string => s ? s.replace('T', ' ').slice(0, 16) : ''
+const formattedAt = (s: string): string => (s ? s.replace('T', ' ').slice(0, 16) : '');
 
-const filteredItems = computed(() => list.value.items)
+const filteredItems = computed(() => list.value.items);
 </script>
 
 <template>
@@ -156,23 +159,14 @@ const filteredItems = computed(() => list.value.items)
       </div>
     </header>
 
-    <p v-if="authorized === false" class="notice">
-      未购买该课程, 无法查看或发起问答.
-    </p>
+    <p v-if="authorized === false" class="notice">未购买该课程, 无法查看或发起问答.</p>
     <p v-else-if="loading" class="notice">问答加载中…</p>
-    <p v-else-if="loadError" class="notice error">
-      问答暂时读不到 ({{ loadError }}).
-    </p>
+    <p v-else-if="loadError" class="notice error">问答暂时读不到 ({{ loadError }}).</p>
 
     <form v-if="composing && authorized !== false" class="composer" @submit.prevent="submitAsk">
       <label>
         标题
-        <input
-          v-model="newTitle"
-          type="text"
-          maxlength="128"
-          placeholder="一句话总结你的问题"
-        />
+        <input v-model="newTitle" type="text" maxlength="128" placeholder="一句话总结你的问题" />
       </label>
       <label>
         正文
@@ -192,11 +186,7 @@ const filteredItems = computed(() => list.value.items)
     </form>
 
     <ol v-if="filteredItems.length" class="thread-list">
-      <li
-        v-for="q in filteredItems"
-        :key="q.id"
-        class="thread-summary"
-      >
+      <li v-for="q in filteredItems" :key="q.id" class="thread-summary">
         <button type="button" class="thread-button" @click="openQuestion(q)">
           <span class="title">{{ q.title }}</span>
           <span class="meta">
@@ -216,12 +206,7 @@ const filteredItems = computed(() => list.value.items)
         </span>
       </header>
       <ol class="messages">
-        <li
-          v-for="m in openThread.messages"
-          :key="m.id"
-          class="message"
-          :data-kind="m.kind"
-        >
+        <li v-for="m in openThread.messages" :key="m.id" class="message" :data-kind="m.kind">
           <p class="meta">
             <strong>{{ authorLabel(m) }}</strong>
             <time>{{ formattedAt(m.created_at) }}</time>
@@ -259,40 +244,241 @@ const filteredItems = computed(() => list.value.items)
 <style scoped>
 .qa-panel {
   display: grid;
-  gap: 16px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 8px;
+  gap: 18px;
+  padding: 24px 26px 28px;
+  border-top: 3px solid var(--pine);
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 254, 250, 0.68);
+}
+
+.qa-head,
+.thread-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.display {
+  margin: 0;
+  color: var(--pine-deep);
+  font-size: 1.55rem;
+}
+
+.filter-row {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.filter select,
+.composer input,
+.composer textarea,
+.followup textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.filter select:focus,
+.composer input:focus,
+.composer textarea:focus,
+.followup textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201, 94, 67, 0.13);
+}
+
+.composer,
+.followup {
+  display: grid;
+  gap: 12px;
   padding: 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-muted);
 }
-.qa-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.display { margin: 0; font-size: 1.1rem; }
-.filter-row { display: flex; gap: 8px; align-items: center; }
-.filter select { padding: 4px 8px; }
-.btn { padding: 6px 12px; border: 1px solid var(--color-border, #d0d4dc); border-radius: 6px; background: transparent; font: inherit; cursor: pointer; }
-.btn-primary { background: var(--color-primary, #2563eb); color: #fff; border-color: transparent; }
-.composer, .followup { display: grid; gap: 8px; }
-.composer label, .followup label, .filter { display: grid; gap: 4px; font-size: 0.9rem; }
-.composer input, .composer textarea, .followup textarea {
-  width: 100%; padding: 6px 8px; border: 1px solid var(--color-border, #d0d4dc); border-radius: 6px; font: inherit;
+
+.composer label,
+.followup label {
+  display: grid;
+  gap: 6px;
+  color: var(--pine-deep);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
-.row-end { display: flex; justify-content: flex-end; }
-.thread-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.thread-summary { border: 1px solid var(--color-border, #d0d4dc); border-radius: 6px; }
-.thread-button { width: 100%; text-align: left; background: transparent; border: 0; padding: 10px 12px; cursor: pointer; font: inherit; display: grid; gap: 4px; }
-.thread-button .title { font-weight: 600; }
-.thread-button .meta { display: flex; gap: 8px; align-items: center; color: var(--color-text-muted, #5b6472); font-size: 0.85rem; }
-.badge { padding: 2px 8px; border-radius: 999px; background: var(--color-bg-soft, #f5f6fa); border: 1px solid var(--color-border, #d0d4dc); font-size: 0.78rem; }
-.badge[data-status='pending'] { background: #fff7e6; border-color: #f59f00; }
-.badge[data-status='answered'] { background: #e7f7ee; border-color: #2bb673; }
-.badge[data-status='closed'] { background: #f0f1f3; border-color: #c5c8d0; }
-.thread-detail { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--color-border, #d0d4dc); }
-.thread-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-.messages { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.message { border: 1px solid var(--color-border, #d0d4dc); border-radius: 6px; padding: 10px 12px; background: var(--color-bg-soft, #fafbfd); }
-.message[data-kind='admin'] { background: #eef4ff; border-color: #c7d8ff; }
-.message .meta { display: flex; gap: 8px; align-items: center; color: var(--color-text-muted, #5b6472); font-size: 0.85rem; margin: 0 0 6px 0; }
-.message .body { margin: 0; white-space: pre-wrap; }
-.notice { color: var(--color-text-muted, #5b6472); }
-.notice.error { color: #b42318; }
-.error { color: #b42318; font-size: 0.85rem; }
+
+.composer textarea,
+.followup textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.row-end {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.thread-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.thread-summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.thread-button {
+  display: grid;
+  width: 100%;
+  gap: 7px;
+  padding: 13px 7px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    padding-left 0.2s ease;
+}
+
+.thread-button:hover {
+  padding-left: 12px;
+  background: var(--surface-muted);
+}
+
+.thread-button .title {
+  color: var(--pine-deep);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.thread-button .meta,
+.message .meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.badge {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+}
+
+.badge[data-status='pending'] {
+  border-color: #e2c38f;
+  background: #fff7e5;
+  color: #8b5b13;
+}
+
+.badge[data-status='answered'] {
+  border-color: #bad4c1;
+  background: #eef7f0;
+  color: var(--pine-deep);
+}
+
+.badge[data-status='closed'] {
+  color: var(--muted);
+}
+
+.thread-detail {
+  display: grid;
+  gap: 16px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.thread-head {
+  align-items: start;
+}
+
+.thread-head h3 {
+  margin: 0;
+  color: var(--pine-deep);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.messages {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message {
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  background: var(--surface);
+}
+
+.message[data-kind='admin'] {
+  border-left-color: var(--pine);
+  background: #eff5ef;
+}
+
+.message .meta {
+  margin: 0 0 7px;
+}
+
+.message .body {
+  margin: 0;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.error {
+  margin: 0;
+  color: #9e3f2c;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 560px) {
+  .qa-panel {
+    padding: 20px 16px 23px;
+  }
+
+  .filter-row,
+  .filter,
+  .filter select {
+    width: 100%;
+  }
+
+  .filter-row .btn {
+    width: 100%;
+  }
+}
 </style>
