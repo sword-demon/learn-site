@@ -170,26 +170,79 @@
           </el-select>
         </el-form-item>
         <el-form-item label="权限">
-          <el-checkbox-group v-model="draft.permission_ids">
-            <div
-              v-for="group in permissionGroups"
-              :key="group.module"
-              class="module"
+          <div class="permission-tree">
+            <section
+              v-for="group in permissionTree"
+              :key="group.key"
+              class="permission-node permission-root"
             >
-              <div class="module-name">
-                {{ group.module }}
-              </div>
               <el-checkbox
-                v-for="p in group.items"
-                :key="p.id"
-                :value="p.id"
-                :label="p.id"
+                :data-permission-toggle="group.key"
+                :model-value="isPermissionNodeChecked(group)"
+                :indeterminate="isPermissionNodeIndeterminate(group)"
+                @change="togglePermissionNode(group, $event)"
               >
-                <span class="code">{{ p.code }}</span>
-                <span class="desc">{{ p.description }}</span>
+                <span class="permission-node-label">{{ group.label }}</span>
+                <span class="permission-count">
+                  {{ selectedPermissionCount(group) }}/{{ permissionIdsForNode(group).length }}
+                </span>
               </el-checkbox>
-            </div>
-          </el-checkbox-group>
+
+              <div
+                v-if="group.items.length > 0 || group.children.length > 0"
+                class="permission-children"
+              >
+                <el-checkbox-group
+                  v-if="group.items.length"
+                  v-model="draft.permission_ids"
+                  class="permission-leaves"
+                >
+                  <el-checkbox
+                    v-for="p in group.items"
+                    :key="p.id"
+                    :data-permission-leaf="group.key"
+                    :value="p.id"
+                  >
+                    <span class="permission-label">{{ p.description }}</span>
+                    <code class="permission-code">{{ p.code }}</code>
+                  </el-checkbox>
+                </el-checkbox-group>
+
+                <section
+                  v-for="child in group.children"
+                  :key="child.key"
+                  class="permission-node permission-child"
+                >
+                  <el-checkbox
+                    :data-permission-toggle="child.key"
+                    :model-value="isPermissionNodeChecked(child)"
+                    :indeterminate="isPermissionNodeIndeterminate(child)"
+                    @change="togglePermissionNode(child, $event)"
+                  >
+                    <span class="permission-node-label">{{ child.label }}</span>
+                    <span class="permission-count">
+                      {{ selectedPermissionCount(child) }}/{{ permissionIdsForNode(child).length }}
+                    </span>
+                  </el-checkbox>
+                  <el-checkbox-group
+                    v-if="child.items.length > 0 || child.children.length > 0"
+                    v-model="draft.permission_ids"
+                    class="permission-leaves"
+                  >
+                    <el-checkbox
+                      v-for="p in child.items"
+                      :key="p.id"
+                      :data-permission-leaf="group.key"
+                      :value="p.id"
+                    >
+                      <span class="permission-label">{{ p.description }}</span>
+                      <code class="permission-code">{{ p.code }}</code>
+                    </el-checkbox>
+                  </el-checkbox-group>
+                </section>
+              </div>
+            </section>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -264,18 +317,117 @@ const draft = reactive<{
 
 const dialogTitle = computed(() => (draft.id === null ? '新增角色' : '编辑角色'))
 
-const permissionGroups = computed(() => {
-  const groups = new Map<string, PermissionDTO[]>()
-  for (const p of permissions.value) {
-    const arr = groups.get(p.module) ?? []
-    arr.push(p)
-    groups.set(p.module, arr)
+interface PermissionTreeNode {
+  key: string
+  label: string
+  items: PermissionDTO[]
+  children: PermissionTreeNode[]
+}
+
+interface PermissionTreeConfig {
+  key: string
+  label: string
+  codes?: readonly string[]
+  children?: readonly PermissionTreeConfig[]
+}
+
+// Keep this order and nesting aligned with AdminMenu.ts. Permissions that
+// operate on a menu's detail page stay under that menu's parent.
+const permissionTreeConfig: readonly PermissionTreeConfig[] = [
+  { key: 'dashboard', label: '工作台', codes: ['dashboard.view'] },
+  { key: 'categories', label: '分类管理', codes: ['category.manage'] },
+  {
+    key: 'courses',
+    label: '课程管理',
+    codes: ['course.view', 'course.manage', 'course.publish', 'course.delete', 'asset.upload'],
+    children: [
+      {
+        key: 'course-students',
+        label: '课程学员',
+        codes: ['course_student.view', 'course_student.reset', 'course_student.revoke_free'],
+      },
+    ],
+  },
+  { key: 'qa', label: '问答管理', codes: ['qa.view', 'qa.answer'] },
+  { key: 'reviews', label: '评价管理', codes: ['review.view', 'review.moderate'] },
+  { key: 'maps', label: '学习地图', codes: ['map.view', 'map.manage', 'map.publish'] },
+  { key: 'orders', label: '订单管理', codes: ['order.view'] },
+  { key: 'learners', label: '学员账号', codes: ['learner.view', 'learner.reset_password', 'learner.kick'] },
+  { key: 'site-profile', label: '站点资料', codes: ['site.manage'] },
+  { key: 'audit', label: '审计日志', codes: ['audit.view'] },
+  {
+    key: 'organization',
+    label: '组织管理',
+    children: [
+      { key: 'departments', label: '部门管理', codes: ['org.department'] },
+      { key: 'posts', label: '岗位管理', codes: ['org.post'] },
+      { key: 'roles', label: '角色管理', codes: ['org.role'] },
+      { key: 'staff', label: '员工管理', codes: ['org.staff'] },
+      { key: 'grants', label: '用户级权限覆盖', codes: ['org.grant'] },
+    ],
+  },
+]
+
+const permissionTree = computed<PermissionTreeNode[]>(() => {
+  const byCode = new Map(permissions.value.map((permission) => [permission.code, permission]))
+  const usedCodes = new Set<string>()
+
+  function buildNode(config: PermissionTreeConfig): PermissionTreeNode {
+    const items = (config.codes ?? []).flatMap((code) => {
+      const permission = byCode.get(code)
+      if (!permission) return []
+      usedCodes.add(code)
+      return [permission]
+    })
+    const children = (config.children ?? [])
+      .map(buildNode)
+      .filter((node) => node.items.length > 0 || node.children.length > 0)
+    return { key: config.key, label: config.label, items, children }
   }
-  return Array.from(groups.entries()).map(([module, items]) => ({
-    module,
-    items,
-  }))
+
+  const tree = permissionTreeConfig
+    .map(buildNode)
+    .filter((node) => node.items.length > 0 || node.children.length > 0)
+  const extras = permissions.value.filter((permission) => !usedCodes.has(permission.code))
+  if (extras.length > 0) {
+    tree.push({ key: 'other', label: '其他权限', items: extras, children: [] })
+  }
+  return tree
 })
+
+function permissionIdsForNode(node: PermissionTreeNode): number[] {
+  return [
+    ...node.items.map((permission) => permission.id),
+    ...node.children.flatMap(permissionIdsForNode),
+  ]
+}
+
+function selectedPermissionCount(node: PermissionTreeNode): number {
+  const selected = new Set(draft.permission_ids)
+  return permissionIdsForNode(node).filter((id) => selected.has(id)).length
+}
+
+function isPermissionNodeChecked(node: PermissionTreeNode): boolean {
+  const ids = permissionIdsForNode(node)
+  return ids.length > 0 && selectedPermissionCount(node) === ids.length
+}
+
+function isPermissionNodeIndeterminate(node: PermissionTreeNode): boolean {
+  const selected = selectedPermissionCount(node)
+  return selected > 0 && selected < permissionIdsForNode(node).length
+}
+
+function togglePermissionNode(
+  node: PermissionTreeNode,
+  value: boolean | string | number,
+): void {
+  const selected = new Set(draft.permission_ids)
+  for (const id of permissionIdsForNode(node)) {
+    if (value) selected.add(id)
+    else selected.delete(id)
+  }
+  draft.permission_ids = Array.from(selected)
+}
 
 function scopeLabel(scope: DataScope): string {
   return scopeOptions.find((o) => o.value === scope)?.label ?? scope
@@ -441,25 +593,58 @@ onMounted(() => {
 .table {
   width: 100%;
 }
-.module {
+.permission-tree {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.permission-node {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
+  background: #fff;
 }
-.module-name {
-  font-weight: 600;
+.permission-root {
+  padding: 12px 14px;
+}
+.permission-child {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  border-radius: 0;
+  margin-top: 10px;
+  padding: 10px 0 0 14px;
+}
+.permission-node-label {
   color: #0f172a;
-  margin-bottom: 6px;
+  font-weight: 600;
 }
-.code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  color: #1e293b;
-  margin-right: 6px;
-}
-.desc {
+.permission-count {
   color: #64748b;
   font-size: 12px;
+  margin-left: 8px;
+}
+.permission-children {
+  border-left: 2px solid #dbeafe;
+  margin: 8px 0 0 11px;
+  padding-left: 14px;
+}
+.permission-leaves {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+.permission-label {
+  color: #334155;
+  font-size: 13px;
+}
+.permission-code {
+  color: #94a3b8;
+  font-size: 11px;
+  margin-left: 8px;
+}
+@media (max-width: 720px) {
+  .permission-leaves { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
