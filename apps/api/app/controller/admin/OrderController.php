@@ -86,10 +86,13 @@ final class OrderController
         if ($raw === null || $raw === '') {
             return null;
         }
-        if (!is_numeric($raw)) {
+        if (is_int($raw)) {
+            $n = $raw;
+        } elseif (is_string($raw) && ctype_digit($raw)) {
+            $n = (int) $raw;
+        } else {
             throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
         }
-        $n = (int) $raw;
         return $n > 0 ? $n : null;
     }
 

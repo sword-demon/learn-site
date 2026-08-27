@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\controller\admin\OrderController;
+use App\service\BusinessException;
 use App\service\DataScopeService;
 use App\service\EntitlementService;
 use App\service\OrderService;
@@ -44,6 +45,28 @@ final class OrderAdminTest extends TestCase
         self::assertIsArray($payload);
         self::assertSame('VALIDATION_FAILED', $payload['error']['code'] ?? null);
         self::assertSame('INVALID_ID', $payload['error']['message'] ?? null);
+    }
+
+    public function testAdminListCanQueryOrdersWithAnAliasedTable(): void
+    {
+        $result = (new OrderService(
+            new EntitlementService(),
+            new FakePaymentAdapter(),
+        ))->adminList(1, null, null, null, 1, 20, new DataScopeService());
+
+        self::assertArrayHasKey('items', $result);
+        self::assertSame(1, $result['page']);
+    }
+
+    public function testAdminShowReturnsNotFoundAfterQueryingTheAliasedOrdersTable(): void
+    {
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('ORDER_NOT_FOUND');
+
+        (new OrderService(
+            new EntitlementService(),
+            new FakePaymentAdapter(),
+        ))->adminShow(1, PHP_INT_MAX, new DataScopeService());
     }
 
     private function controller(): OrderController

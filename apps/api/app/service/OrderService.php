@@ -263,7 +263,7 @@ final class OrderService
     ): array {
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
-        $q = Db::name('orders as o')->join('courses c', 'o.course_id = c.id');
+        $q = Db::name('orders')->alias('o')->join('courses c', 'o.course_id = c.id');
         if ($status !== null && $status !== '') {
             $q->where('o.status', $status);
         }
@@ -291,7 +291,7 @@ final class OrderService
     /** @return array<string, mixed> */
     public function adminShow(int $staffId, int $orderId, DataScopeService $scope): array
     {
-        $row = Db::name('orders as o')
+        $row = Db::name('orders')->alias('o')
             ->join('courses c', 'o.course_id = c.id')
             ->where('o.id', $orderId)
             ->find();
