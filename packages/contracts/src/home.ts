@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CourseListItemDTO } from './catalog.js'
 import { SiteIntro } from './site.js'
 
 export type CategoryNode = {
@@ -18,10 +19,12 @@ export const CategoryNode: z.ZodType<CategoryNode> = z.lazy(() =>
 export const HomePayload = z.object({
   categories: z.array(CategoryNode),
   site_intro: SiteIntro,
+  recent_courses: z.array(CourseListItemDTO),
 })
 export type HomePayload = {
   categories: CategoryNode[]
   site_intro: z.infer<typeof SiteIntro>
+  recent_courses: z.infer<typeof CourseListItemDTO>[]
 }
 
 // Re-export so existing `import { SiteIntro } from './home.js'` callers keep working.

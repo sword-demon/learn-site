@@ -49,6 +49,34 @@ final class PublicCatalogService
     }
 
     /**
+     * Latest published courses for the learner home shelf (newest first).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function recentPublishedCourses(int $limit = 12): array
+    {
+        $limit = min(24, max(1, $limit));
+        try {
+            $rows = Db::name('courses')
+                ->where('status', 'published')
+                ->order('updated_at', 'desc')
+                ->order('id', 'desc')
+                ->limit($limit)
+                ->select()
+                ->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+        if (!is_array($rows)) {
+            return [];
+        }
+        return array_map(
+            fn($r) => $this->shapeListItem($r),
+            $rows,
+        );
+    }
+
+    /**
      * @param array{page?:int,limit?:int} $filters
      * @return array{items:list<array<string,mixed>>,total:int,page:int,limit:int}
      */
