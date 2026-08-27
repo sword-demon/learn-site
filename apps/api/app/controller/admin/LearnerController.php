@@ -36,26 +36,44 @@ final class LearnerController
             $q = Db::name('accounts')
                 ->alias('a')
                 ->join('learners l', 'l.account_id = a.id')
-                ->leftJoin('departments d', 'd.id = l.department_id')
-                ->field('a.id, a.login, a.status, a.must_change_password, a.last_login_at, a.created_at, l.display_name, l.department_id, d.name AS department_name');
+                ->field('a.id, a.login, a.status, a.must_change_password, a.last_login_at, a.created_at, l.nickname AS display_name');
             if ($status === 'active' || $status === 'disabled') {
                 $q->where('a.status', $status);
-            }
-            if ($department !== '' && ctype_digit($department)) {
-                $q->where('l.department_id', (int) $department);
             }
             if ($search !== '') {
                 $q->where(function ($w) use ($search) {
                     $w->where('a.login', 'like', "%{$search}%")
-                      ->whereOr('l.display_name', 'like', "%{$search}%");
+                      ->whereOr('l.nickname', 'like', "%{$search}%");
                 });
             }
-            // DataScopeService bounds to departments the actor is entitled to;
-            // for learner.view, this means "show learners in departments I
-            // can see". Null means unrestricted.
+
+            $departmentFilter = $department !== '' && ctype_digit($department)
+                ? [(int) $department]
+                : null;
+            // Learners do not own a department. Their visibility is derived
+            // from the current department of courses they have accessed.
             $allowed = $this->scope->allowedDepartmentIds($staffId, 'learner.view');
-            if ($allowed !== null) {
-                $q->where('l.department_id', 'in', $allowed);
+            $departmentIds = $allowed === null
+                ? $departmentFilter
+                : ($departmentFilter === null
+                    ? $allowed
+                    : array_values(array_intersect($allowed, $departmentFilter)));
+            if ($departmentIds !== null) {
+                $learnerIds = Db::name('course_entitlements')
+                    ->alias('ce')
+                    ->join('courses c', 'c.id = ce.course_id')
+                    ->where('c.department_id', 'in', $departmentIds)
+                    ->distinct(true)
+                    ->column('ce.learner_id');
+                $learnerIds = array_values(array_filter(
+                    array_map('intval', $learnerIds),
+                    static fn (int $id): bool => $id > 0,
+                ));
+                if ($learnerIds === []) {
+                    $q->where('a.id', '<', 0);
+                } else {
+                    $q->where('a.id', 'in', $learnerIds);
+                }
             }
 
             $total = (clone $q)->count();
@@ -65,8 +83,8 @@ final class LearnerController
                     'account_id' => (int) $r['id'],
                     'login' => (string) $r['login'],
                     'display_name' => (string) $r['display_name'],
-                    'department_id' => $r['department_id'] !== null ? (int) $r['department_id'] : null,
-                    'department_name' => (string) ($r['department_name'] ?? ''),
+                    'department_id' => null,
+                    'department_name' => '',
                     'status' => (string) $r['status'],
                     'must_change_password' => (int) $r['must_change_password'] === 1,
                     'last_login_at' => $r['last_login_at'] ? (string) $r['last_login_at'] : null,

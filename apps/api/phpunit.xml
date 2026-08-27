@@ -34,6 +34,8 @@
             <file>tests/LearningMapRouteTest.php</file>
         </testsuite>
         <testsuite name="Contract">
+            <file>tests/LearnerControllerTest.php</file>
+            <file>tests/RoleControllerTest.php</file>
             <file>tests/CatalogContractTest.php</file>
             <file>tests/PaymentContractTest.php</file>
             <file>tests/OrderAdminTest.php</file>

@@ -22,6 +22,38 @@ use support\Request;
  */
 final class RoleController
 {
+    /** @var array<string, string> */
+    private const PERMISSION_LABELS = [
+        'dashboard.view' => '查看管理工作台',
+        'category.manage' => '管理分类',
+        'course.view' => '查看课程',
+        'course.manage' => '编辑课程内容',
+        'course.publish' => '发布或下架课程',
+        'course.delete' => '删除空白草稿',
+        'asset.upload' => '上传 PDF 或视频资源',
+        'course_student.view' => '查看课程学员名单',
+        'course_student.reset' => '重置学员进度',
+        'course_student.revoke_free' => '撤销免费课程访问权',
+        'qa.view' => '查看问答',
+        'qa.answer' => '回复问答',
+        'review.view' => '查看评价',
+        'review.moderate' => '隐藏或恢复评价',
+        'map.view' => '查看学习地图',
+        'map.manage' => '编辑学习地图',
+        'map.publish' => '发布学习地图',
+        'order.view' => '查看订单（只读）',
+        'learner.view' => '查看学员账号',
+        'learner.reset_password' => '重置学员密码',
+        'learner.kick' => '强制学员下线',
+        'site.manage' => '编辑站点资料',
+        'audit.view' => '查看审计日志',
+        'org.department' => '管理部门',
+        'org.post' => '管理岗位',
+        'org.role' => '管理角色',
+        'org.staff' => '管理员工账号',
+        'org.grant' => '管理用户级权限覆盖',
+    ];
+
     public function __construct(
         private readonly RoleService $svc,
     ) {
@@ -104,7 +136,15 @@ final class RoleController
 
     public function permissions(Request $request): \support\Response
     {
-        return ApiResponse::ok(['items' => $this->svc->listPermissions()]);
+        $items = array_map(static function (array $permission): array {
+            $code = (string) ($permission['code'] ?? '');
+            if (isset(self::PERMISSION_LABELS[$code])) {
+                $permission['description'] = self::PERMISSION_LABELS[$code];
+            }
+            return $permission;
+        }, $this->svc->listPermissions());
+
+        return ApiResponse::ok(['items' => $items]);
     }
 
     /** @return list<int> */
