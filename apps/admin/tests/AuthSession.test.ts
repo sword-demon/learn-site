@@ -27,7 +27,7 @@ describe('admin auth session persistence', () => {
     const { setTokens } = await import('@/api/http')
     setTokens(pair)
 
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
     expect(stored).not.toBeNull()
     expect(JSON.parse(stored ?? '')).toMatchObject({
       access: pair.access_token,
@@ -39,7 +39,7 @@ describe('admin auth session persistence', () => {
 
   it('hydrates in-memory auth from localStorage on a fresh module load', async () => {
     localStorage.setItem(
-      STORAGE_KEY,
+      AUTH_STORAGE_KEY,
       JSON.stringify({
         access: pair.access_token,
         refresh: pair.refresh_token,
@@ -60,6 +60,6 @@ describe('admin auth session persistence', () => {
     clearTokens()
 
     expect(hasTokens()).toBe(false)
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+    expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBeNull()
   })
 })
