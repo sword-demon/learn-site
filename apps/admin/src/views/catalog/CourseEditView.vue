@@ -74,6 +74,30 @@
             />
           </el-form-item>
           <el-form-item
+            label="所属部门"
+            required
+          >
+            <el-select
+              v-model="form.department_id"
+              :disabled="isNew === false"
+              placeholder="请选择所属部门"
+              style="width: 100%;"
+            >
+              <el-option
+                v-for="d in departmentOptions"
+                :key="d.id"
+                :label="d.name"
+                :value="d.id"
+              />
+            </el-select>
+          </el-form-item>
+          <p
+            v-if="departmentOptions.length === 0"
+            class="field-hint span-2"
+          >
+            暂无启用部门，请先在组织管理 → 部门管理创建。
+          </p>
+          <el-form-item
             label="讲师"
             required
           >
@@ -567,6 +591,8 @@ import {
   type CategoryNode,
 } from '@/api/catalog'
 import CourseCoverUpload from './CourseCoverUpload.vue'
+import { listDepartments } from '@/api/org'
+import type { DepartmentDTO } from '@learn-site/contracts'
 
 const route = useRoute()
 const router = useRouter()
@@ -590,7 +616,8 @@ const tree = reactive<Partial<CourseTreeDTO> & { chapters: ChapterWithLessons[] 
 })
 
 const form = reactive({
-  department_id: 1,
+  // 新建课程尚未选择部门，用 null 触发选择器占位符；后端要求归属启用部门
+  department_id: null as number | null,
   // 新建课程尚未选择分类，用 null 触发 tree-select 占位符
   category_id: null as number | null,
   title: '',
@@ -606,7 +633,20 @@ const form = reactive({
 })
 
 const categoryOptions = ref<CategoryNode[]>([])
+const departmentOptions = ref<DepartmentDTO[]>([])
 const saleRange = ref<[string, string] | null>(null)
+
+async function loadDepartments(): Promise<void> {
+  try {
+    const { items } = await listDepartments()
+    departmentOptions.value = items.filter((d) => d.status === 'enabled')
+  } catch {
+    departmentOptions.value = []
+  }
+  if (isNew.value && form.department_id === null) {
+    form.department_id = departmentOptions.value[0]?.id ?? null
+  }
+}
 
 watch(saleRange, (v) => {
   if (Array.isArray(v) && v.length === 2) {
@@ -715,6 +755,15 @@ async function reload(): Promise<void> {
 async function saveDraft(): Promise<void> {
   if (!form.title.trim()) {
     ElMessage.warning('请输入标题')
+    activeTab.value = 'basic'
+    return
+  }
+  if (!form.department_id) {
+    ElMessage.warning(
+      departmentOptions.value.length === 0
+        ? '请先在组织管理 → 部门管理创建启用部门'
+        : '请选择所属部门',
+    )
     activeTab.value = 'basic'
     return
   }
@@ -1024,7 +1073,7 @@ function readError(err: unknown, fallback: string): string {
 }
 
 onMounted(async () => {
-  await loadCategories()
+  await Promise.all([loadCategories(), loadDepartments()])
   if (!isNew.value) await reload()
 })
 </script>
@@ -1067,6 +1116,11 @@ onMounted(async () => {
 }
 .span-2 {
   grid-column: span 2;
+}
+.field-hint {
+  margin: -4px 0 12px;
+  font-size: 12px;
+  color: #b45309;
 }
 .structure {
   display: grid;

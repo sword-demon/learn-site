@@ -21,7 +21,16 @@ import type {
   CategoryStatus,
   CourseStatus,
 } from '@learn-site/contracts'
-import { ApiOk, CategoryDTO as CategorySchema } from '@learn-site/contracts'
+import {
+  ApiOk,
+  CategoryDTO as CategorySchema,
+  CourseDTO as CourseSchema,
+  CourseTreeDTO as CourseTreeSchema,
+  ChapterDTO as ChapterSchema,
+  LessonDTO as LessonSchema,
+  PaginatedCourses as PaginatedCoursesSchema,
+  AssetDTO as AssetSchema,
+} from '@learn-site/contracts'
 
 /**
  * Admin catalog API wrappers (Phase 4 / T039). All return the unwrapped
@@ -42,6 +51,15 @@ const CategoryIndexEnvelope = ApiOk(z.object({
 }))
 const CategoryEnvelope = ApiOk(CategorySchema)
 const CategoryDeleteEnvelope = ApiOk(z.object({ deleted: z.literal(true) }))
+
+const CourseIndexEnvelope = ApiOk(PaginatedCoursesSchema)
+const CourseTreeEnvelope = ApiOk(CourseTreeSchema)
+const CourseEnvelope = ApiOk(CourseSchema)
+const ChapterIndexEnvelope = ApiOk(z.object({ items: z.array(ChapterSchema) }))
+const ChapterEnvelope = ApiOk(ChapterSchema)
+const LessonIndexEnvelope = ApiOk(z.object({ items: z.array(LessonSchema) }))
+const LessonEnvelope = ApiOk(LessonSchema)
+const AssetEnvelope = ApiOk(AssetSchema)
 
 export async function listCategoryTree(): Promise<CategoryNode[]> {
   const response = await http.get<unknown>('/categories')
@@ -131,36 +149,36 @@ export interface ListCoursesParams {
 export async function listCourses(
   params: ListCoursesParams = {},
 ): Promise<PaginatedCourses> {
-  const { data } = await http.get<PaginatedCourses>('/courses', { params })
-  return data
+  const response = await http.get<unknown>('/courses', { params })
+  return CourseIndexEnvelope.parse(response.data).data
 }
 
 export async function getCourseTree(id: number): Promise<CourseTreeDTO> {
-  const { data } = await http.get<CourseTreeDTO>(`/courses/${id}`)
-  return data
+  const response = await http.get<unknown>(`/courses/${id}`)
+  return CourseTreeEnvelope.parse(response.data).data
 }
 
 export async function createCourse(input: CreateCourseInput): Promise<CourseDTO> {
-  const { data } = await http.post<CourseDTO>('/courses', input)
-  return data
+  const response = await http.post<unknown>('/courses', input)
+  return CourseEnvelope.parse(response.data).data
 }
 
 export async function updateCourse(
   id: number,
   input: UpdateCourseInput,
 ): Promise<CourseDTO> {
-  const { data } = await http.patch<CourseDTO>(`/courses/${id}`, input)
-  return data
+  const response = await http.patch<unknown>(`/courses/${id}`, input)
+  return CourseEnvelope.parse(response.data).data
 }
 
 export async function publishCourse(id: number): Promise<CourseDTO> {
-  const { data } = await http.post<CourseDTO>(`/courses/${id}/publish`)
-  return data
+  const response = await http.post<unknown>(`/courses/${id}/publish`)
+  return CourseEnvelope.parse(response.data).data
 }
 
 export async function unpublishCourse(id: number): Promise<CourseDTO> {
-  const { data } = await http.post<CourseDTO>(`/courses/${id}/unpublish`)
-  return data
+  const response = await http.post<unknown>(`/courses/${id}/unpublish`)
+  return CourseEnvelope.parse(response.data).data
 }
 
 export async function deleteCourse(id: number): Promise<void> {
@@ -172,21 +190,21 @@ export async function deleteCourse(id: number): Promise<void> {
 export async function listChapters(
   courseId: number,
 ): Promise<{ items: ChapterDTO[] }> {
-  const { data } = await http.get<{ items: ChapterDTO[] }>(
+  const response = await http.get<unknown>(
     `/courses/${courseId}/chapters`,
   )
-  return data
+  return ChapterIndexEnvelope.parse(response.data).data
 }
 
 export async function createChapter(
   courseId: number,
   input: CreateChapterInput,
 ): Promise<ChapterDTO> {
-  const { data } = await http.post<ChapterDTO>(
+  const response = await http.post<unknown>(
     `/courses/${courseId}/chapters`,
     input,
   )
-  return data
+  return ChapterEnvelope.parse(response.data).data
 }
 
 export async function updateChapter(
@@ -194,11 +212,11 @@ export async function updateChapter(
   chapterId: number,
   input: UpdateChapterInput,
 ): Promise<ChapterDTO> {
-  const { data } = await http.patch<ChapterDTO>(
+  const response = await http.patch<unknown>(
     `/courses/${courseId}/chapters/${chapterId}`,
     input,
   )
-  return data
+  return ChapterEnvelope.parse(response.data).data
 }
 
 export async function deleteChapter(
@@ -214,22 +232,22 @@ export async function listLessons(
   courseId: number,
   chapterId?: number,
 ): Promise<{ items: LessonDTO[] }> {
-  const { data } = await http.get<{ items: LessonDTO[] }>(
+  const response = await http.get<unknown>(
     `/courses/${courseId}/lessons`,
     { params: { chapter_id: chapterId } },
   )
-  return data
+  return LessonIndexEnvelope.parse(response.data).data
 }
 
 export async function createLesson(
   courseId: number,
   input: CreateLessonInput,
 ): Promise<LessonDTO> {
-  const { data } = await http.post<LessonDTO>(
+  const response = await http.post<unknown>(
     `/courses/${courseId}/lessons`,
     input,
   )
-  return data
+  return LessonEnvelope.parse(response.data).data
 }
 
 export async function updateLesson(
@@ -237,11 +255,11 @@ export async function updateLesson(
   lessonId: number,
   input: UpdateLessonInput,
 ): Promise<LessonDTO> {
-  const { data } = await http.patch<LessonDTO>(
+  const response = await http.patch<unknown>(
     `/courses/${courseId}/lessons/${lessonId}`,
     input,
   )
-  return data
+  return LessonEnvelope.parse(response.data).data
 }
 
 export async function deleteLesson(
@@ -308,7 +326,7 @@ export async function uploadAsset(
   const fd = new FormData()
   fd.append('file', input.file)
   fd.append('kind', input.kind)
-  const { data } = await http.post<UploadAssetResult>('/assets', fd, {
+  const response = await http.post<unknown>('/assets', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => {
       if (input.onUploadProgress && typeof e.loaded === 'number') {
@@ -316,5 +334,5 @@ export async function uploadAsset(
       }
     },
   })
-  return data
+  return AssetEnvelope.parse(response.data).data as UploadAssetResult
 }
