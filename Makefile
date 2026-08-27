@@ -9,14 +9,17 @@ API_PORT     ?= 8787
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env bootstrap up down restart ps logs build \
+.PHONY: help env bootstrap up down restart ps logs build rebuild rebuild-web rebuild-admin rebuild-api rebuild-all \
 	migrate seed health sh-api test test-api test-web debug prototype
 
 help:
 	@echo "make bootstrap   # .env + 构建启动 + 迁移 + 种子 + 健康检查"
 	@echo "make up          # docker compose up -d --build"
 	@echo "make down        # 停栈 (保留卷)"
-	@echo "make restart     # 重启 SERVICE=$(SERVICE)"
+	@echo "make restart     # 仅重启容器，不重新构建 (改源码后无效)"
+	@echo "make rebuild     # 重新构建并重启 SERVICE=$(SERVICE) (改源码后必做)"
+	@echo "make rebuild-web / rebuild-admin / rebuild-api  # 按服务重建"
+	@echo "make rebuild-all # 重建 api + web + admin"
 	@echo "make ps          # 容器状态"
 	@echo "make logs        # 跟日志 SERVICE=$(SERVICE)"
 	@echo "make health      # curl API /health"
@@ -53,6 +56,23 @@ logs:
 
 build:
 	$(COMPOSE) build
+
+# 修改源码后必须 rebuild，仅 restart 不会更新镜像内静态资源 / PHP 代码。
+# compose.test.yaml 的 frontend-test / api-test 为一次性测试容器，不用于日常预览。
+rebuild:
+	$(COMPOSE) up -d --build --no-deps $(SERVICE)
+
+rebuild-web:
+	$(COMPOSE) up -d --build --no-deps web
+
+rebuild-admin:
+	$(COMPOSE) up -d --build --no-deps admin
+
+rebuild-api:
+	$(COMPOSE) up -d --build --no-deps api
+
+rebuild-all:
+	$(COMPOSE) up -d --build --no-deps api web admin
 
 migrate:
 	$(COMPOSE) exec -T api php vendor/bin/phinx migrate

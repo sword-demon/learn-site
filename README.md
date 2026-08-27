@@ -118,7 +118,30 @@ pnpm lint              # 全工作区 Lint
 pnpm test              # 全工作区单测
 ```
 
-> 验收以 Docker Compose 内运行为准；宿主机直接 `php start.php` 或 `pnpm dev` 不构成发布验收证据。
+> 验收以 Docker Compose 内运行为准；宿主机直接 `php start.php` 或 `pnpm dev` 不构成发布验收证据，也不会更新 Compose 里 nginx 提供的页面。
+
+### 修改源码后如何生效
+
+`compose.yaml` 把源码**打进镜像**（web/admin 为 Vite 构建后的静态文件，api 为 PHP 代码），**没有**挂载宿主机目录。因此：
+
+| 改动路径 | 需重建的服务 | 命令 |
+|----------|--------------|------|
+| `apps/web/` | `web` | `make rebuild-web` |
+| `apps/admin/` | `admin` | `make rebuild-admin` |
+| `apps/api/` | `api` | `make rebuild-api` |
+| `packages/contracts/` | `web` + `admin`（API 若引用新契约字段也需 `api`） | `make rebuild-all` 或分别重建 |
+
+```bash
+# 示例：改了学习端首页后
+make rebuild-web
+
+# 改了 API 与契约后
+make rebuild-api && make rebuild-web
+```
+
+`make restart` **只会**重启现有容器，**不会**重新构建，改代码后页面/API 行为不会变。
+
+`compose.test.yaml` 里的 `frontend-test` / `api-test` 用于 CI 式一次性测试，不是用来热更新预览页面。
 
 ## 文档
 

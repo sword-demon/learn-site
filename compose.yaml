@@ -3,6 +3,13 @@
 # Constitution §II: every image is pinned to an index digest. Never use `latest`.
 # Webman listens on 8787 inside the api container (official default).
 #
+# Source is baked into images at build time (no bind mounts). After editing code:
+#   make rebuild-web    # apps/web, packages/contracts
+#   make rebuild-admin  # apps/admin, packages/contracts
+#   make rebuild-api    # apps/api
+#   make rebuild-all    # all three app services
+# `make restart` alone does NOT pick up source changes.
+#
 # compose up -d --build
 # compose exec api php vendor/bin/phinx migrate
 # compose exec api php vendor/bin/phinx seed:run
