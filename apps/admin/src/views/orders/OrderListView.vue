@@ -7,6 +7,7 @@ import {
   type AdminOrderListDTO,
   type AdminOrderStatus,
 } from '@/api/orders';
+import { Document, RefreshRight, Search, Tickets, User } from '@element-plus/icons-vue';
 
 defineOptions({ name: 'OrderListView' });
 
@@ -35,10 +36,6 @@ const filters = ref({
 });
 
 const total = computed(() => list.value?.total ?? 0);
-const totalPages = computed(() =>
-  list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
-);
-
 function positiveId(raw: string, label: string): number | undefined {
   if (raw === '') return undefined;
   const value = Number(raw);
@@ -64,8 +61,9 @@ async function reload(): Promise<void> {
     const learnerId = positiveId(filters.value.learner_id, '学员');
     if (courseId !== undefined) params.course_id = courseId;
     if (learnerId !== undefined) params.learner_id = learnerId;
-    list.value = await listOrders(params);
-    if (list.value.items.length === 0) {
+    const result = await listOrders(params);
+    list.value = { ...result, items: result.items ?? [] };
+    if ((list.value.items?.length ?? 0) === 0) {
       selected.value = null;
     }
   } catch (err) {
@@ -92,14 +90,31 @@ function applyFilters(): void {
   void reload();
 }
 
-function gotoPage(p: number): void {
-  if (p < 1 || p > totalPages.value) return;
+function changePage(p: number): void {
+  if (p < 1) return;
   filters.value.page = p;
+  void reload();
+}
+
+function changePageSize(size: number): void {
+  filters.value.limit = size;
+  filters.value.page = 1;
   void reload();
 }
 
 function statusLabel(s: AdminOrderStatus): string {
   return statusOptions.find((o) => o.value === s)?.label ?? s;
+}
+
+function statusType(s: AdminOrderStatus): 'warning' | 'success' | 'danger' | 'info' {
+  if (s === 'succeeded') return 'success';
+  if (s === 'failed' || s === 'unknown') return 'danger';
+  if (s === 'pending') return 'warning';
+  return 'info';
+}
+
+function rowClassName({ row }: { row: AdminOrderDTO }): string {
+  return selected.value?.order_id === row.order_id ? 'is-selected' : '';
 }
 
 function formatMoney(amount: number, currency: string): string {
@@ -113,114 +128,140 @@ onMounted(() => {
 
 <template>
   <section class="page order-list">
-    <header class="head">
-      <h1 class="display">订单管理</h1>
-      <p class="hint">只读视图 — 订单状态由支付回调驱动,管理员不可修改.</p>
+    <header class="page-head">
+      <div class="title-block">
+        <span class="section-kicker">交易运营 / 订单</span>
+        <h1 class="display">订单管理</h1>
+        <p class="subtitle">查看订单、支付快照和交易渠道，支付状态仅由回调驱动。</p>
+      </div>
+      <div class="head-metric">
+        <span>筛选结果</span>
+        <strong>{{ total }}</strong>
+        <span>笔订单</span>
+      </div>
     </header>
 
-    <form class="filters" @submit.prevent="applyFilters">
-      <label>
-        状态
-        <select v-model="filters.status" name="status">
-          <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-            {{ opt.label }}
-          </option>
-        </select>
-      </label>
-      <label>
-        课程ID
-        <input v-model="filters.course_id" name="course_id" type="number" min="1" step="1" />
-      </label>
-      <label>
-        学员ID
-        <input v-model="filters.learner_id" name="learner_id" type="number" min="1" step="1" />
-      </label>
-      <button type="submit" class="btn btn-primary" :disabled="loading">查询</button>
-    </form>
+    <el-card class="filter-panel" shadow="never">
+      <el-form class="filters filter-form" inline @submit.prevent="applyFilters">
+        <el-form-item label="订单状态">
+          <el-select v-model="filters.status" class="filter-control" :teleported="false" data-field="status">
+            <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="课程 ID">
+          <el-input v-model="filters.course_id" name="course_id" type="number" min="1" step="1" clearable placeholder="正整数" />
+        </el-form-item>
+        <el-form-item label="学员 ID">
+          <el-input v-model="filters.learner_id" name="learner_id" type="number" min="1" step="1" clearable placeholder="正整数" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" native-type="submit" :loading="loading">
+            <el-icon><Search /></el-icon>
+            查询订单
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <p v-if="loading" class="notice">加载中…</p>
-    <p v-else-if="loadError" class="notice error">暂时读不到 ({{ loadError }}).</p>
+    <el-alert v-if="loadError" title="订单列表暂时读不到" :description="loadError" type="error" show-icon :closable="false" />
 
-    <div v-else class="layout">
-      <article class="left-pane">
-        <table class="grid">
-          <thead>
-            <tr>
-              <th>订单号</th>
-              <th>课程</th>
-              <th>学员</th>
-              <th>实付</th>
-              <th>状态</th>
-              <th>创建时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in list?.items ?? []"
-              :key="row.order_id"
-              class="row"
-              :class="{ active: selected && selected.order_id === row.order_id }"
-              @click="openDetail(row.order_id)"
-            >
-              <td>#{{ row.order_id }}</td>
-              <td>
-                <span class="course-title">{{ row.course_title ?? `课程 #${row.course_id}` }}</span>
-                <span class="muted">#{{ row.course_id }}</span>
-              </td>
-              <td>#{{ row.learner_id }}</td>
-              <td>{{ formatMoney(row.paid_amount, row.currency) }}</td>
-              <td>
-                <span class="badge" :data-status="row.status">{{ statusLabel(row.status) }}</span>
-              </td>
-              <td>{{ row.created_at }}</td>
-            </tr>
-            <tr v-if="!list || list.items.length === 0">
-              <td colspan="6" class="muted center">暂无订单.</td>
-            </tr>
-          </tbody>
-        </table>
+    <div class="layout">
+      <el-card class="left-pane" shadow="never">
+        <template #header>
+          <div class="panel-heading">
+            <div>
+              <h2>订单列表</h2>
+              <p>点击订单查看支付快照</p>
+            </div>
+            <el-button text :loading="loading" title="刷新订单" @click="reload">
+              <el-icon><RefreshRight /></el-icon>
+            </el-button>
+          </div>
+        </template>
+        <el-table
+          v-loading="loading"
+          :data="list?.items ?? []"
+          stripe
+          highlight-current-row
+          class="order-table"
+          :row-class-name="rowClassName"
+          @row-click="(row: AdminOrderDTO) => openDetail(row.order_id)"
+        >
+          <el-table-column label="订单号" width="110">
+            <template #default="{ row }"><span class="order-number">#{{ row.order_id }}</span></template>
+          </el-table-column>
+          <el-table-column label="课程" min-width="210">
+            <template #default="{ row }">
+              <div class="course-cell">
+                <strong>{{ row.course_title ?? `课程 #${row.course_id}` }}</strong>
+                <span>课程 ID {{ row.course_id }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="学员" width="110">
+            <template #default="{ row }"><span class="id-cell"><User /> #{{ row.learner_id }}</span></template>
+          </el-table-column>
+          <el-table-column label="实付" width="130">
+            <template #default="{ row }"><strong class="amount">{{ formatMoney(row.paid_amount, row.currency) }}</strong></template>
+          </el-table-column>
+          <el-table-column label="状态" width="110">
+            <template #default="{ row }">
+              <el-tag :type="statusType(row.status)" effect="light" size="small">{{ statusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="创建时间" min-width="175" />
+          <template #empty><el-empty description="暂无订单记录" :image-size="88" /></template>
+        </el-table>
+        <el-pagination
+          v-if="total > 0"
+          class="pager"
+          background
+          layout="total, prev, pager, next, sizes"
+          :total="total"
+          :page-size="filters.limit"
+          :current-page="filters.page"
+          :page-sizes="[10, 20, 50]"
+          @current-change="changePage"
+          @size-change="changePageSize"
+        />
+      </el-card>
 
-        <nav v-if="total > 0" class="pager">
-          <button
-            type="button"
-            class="btn"
-            :disabled="filters.page <= 1"
-            @click="gotoPage(filters.page - 1)"
-          >
-            上一页
-          </button>
-          <span>{{ filters.page }} / {{ totalPages }} · 共 {{ total }} 条</span>
-          <button
-            type="button"
-            class="btn"
-            :disabled="filters.page >= totalPages"
-            @click="gotoPage(filters.page + 1)"
-          >
-            下一页
-          </button>
-        </nav>
-      </article>
-
-      <aside class="right-pane" aria-live="polite">
-        <p v-if="submitting" class="notice">加载订单详情…</p>
-        <p v-else-if="detailError" class="notice error">{{ detailError }}</p>
-        <p v-else-if="!selected" class="notice">从列表选择一行查看详情.</p>
+      <el-card class="right-pane" shadow="never" aria-live="polite">
+        <template #header>
+          <div class="detail-heading">
+            <div class="detail-icon"><Tickets /></div>
+            <div>
+              <h2>订单详情</h2>
+              <p>支付快照只读</p>
+            </div>
+          </div>
+        </template>
+        <el-skeleton v-if="submitting" :rows="9" animated />
+        <el-alert
+          v-else-if="detailError"
+          title="订单详情暂时读不到"
+          :description="detailError"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+        <el-empty v-else-if="!selected" description="从列表选择一笔订单查看详情" :image-size="110" />
         <template v-else>
-          <h2>订单 #{{ selected.order_id }}</h2>
+          <div class="detail-title-row">
+            <div>
+              <span class="section-kicker">交易记录</span>
+              <h2>订单 #{{ selected.order_id }}</h2>
+            </div>
+            <el-tag :type="statusType(selected.status)" effect="light">{{ statusLabel(selected.status) }}</el-tag>
+          </div>
           <dl class="meta">
-            <dt>状态</dt>
-            <dd>
-              <span class="badge" :data-status="selected.status">{{
-                statusLabel(selected.status)
-              }}</span>
-            </dd>
-            <dt>课程</dt>
+            <dt><Document /> 课程</dt>
             <dd>
               {{ selected.course_title ?? `课程 #${selected.course_id}` }} (#{{
                 selected.course_id
               }})
             </dd>
-            <dt>学员</dt>
+            <dt><User /> 学员</dt>
             <dd>#{{ selected.learner_id }}</dd>
             <dt>部门</dt>
             <dd>{{ selected.department_id ? `#${selected.department_id}` : '—' }}</dd>
@@ -228,9 +269,9 @@ onMounted(() => {
             <dd>{{ formatMoney(selected.list_price_snapshot, selected.currency) }}</dd>
             <dt>售价</dt>
             <dd>{{ formatMoney(selected.sale_price_snapshot, selected.currency) }}</dd>
-            <dt>实付</dt>
-            <dd>{{ formatMoney(selected.paid_amount, selected.currency) }}</dd>
-            <dt>渠道</dt>
+            <dt class="emphasis">实付</dt>
+            <dd class="emphasis">{{ formatMoney(selected.paid_amount, selected.currency) }}</dd>
+            <dt>支付渠道</dt>
             <dd>
               {{ selected.provider
               }}{{ selected.provider_ref ? ` / ${selected.provider_ref}` : '' }}
@@ -239,177 +280,80 @@ onMounted(() => {
             <dd>{{ selected.succeeded_at ?? '—' }}</dd>
             <dt>创建时间</dt>
             <dd>{{ selected.created_at }}</dd>
-            <dt v-if="selected.failed_reason">失败原因</dt>
-            <dd v-if="selected.failed_reason">{{ selected.failed_reason }}</dd>
+            <template v-if="selected.failed_reason">
+              <dt>失败原因</dt>
+              <dd class="failure">{{ selected.failed_reason }}</dd>
+            </template>
           </dl>
-          <p class="hint">支付状态由 FakePaymentAdapter / 真实回调驱动,本页只读.</p>
+          <el-alert title="只读数据" description="支付状态由支付渠道回调驱动，管理员不能在此页面修改。" type="info" show-icon :closable="false" />
         </template>
-      </aside>
+      </el-card>
     </div>
   </section>
 </template>
 
 <style scoped>
-.page {
-  display: grid;
-  gap: 16px;
-}
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.display {
-  margin: 0;
-  font-size: 1.4rem;
-}
-.hint {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0;
-  font-size: 0.85rem;
-}
-.filters {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: end;
-}
-.filters label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.85rem;
-}
-.filters input,
-.filters select {
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
-}
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
-  gap: 16px;
-}
-@media (max-width: 1100px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
+.page { display: grid; gap: 18px; min-width: 0; }
+.page-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
+.title-block { min-width: 0; }
+.section-kicker { display: block; margin-bottom: 6px; color: #168da7; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
+.display { margin: 0; color: #102a43; font-size: clamp(1.6rem, 2vw, 2rem); letter-spacing: -0.025em; }
+.subtitle { max-width: 620px; margin: 7px 0 0; color: #6b7c93; font-size: 13px; }
+.head-metric { display: grid; min-width: 132px; padding-left: 18px; border-left: 1px solid #d8e2eb; color: #6b7c93; font-size: 12px; line-height: 1.4; }
+.head-metric strong { color: #102a43; font-size: 25px; line-height: 1.15; }
+.filter-panel,
 .left-pane,
-.right-pane {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 8px;
-  padding: 16px;
-  background: #fff;
-}
-.grid {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-.grid th,
-.grid td {
-  border-bottom: 1px solid var(--color-border, #e6e8ee);
-  padding: 8px;
-  text-align: left;
-}
-.grid th {
-  background: var(--color-bg-soft, #fafbfd);
-  font-weight: 600;
-}
-.row {
-  cursor: pointer;
-}
-.row:hover {
-  background: var(--color-bg-soft, #f5f6fa);
-}
-.row.active {
-  background: rgba(37, 99, 235, 0.08);
-}
-.course-title {
-  font-weight: 500;
-}
-.muted {
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.8rem;
-  margin-left: 4px;
-}
-.center {
-  text-align: center;
-  padding: 24px 0;
-}
-.badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg-soft, #f5f6fa);
-  border: 1px solid var(--color-border, #d0d4dc);
-  font-size: 0.78rem;
-}
-.badge[data-status='pending'] {
-  background: #fff7e6;
-  border-color: #d99a26;
-}
-.badge[data-status='succeeded'] {
-  background: #e7f7ee;
-  border-color: #2bb673;
-}
-.badge[data-status='failed'] {
-  background: #fde8e6;
-  border-color: #b42318;
-}
-.badge[data-status='cancelled'] {
-  background: #eef0f3;
-  border-color: #8a8f99;
-}
-.badge[data-status='unknown'] {
-  background: #f0e8fb;
-  border-color: #6b46c1;
-}
-.pager {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-top: 12px;
-}
-.meta {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-  margin: 0;
-}
-.meta dt {
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.85rem;
-}
-.meta dd {
-  margin: 0;
-  font-size: 0.9rem;
-}
-.btn {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-primary {
-  background: var(--color-primary, #2563eb);
-  color: #fff;
-  border-color: transparent;
-}
-.notice {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0;
-}
-.notice.error {
-  color: #b42318;
+.right-pane { --el-card-border-color: #dce6ef; --el-card-padding: 18px; border-radius: 8px; box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04); }
+.filter-panel :deep(.el-card__body) { padding: 14px 18px; }
+.filter-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; }
+.filter-form :deep(.el-form-item) { margin-bottom: 0; }
+.filter-form :deep(.el-form-item__label) { color: #52667a; font-size: 13px; font-weight: 600; }
+.filter-control { width: 168px; }
+.filters :deep(.el-input) { width: 150px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr); align-items: start; gap: 18px; }
+.left-pane :deep(.el-card__header),
+.right-pane :deep(.el-card__header) { padding: 16px 18px; }
+.panel-heading,
+.detail-heading,
+.detail-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-heading h2,
+.detail-heading h2,
+.detail-title-row h2 { margin: 0; color: #102a43; font-size: 15px; }
+.panel-heading p,
+.detail-heading p { margin: 3px 0 0; color: #829ab1; font-size: 12px; }
+.detail-heading { justify-content: flex-start; }
+.detail-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 8px; color: #168da7; background: #e7f6f8; font-size: 18px; }
+.order-table { --el-table-header-bg-color: #f4f8fb; --el-table-row-hover-bg-color: #f3fbfc; --el-table-current-row-bg-color: #eef9fa; --el-table-border-color: #e6edf3; }
+.order-table :deep(.el-table__header th) { color: #52667a; font-size: 12px; font-weight: 700; }
+.order-table :deep(.el-table__row) { cursor: pointer; }
+.order-table :deep(.el-table__row.is-selected) td { background: #eef9fa !important; }
+.order-number { color: #168da7; font-weight: 700; }
+.course-cell { display: grid; gap: 3px; min-width: 0; }
+.course-cell strong { overflow-wrap: anywhere; color: #243b53; font-weight: 600; }
+.course-cell span { color: #829ab1; font-size: 11px; }
+.id-cell { display: inline-flex; align-items: center; gap: 5px; color: #52667a; }
+.id-cell svg { width: 14px; color: #829ab1; }
+.amount { color: #102a43; font-variant-numeric: tabular-nums; }
+.pager { justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid #edf2f6; }
+.detail-title-row { align-items: flex-start; padding-bottom: 16px; margin-bottom: 6px; border-bottom: 1px solid #e6edf3; }
+.detail-title-row h2 { font-size: 20px; letter-spacing: -0.02em; }
+.meta { display: grid; grid-template-columns: minmax(88px, max-content) minmax(0, 1fr); gap: 12px 16px; margin: 0; }
+.meta dt { display: inline-flex; align-items: center; gap: 6px; color: #829ab1; font-size: 12px; }
+.meta dt svg { width: 14px; }
+.meta dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: #243b53; font-size: 13px; }
+.meta dd span { color: #829ab1; font-size: 12px; }
+.meta .emphasis { color: #168da7; font-weight: 700; }
+.meta dd.emphasis { font-size: 17px; font-variant-numeric: tabular-nums; }
+.meta .failure { color: #b42318; }
+.right-pane :deep(.el-alert) { margin-top: 20px; }
+.right-pane :deep(.el-empty) { min-height: 320px; justify-content: center; }
+@media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 620px) {
+  .filter-form { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .filter-form :deep(.el-form-item) { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; }
+  .filter-control,
+  .filters :deep(.el-input) { width: 100%; }
+  .meta { grid-template-columns: 1fr; gap: 4px; }
+  .meta dd { padding-bottom: 8px; border-bottom: 1px solid #f0f4f7; }
 }
 </style>

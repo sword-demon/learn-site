@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdminInboxDTO, QuestionSummaryDTO } from '@learn-site/contracts';
+import { installElementPlus } from '@/plugins/element-plus';
 
 const qaApi = vi.hoisted(() => ({
   answerQuestion: vi.fn(),
@@ -57,6 +58,22 @@ function inbox(items: QuestionSummaryDTO[]): AdminInboxDTO {
   return { items, total: items.length, page: 1, limit: 20, status: 'pending' };
 }
 
+function mountQuestionList() {
+  return mount(QuestionListView, { global: { plugins: [installElementPlus] } });
+}
+
+async function chooseOption(
+  wrapper: ReturnType<typeof mountQuestionList>,
+  field: string,
+  label: string,
+): Promise<void> {
+  const select = wrapper.get(`[data-field="${field}"]`);
+  await select.get('.el-select__wrapper').trigger('click');
+  const option = select.findAll('.el-select-dropdown__item').find((item) => item.text() === label);
+  expect(option).toBeDefined();
+  await option?.trigger('click');
+}
+
 describe('QuestionListView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,11 +88,11 @@ describe('QuestionListView', () => {
   });
 
   it('loads the pending inbox by default', async () => {
-    const wrapper = mount(QuestionListView);
+    const wrapper = mountQuestionList();
     await flushPromises();
 
     expect(wrapper.text()).toContain(question.title);
-    expect(wrapper.get<HTMLSelectElement>('select[name="status"]').element.value).toBe('pending');
+    expect(wrapper.get('[data-field="status"]').text()).toContain('待回复');
   });
 
   it('shows the empty state when an inbox payload has no items array', async () => {
@@ -85,7 +102,7 @@ describe('QuestionListView', () => {
       limit: 20,
       status: 'pending',
     } as unknown as AdminInboxDTO);
-    const wrapper = mount(QuestionListView);
+    const wrapper = mountQuestionList();
     await flushPromises();
 
     expect(wrapper.text()).toContain('当前筛选下暂无问答。');
@@ -98,12 +115,12 @@ describe('QuestionListView', () => {
         ? inbox([question])
         : inbox([]),
     );
-    const wrapper = mount(QuestionListView);
+    const wrapper = mountQuestionList();
     await flushPromises();
 
-    await wrapper.get('select[name="course_id"]').setValue(String(course.id));
+    await chooseOption(wrapper, 'course_id', course.title);
     await flushPromises();
-    await wrapper.get('select[name="lesson_id"]').setValue(String(lesson.id));
+    await chooseOption(wrapper, 'lesson_id', lesson.title);
     await flushPromises();
 
     expect(wrapper.text()).toContain(question.title);
@@ -111,7 +128,7 @@ describe('QuestionListView', () => {
 
   it('shows a detail loading error before any thread is active', async () => {
     qaApi.fetchThread.mockRejectedValueOnce(new Error('THREAD_UNAVAILABLE'));
-    const wrapper = mount(QuestionListView);
+    const wrapper = mountQuestionList();
     await flushPromises();
 
     await wrapper.get('.thread-button').trigger('click');
@@ -135,7 +152,7 @@ describe('QuestionListView', () => {
         },
       ],
     });
-    const wrapper = mount(QuestionListView);
+    const wrapper = mountQuestionList();
     await flushPromises();
 
     await wrapper.get('.thread-button').trigger('click');
@@ -154,7 +171,7 @@ describe('QuestionListView', () => {
   it('keeps a close failure visible beside the active thread', async () => {
     vi.stubGlobal('confirm', () => true);
     qaApi.closeQuestion.mockRejectedValueOnce(new Error('CLOSE_DENIED'));
-    const wrapper = mount(QuestionListView);
+    const wrapper = mountQuestionList();
     await flushPromises();
 
     await wrapper.get('.thread-button').trigger('click');

@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdminMapDetailDTO, CourseDTO, DepartmentDTO } from '@learn-site/contracts';
+import { installElementPlus } from '@/plugins/element-plus';
 
 const learningMapApi = vi.hoisted(() => ({
   addCourseToStage: vi.fn(),
@@ -133,9 +134,21 @@ function mapList(item: AdminMapDetailDTO = detail) {
 }
 
 async function mountEditor() {
-  const wrapper = mount(MapEditorView);
+  const wrapper = mount(MapEditorView, { global: { plugins: [installElementPlus] } });
   await flushPromises();
   return wrapper;
+}
+
+async function chooseOption(
+  wrapper: Awaited<ReturnType<typeof mountEditor>>,
+  field: string,
+  label: string,
+): Promise<void> {
+  const select = wrapper.get(`[data-field="${field}"]`);
+  await select.get('.el-select__wrapper').trigger('click');
+  const option = select.findAll('.el-select-dropdown__item').find((item) => item.text() === label);
+  expect(option).toBeDefined();
+  await option?.trigger('click');
 }
 
 describe('MapEditorView', () => {
@@ -170,7 +183,7 @@ describe('MapEditorView', () => {
     await form.get('input[name="cover_url"]').setValue('  https://example.test/new-cover.png  ');
     await form.get('textarea[name="objective"]').setValue('  独立负责中大型前端项目  ');
     await form.get('textarea[name="audience"]').setValue('  有两年前端经验的开发者  ');
-    await form.get('select[name="department_id"]').setValue('4');
+    await chooseOption(wrapper, 'department_id', '产品技术部');
     await form.trigger('submit');
     await flushPromises();
 
@@ -237,12 +250,11 @@ describe('MapEditorView', () => {
     });
 
     await stage.get('[data-action="add-course"]').trigger('click');
-    const options = wrapper
-      .get('select[name="course_id"]')
-      .findAll('option')
-      .map((option) => option.attributes('value'));
+    const courseSelect = wrapper.get('[data-field="course_id"]');
+    await courseSelect.get('.el-select__wrapper').trigger('click');
+    const options = courseSelect.findAll('.el-select-dropdown__item').map((option) => option.text());
 
-    expect(options).not.toContain(String(course.id));
-    expect(options).toContain(String(otherCourse.id));
+    expect(options).not.toContain(course.title);
+    expect(options).toContain(otherCourse.title);
   });
 });

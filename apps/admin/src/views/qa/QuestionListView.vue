@@ -15,6 +15,7 @@ import type {
   QuestionSummaryDTO,
   QuestionThreadDTO,
 } from '@learn-site/contracts';
+import { ChatDotRound, Close, Promotion } from '@element-plus/icons-vue';
 
 defineOptions({ name: 'QuestionListView' });
 
@@ -41,6 +42,7 @@ const closeSubmitting = ref(false);
 const answerError = ref<string | null>(null);
 const closeError = ref<string | null>(null);
 const actionBusy = computed(() => answerSubmitting.value || closeSubmitting.value);
+const questionItems = computed(() => inbox.value?.items ?? []);
 
 const statusOptions: Array<{ value: QuestionStatus; label: string }> = [
   { value: 'pending', label: '待回复' },
@@ -65,8 +67,8 @@ async function loadFilterOptions(courseId?: number): Promise<void> {
   filterError.value = null;
   try {
     const options = await fetchFilterOptions(courseId);
-    courseOptions.value = options.courses;
-    lessonOptions.value = options.lessons;
+    courseOptions.value = options.courses ?? [];
+    lessonOptions.value = options.lessons ?? [];
   } catch (err) {
     filterError.value = messageFrom(err, 'FILTER_OPTIONS_FAILED');
     lessonOptions.value = [];
@@ -79,13 +81,14 @@ async function loadInbox(): Promise<void> {
   loading.value = true;
   listError.value = null;
   try {
-    inbox.value = await fetchInbox({
+    const result = await fetchInbox({
       status: statusFilter.value,
       ...(courseFilter.value === '' ? {} : { course_id: courseFilter.value }),
       ...(lessonFilter.value === '' ? {} : { lesson_id: lessonFilter.value }),
       page: page.value,
       limit,
     });
+    inbox.value = { ...result, items: result.items ?? [] };
   } catch (err) {
     listError.value = messageFrom(err, 'INBOX_FAILED');
   } finally {
@@ -122,7 +125,8 @@ async function openThread(question: QuestionSummaryDTO): Promise<void> {
   closeError.value = null;
   active.value = null;
   try {
-    active.value = await fetchThread(question.id);
+    const thread = await fetchThread(question.id);
+    active.value = { ...thread, messages: thread.messages ?? [] };
     replyBody.value = '';
   } catch (err) {
     threadError.value = messageFrom(err, 'THREAD_FAILED');
@@ -141,7 +145,8 @@ async function submitReply(): Promise<void> {
   answerSubmitting.value = true;
   answerError.value = null;
   try {
-    active.value = await answerQuestion(active.value.question.id, { body });
+    const thread = await answerQuestion(active.value.question.id, { body });
+    active.value = { ...thread, messages: thread.messages ?? [] };
     replyBody.value = '';
     await loadInbox();
   } catch (err) {
@@ -185,6 +190,12 @@ const authorLabel = (message: QuestionMessageDTO): string => {
 
 const formattedAt = (value: string): string => (value ? value.replace('T', ' ').slice(0, 16) : '');
 
+function statusType(status: QuestionStatus): 'warning' | 'success' | 'info' {
+  if (status === 'pending') return 'warning';
+  if (status === 'answered') return 'success';
+  return 'info';
+}
+
 onMounted(() => {
   void Promise.all([loadFilterOptions(), loadInbox()]);
 });
@@ -192,113 +203,190 @@ onMounted(() => {
 
 <template>
   <section class="qa-page">
-    <header class="head">
-      <h1 class="display">问答管理</h1>
-      <div class="filter-row">
-        <label class="filter">
-          课程
-          <select
-            v-model="courseFilter"
-            name="course_id"
-            :disabled="filterOptionsLoading"
-            @change="changeCourse"
-          >
-            <option value="">全部课程</option>
-            <option v-for="course in courseOptions" :key="course.id" :value="course.id">
-              {{ course.title }}
-            </option>
-          </select>
-        </label>
-        <label class="filter">
-          课节
-          <select
-            v-model="lessonFilter"
-            name="lesson_id"
-            :disabled="courseFilter === '' || filterOptionsLoading"
-            @change="changeFilter"
-          >
-            <option value="">全部课节</option>
-            <option v-for="lesson in lessonOptions" :key="lesson.id" :value="lesson.id">
-              {{ lesson.title }}
-            </option>
-          </select>
-        </label>
-        <label class="filter">
-          状态
-          <select v-model="statusFilter" name="status" @change="changeFilter">
-            <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
+    <header class="page-head">
+      <div class="title-block">
+        <span class="section-kicker">运营工作台 / 问答</span>
+        <h1 class="display">问答管理</h1>
+        <p class="subtitle">集中处理学员提问，保持课程讨论清晰、及时、可追溯。</p>
+      </div>
+      <div class="head-metric">
+        <span class="metric-label">当前队列</span>
+        <strong>{{ inbox?.total ?? 0 }}</strong>
+        <span>条问答</span>
       </div>
     </header>
 
-    <p v-if="filterError" class="notice error">筛选项暂时读不到（{{ filterError }}）。</p>
+    <el-card class="filter-panel" shadow="never">
+      <el-form inline class="filter-form" @submit.prevent>
+        <el-form-item label="课程">
+          <el-select
+            v-model="courseFilter"
+            class="filter-control"
+            placeholder="全部课程"
+            clearable
+            :disabled="filterOptionsLoading"
+            :teleported="false"
+            data-field="course_id"
+            @change="changeCourse"
+          >
+            <el-option
+              v-for="course in courseOptions"
+              :key="course.id"
+              :label="course.title"
+              :value="course.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="课节">
+          <el-select
+            v-model="lessonFilter"
+            class="filter-control"
+            placeholder="全部课节"
+            clearable
+            :disabled="courseFilter === '' || filterOptionsLoading"
+            :teleported="false"
+            data-field="lesson_id"
+            @change="changeFilter"
+          >
+            <el-option
+              v-for="lesson in lessonOptions"
+              :key="lesson.id"
+              :label="lesson.title"
+              :value="lesson.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="statusFilter"
+            class="filter-control"
+            :teleported="false"
+            data-field="status"
+            @change="changeFilter"
+          >
+            <el-option
+              v-for="option in statusOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <el-alert
+        v-if="filterError"
+        class="inline-alert"
+        title="筛选项暂时读不到"
+        :description="filterError"
+        type="warning"
+        show-icon
+        :closable="false"
+      />
+    </el-card>
 
     <div class="layout">
-      <aside class="inbox">
-        <p v-if="loading" class="notice">加载中...</p>
-        <p v-else-if="listError" class="notice error">问答暂时读不到（{{ listError }}）。</p>
-        <ol v-else-if="inbox?.items?.length" class="thread-list">
+      <el-card class="inbox" shadow="never">
+        <template #header>
+          <div class="panel-heading">
+            <div>
+              <h2>问答队列</h2>
+              <p>按最近提问时间排列</p>
+            </div>
+            <el-tag type="info" effect="plain">{{ inbox?.total ?? 0 }} 条</el-tag>
+          </div>
+        </template>
+        <el-skeleton v-if="loading" :rows="5" animated />
+        <el-alert
+          v-else-if="listError"
+          title="问答暂时读不到"
+          :description="listError"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+        <el-empty
+          v-else-if="questionItems.length === 0"
+          description="当前筛选下暂无问答。"
+          :image-size="88"
+        />
+        <ol v-else class="thread-list">
           <li
-            v-for="question in inbox.items"
+            v-for="question in questionItems"
             :key="question.id"
             class="thread-summary"
             :class="{ active: active && active.question.id === question.id }"
           >
-            <button type="button" class="thread-button" @click="openThread(question)">
+            <el-button text class="thread-button" @click="openThread(question)">
               <span class="title">{{ question.title }}</span>
               <span class="meta">
-                <span class="badge" :data-status="question.status">
+                <el-tag :type="statusType(question.status)" effect="light" size="small">
                   {{ statusBadge(question.status) }}
-                </span>
+                </el-tag>
                 <time>{{ formattedAt(question.created_at) }}</time>
               </span>
-            </button>
+            </el-button>
           </li>
         </ol>
-        <p v-else class="notice">当前筛选下暂无问答。</p>
-        <nav v-if="inbox && inbox.total > limit" class="pager" aria-label="问答分页">
-          <button type="button" class="btn" :disabled="page <= 1" @click="changePage(page - 1)">
-            上一页
-          </button>
-          <span class="pager-info">{{ page }} / {{ Math.ceil(inbox.total / limit) }}</span>
-          <button
-            type="button"
-            class="btn"
-            :disabled="page >= Math.ceil(inbox.total / limit)"
-            @click="changePage(page + 1)"
-          >
-            下一页
-          </button>
-        </nav>
-      </aside>
+        <el-pagination
+          v-if="inbox && inbox.total > limit"
+          class="pager"
+          background
+          layout="prev, pager, next"
+          :total="inbox.total"
+          :page-size="limit"
+          :current-page="page"
+          :pager-count="5"
+          @current-change="changePage"
+        />
+      </el-card>
 
-      <article class="thread-detail" :class="{ empty: !active }">
-        <p v-if="threadLoading" class="notice">正在读取问答...</p>
-        <p v-else-if="threadError" class="notice error">
-          问答详情暂时读不到（{{ threadError }}）。
-        </p>
+      <el-card class="thread-detail" :class="{ empty: !active }" shadow="never">
+        <template #header>
+          <div class="detail-heading">
+            <div class="detail-icon"><ChatDotRound /></div>
+            <div>
+              <h2>问答详情</h2>
+              <p>查看上下文并给出处理结果</p>
+            </div>
+          </div>
+        </template>
+        <el-skeleton v-if="threadLoading" :rows="6" animated />
+        <el-alert
+          v-else-if="threadError"
+          title="问答详情暂时读不到"
+          :description="threadError"
+          type="error"
+          show-icon
+          :closable="false"
+        />
         <template v-else-if="active">
           <header class="thread-head">
             <div>
               <h2>{{ active.question.title }}</h2>
-              <span class="badge" :data-status="active.question.status">
+              <el-tag :type="statusType(active.question.status)" effect="light">
                 {{ statusBadge(active.question.status) }}
-              </span>
+              </el-tag>
             </div>
-            <button
+            <el-button
               v-if="active.question.status !== 'closed'"
-              type="button"
-              class="btn btn-danger"
+              class="btn-danger"
+              type="danger"
+              plain
               :disabled="actionBusy"
               @click="submitClose"
             >
+              <el-icon><Close /></el-icon>
               {{ closeSubmitting ? '关闭中...' : '关闭问答' }}
-            </button>
+            </el-button>
           </header>
-          <p v-if="closeError" class="notice error">关闭失败（{{ closeError }}）。</p>
+          <el-alert
+            v-if="closeError"
+            title="关闭失败"
+            :description="`（${closeError}）`"
+            type="error"
+            show-icon
+            :closable="false"
+          />
           <ol class="messages">
             <li
               v-for="message in active.messages"
@@ -306,270 +394,118 @@ onMounted(() => {
               class="message"
               :data-kind="message.kind"
             >
-              <p class="meta">
+              <div class="meta">
                 <strong>{{ authorLabel(message) }}</strong>
                 <time>{{ formattedAt(message.created_at) }}</time>
-              </p>
+              </div>
               <p class="body">{{ message.body }}</p>
             </li>
           </ol>
-          <form
+          <el-form
             v-if="active.question.status !== 'closed'"
             class="reply"
             @submit.prevent="submitReply"
           >
-            <label>
-              回复
-              <textarea
+            <el-form-item label="回复内容" required>
+              <el-input
                 v-model="replyBody"
-                rows="4"
+                type="textarea"
+                :rows="5"
                 maxlength="4000"
+                show-word-limit
                 placeholder="给出明确回答，也可以补充相关提示"
               />
-            </label>
-            <p v-if="answerError" class="notice error">{{ answerError }}</p>
+            </el-form-item>
+            <el-alert
+              v-if="answerError"
+              title="回复未提交"
+              :description="answerError"
+              type="error"
+              show-icon
+              :closable="false"
+            />
             <div class="row-end">
-              <button type="submit" class="btn btn-primary" :disabled="actionBusy">
+              <el-button
+                type="primary"
+                native-type="submit"
+                :loading="answerSubmitting"
+              >
+                <el-icon><Promotion /></el-icon>
                 {{ answerSubmitting ? '提交中...' : '提交回复' }}
-              </button>
+              </el-button>
             </div>
-          </form>
-          <p v-else class="notice">该问答已关闭，无法继续追问。</p>
+          </el-form>
+          <el-empty v-else description="该问答已关闭，无法继续追问。" :image-size="80" />
         </template>
-        <p v-else class="notice">从左侧选择一条问答查看详情。</p>
-      </article>
+        <el-empty v-else description="从左侧选择一条问答查看详情。" :image-size="110" />
+      </el-card>
     </div>
   </section>
 </template>
 
 <style scoped>
-.qa-page {
-  display: grid;
-  gap: 16px;
-}
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.display {
-  margin: 0;
-  font-size: 1.4rem;
-}
-.filter-row {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.filter {
-  display: grid;
-  gap: 4px;
-  min-width: 150px;
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.85rem;
-}
-.filter select {
-  min-height: 34px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  background: #fff;
-  color: inherit;
-  font: inherit;
-}
-.filter select:disabled {
-  background: var(--color-bg-soft, #f5f6fa);
-  opacity: 0.7;
-}
-.layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  gap: 16px;
-}
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
+.qa-page { display: grid; gap: 18px; min-width: 0; }
+.page-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
+.title-block { min-width: 0; }
+.section-kicker { display: block; margin-bottom: 6px; color: #168da7; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
+.display { margin: 0; color: #102a43; font-size: clamp(1.6rem, 2vw, 2rem); letter-spacing: -0.025em; }
+.subtitle { max-width: 620px; margin: 7px 0 0; color: #6b7c93; font-size: 13px; }
+.head-metric { display: grid; min-width: 132px; padding-left: 18px; border-left: 1px solid #d8e2eb; color: #6b7c93; font-size: 12px; line-height: 1.4; }
+.head-metric strong { color: #102a43; font-size: 25px; line-height: 1.15; }
+.filter-panel,
 .inbox,
-.thread-detail {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 8px;
-  padding: 16px;
-  background: #fff;
+.thread-detail { --el-card-border-color: #dce6ef; --el-card-padding: 18px; border-radius: 8px; box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04); }
+.filter-panel :deep(.el-card__body) { padding: 14px 18px; }
+.filter-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; }
+.filter-form :deep(.el-form-item) { margin-bottom: 0; }
+.filter-form :deep(.el-form-item__label) { color: #52667a; font-size: 13px; font-weight: 600; }
+.filter-control { width: 190px; }
+.inline-alert { margin-top: 12px; }
+.layout { display: grid; grid-template-columns: minmax(300px, 370px) minmax(0, 1fr); align-items: start; gap: 18px; }
+.inbox :deep(.el-card__header),
+.thread-detail :deep(.el-card__header) { padding: 16px 18px; }
+.panel-heading,
+.detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-heading h2,
+.detail-heading h2 { margin: 0; color: #102a43; font-size: 15px; }
+.panel-heading p,
+.detail-heading p { margin: 3px 0 0; color: #829ab1; font-size: 12px; }
+.detail-heading { justify-content: flex-start; }
+.detail-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 8px; color: #168da7; background: #e7f6f8; font-size: 19px; }
+.thread-list { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.thread-summary { border: 1px solid #e4ebf1; border-radius: 7px; transition: border-color 0.18s ease, background-color 0.18s ease; }
+.thread-summary.active { border-color: #55b8c5; background: #f1fafb; }
+.thread-button { display: grid; width: 100%; height: auto; min-height: 64px; padding: 11px 12px; justify-content: flex-start; gap: 4px; text-align: left; white-space: normal; }
+.thread-button:hover { color: #102a43; background: transparent; }
+.thread-button .title { overflow-wrap: anywhere; color: #243b53; font-size: 13px; font-weight: 600; }
+.thread-button .meta { display: flex; gap: 8px; align-items: center; color: #829ab1; font-size: 12px; }
+.thread-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #e6edf3; }
+.thread-head h2 { margin: 0 0 8px; overflow-wrap: anywhere; color: #102a43; font-size: 1.15rem; }
+.messages { display: grid; gap: 10px; padding: 0; margin: 12px 0; list-style: none; }
+.message { padding: 12px 14px; border: 1px solid #e1eaf0; border-radius: 7px; background: #f8fbfc; }
+.message[data-kind='admin'] { border-color: #c4e8ea; background: #eef9fa; }
+.message[data-kind='questioner'] { background: #fff; }
+.message .meta { display: flex; gap: 8px; align-items: center; margin: 0 0 6px; color: #829ab1; font-size: 12px; }
+.message .body { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.65; }
+.reply { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid #e6edf3; }
+.reply :deep(.el-form-item) { margin-bottom: 0; }
+.reply :deep(.el-form-item__label) { color: #52667a; font-weight: 600; }
+.row-end { display: flex; justify-content: flex-end; }
+.pager { justify-content: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #edf2f6; }
+.thread-detail.empty { min-height: 360px; }
+.thread-detail :deep(.el-empty) { min-height: 220px; justify-content: center; }
+.inbox :deep(.el-empty) { padding: 38px 0; }
+.inline-alert :deep(.el-alert__title),
+.thread-detail :deep(.el-alert__title),
+.inbox :deep(.el-alert__title) { font-size: 13px; }
+@media (max-width: 900px) {
+  .head-metric { margin-left: 0; }
+  .layout { grid-template-columns: 1fr; }
 }
-.thread-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-.thread-summary {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-}
-.thread-summary.active {
-  border-color: var(--color-primary, #2563eb);
-}
-.thread-button {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  padding: 10px 12px;
-  cursor: pointer;
-  font: inherit;
-  display: grid;
-  gap: 4px;
-}
-.thread-button .title {
-  overflow-wrap: anywhere;
-  font-weight: 600;
-}
-.thread-button .meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.85rem;
-}
-.badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg-soft, #f5f6fa);
-  border: 1px solid var(--color-border, #d0d4dc);
-  font-size: 0.78rem;
-}
-.badge[data-status='pending'] {
-  background: #fff7e6;
-  border-color: #f59f00;
-}
-.badge[data-status='answered'] {
-  background: #e7f7ee;
-  border-color: #2bb673;
-}
-.badge[data-status='closed'] {
-  background: #f0f1f3;
-  border-color: #c5c8d0;
-}
-.thread-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-.thread-head h2 {
-  margin: 0 0 6px 0;
-  overflow-wrap: anywhere;
-  font-size: 1.15rem;
-}
-.messages {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0;
-  display: grid;
-  gap: 10px;
-}
-.message {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: var(--color-bg-soft, #fafbfd);
-}
-.message[data-kind='admin'] {
-  background: #eef4ff;
-  border-color: #c7d8ff;
-}
-.message[data-kind='questioner'] {
-  background: #fff;
-}
-.message .meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.85rem;
-  margin: 0 0 6px 0;
-}
-.message .body {
-  margin: 0;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-.reply {
-  display: grid;
-  gap: 8px;
-  border-top: 1px solid var(--color-border, #d0d4dc);
-  padding-top: 12px;
-}
-.reply label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
-}
-.reply textarea {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
-  resize: vertical;
-}
-.row-end {
-  display: flex;
-  justify-content: flex-end;
-}
-.btn {
-  min-height: 34px;
-  padding: 6px 12px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-primary {
-  background: var(--color-primary, #2563eb);
-  color: #fff;
-  border-color: transparent;
-}
-.btn-danger {
-  background: #b42318;
-  color: #fff;
-  border-color: transparent;
-}
-.notice {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0;
-}
-.notice.error {
-  color: #b42318;
-}
-.pager {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-.pager-info {
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #5b6472);
-}
-.thread-detail.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
+@media (max-width: 560px) {
+  .filter-form { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .filter-form :deep(.el-form-item) { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; }
+  .filter-control { width: 100%; }
+  .head-metric { width: 100%; padding: 10px 0 0; border-top: 1px solid #d8e2eb; border-left: 0; }
 }
 </style>

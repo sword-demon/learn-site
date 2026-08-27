@@ -26,6 +26,16 @@ import type {
 } from '@learn-site/contracts';
 import { listCourses } from '@/api/catalog';
 import type { CourseDTO } from '@learn-site/contracts';
+import {
+  CircleCheck,
+  Collection,
+  Delete,
+  MapLocation,
+  Plus,
+  Promotion,
+  Remove,
+  Setting,
+} from '@element-plus/icons-vue';
 
 defineOptions({ name: 'MapEditorView' });
 
@@ -65,20 +75,22 @@ const statusOptions: Array<{ value: '' | MapStatus; label: string }> = [
 const filterStatus = ref<'' | MapStatus>('');
 const availableCourses = computed(() => {
   const usedCourseIds = new Set(
-    active.value?.stages.flatMap((stage) => stage.courses.map((step) => step.course_id)) ?? [],
+    active.value?.stages?.flatMap((stage) => stage.courses?.map((step) => step.course_id) ?? []) ?? [],
   );
   return courses.value.filter((course) => !usedCourseIds.has(course.id));
 });
+const mapItems = computed(() => list.value?.items ?? []);
 
 async function loadList(): Promise<void> {
   loading.value = true;
   loadError.value = null;
   try {
-    list.value = await listMaps({
+    const result = await listMaps({
       ...(filterStatus.value === '' ? {} : { status: filterStatus.value }),
       page: 1,
       limit: 50,
     });
+    list.value = { ...result, items: result.items ?? [] };
   } catch (err) {
     loadError.value = (err as Error).message || 'load_failed';
   } finally {
@@ -96,7 +108,11 @@ async function loadActive(id: number): Promise<void> {
 }
 
 function setActive(detail: AdminMapDetailDTO): void {
-  active.value = detail;
+  active.value = {
+    ...detail,
+    stages: detail.stages ?? [],
+    publish_issues: detail.publish_issues ?? [],
+  };
   mapSettings.value = {
     department_id: detail.department_id,
     title: detail.title,
@@ -150,7 +166,7 @@ async function submitCreate(): Promise<void> {
 
 async function publishToggle(): Promise<void> {
   if (!canPublish || !active.value || submitting.value) return;
-  if (active.value.status === 'draft' && active.value.publish_issues.length > 0) return;
+  if (active.value.status === 'draft' && (active.value.publish_issues?.length ?? 0) > 0) return;
   submitting.value = true;
   try {
     setActive(
@@ -253,9 +269,8 @@ async function updateStageField(
   }
 }
 
-function updateStageSummary(stageId: number, event: Event): void {
-  const value = (event.target as HTMLTextAreaElement).value.trim();
-  void updateStageField(stageId, { summary: value || null });
+function updateStageSummaryValue(stageId: number, value: string): void {
+  void updateStageField(stageId, { summary: value.trim() || null });
 }
 
 async function submitAddCourse(): Promise<void> {
@@ -313,6 +328,16 @@ function statusLabel(s: MapStatus): string {
   return s === 'published' ? '已发布' : '草稿';
 }
 
+function statusType(s: MapStatus): 'success' | 'info' {
+  return s === 'published' ? 'success' : 'info';
+}
+
+function courseStatusLabel(status: string): string {
+  if (status === 'published') return '已发布';
+  if (status === 'unpublished') return '已下架';
+  return '草稿';
+}
+
 function publishIssueLabel(issue: MapPublishIssueDTO): string {
   if (!active.value) return issue.code;
   if (issue.code === 'MAP_HAS_NO_STAGES') {
@@ -333,110 +358,165 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
 
 <template>
   <section class="page map-editor">
-    <header class="head">
-      <h1 class="display">学习地图</h1>
-      <label class="filter">
-        状态
-        <select v-model="filterStatus">
-          <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-            {{ opt.label }}
-          </option>
-        </select>
-      </label>
+    <header class="page-head">
+      <div class="title-block">
+        <span class="section-kicker">内容编排 / 学习路径</span>
+        <h1 class="display">学习地图</h1>
+        <p class="subtitle">把课程组织成可执行的成长路径，并在发布前检查内容完整性。</p>
+      </div>
+      <div class="head-metric">
+        <span>地图总数</span>
+        <strong>{{ list?.total ?? 0 }}</strong>
+        <span>条配置</span>
+      </div>
     </header>
 
-    <p v-if="loading" class="notice">加载中…</p>
-    <p v-else-if="loadError" class="notice error">暂时读不到 ({{ loadError }}).</p>
+    <el-card class="filter-panel" shadow="never">
+      <el-form inline class="filter-form">
+        <el-form-item label="发布状态">
+          <el-select
+            v-model="filterStatus"
+            class="filter-control"
+            :teleported="false"
+            data-field="status"
+          >
+            <el-option
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <el-alert
+      v-if="loadError"
+      title="学习地图暂时读不到"
+      :description="loadError"
+      type="error"
+      show-icon
+      :closable="false"
+    />
 
     <div class="layout">
-      <aside class="left-pane">
-        <form v-if="canManage" data-role="new-map" class="new-map" @submit.prevent="submitCreate">
-          <h2>新建地图</h2>
-          <label>
-            部门
-            <select v-model.number="newMap.department_id">
-              <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
-            </select>
-          </label>
-          <label>
-            标题
-            <input v-model="newMap.title" type="text" maxlength="128" />
-          </label>
-          <label>
-            简介
-            <input v-model="newMap.summary" type="text" maxlength="255" />
-          </label>
-          <button type="submit" class="btn btn-primary" :disabled="submitting">创建草稿</button>
-        </form>
+      <el-card class="left-pane" shadow="never">
+        <template #header>
+          <div class="panel-heading">
+            <div>
+              <h2>地图目录</h2>
+              <p>选择一条地图进入编辑</p>
+            </div>
+            <el-tag type="info" effect="plain">{{ list?.items?.length ?? 0 }} 条</el-tag>
+          </div>
+        </template>
+        <el-form v-if="canManage" data-role="new-map" class="new-map" @submit.prevent="submitCreate">
+          <div class="section-title"><Plus /><span>新建地图</span></div>
+          <div class="compact-form">
+            <el-form-item label="所属部门" required>
+              <el-select v-model="newMap.department_id" class="full-control" :teleported="false">
+                <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="标题" required>
+              <el-input v-model="newMap.title" maxlength="128" placeholder="例如：前端工程师成长路线" />
+            </el-form-item>
+            <el-form-item label="简介">
+              <el-input v-model="newMap.summary" maxlength="255" placeholder="一句话说明学习路径" />
+            </el-form-item>
+          </div>
+          <el-button type="primary" native-type="submit" :loading="submitting" class="full-control">
+            <el-icon><Plus /></el-icon>
+            创建草稿
+          </el-button>
+        </el-form>
 
-        <h2>地图列表</h2>
-        <ol v-if="list?.items?.length" class="map-list">
+        <el-divider v-if="canManage" />
+        <el-skeleton v-if="loading" :rows="5" animated />
+        <el-empty v-else-if="mapItems.length === 0" description="暂无学习地图" :image-size="88" />
+        <ol v-else class="map-list">
           <li
-            v-for="m in list.items"
+            v-for="m in mapItems"
             :key="m.id"
             class="map-item"
             :class="{ active: active && active.id === m.id }"
           >
-            <button
-              type="button"
+            <el-button
+              text
               class="map-button"
               @click="router.replace({ query: { id: String(m.id) } })"
             >
-              <strong>{{ m.title }}</strong>
-              <span class="badge" :data-status="m.status">{{ statusLabel(m.status) }}</span>
-            </button>
+              <span class="map-marker"><MapLocation /></span>
+              <span class="map-copy">
+                <strong>{{ m.title }}</strong>
+                <small>更新于 {{ m.updated_at }}</small>
+              </span>
+              <el-tag :type="statusType(m.status)" effect="light" size="small">{{ statusLabel(m.status) }}</el-tag>
+            </el-button>
           </li>
         </ol>
-        <p v-else class="notice">暂无地图.</p>
-      </aside>
+      </el-card>
 
-      <article class="right-pane">
-        <p v-if="!active" class="notice">从左侧选择地图开始编辑.</p>
-        <p v-else-if="activeError" class="notice error">{{ activeError }}</p>
+      <el-card class="right-pane" shadow="never">
+        <el-alert
+          v-if="activeError"
+          title="操作未完成"
+          :description="activeError"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+        <el-empty v-if="!active" description="从左侧选择地图开始编辑" :image-size="110" />
         <template v-else>
           <header class="map-head">
-            <div>
+            <div class="map-title-block">
+              <span class="section-kicker">地图编辑</span>
               <h2>{{ active.title }}</h2>
               <p v-if="active.summary" class="summary">{{ active.summary }}</p>
-              <p v-if="active.objective" class="map-meta">目标：{{ active.objective }}</p>
-              <p v-if="active.audience" class="map-meta">适用人群：{{ active.audience }}</p>
+              <div class="map-meta-list">
+                <span v-if="active.objective">目标：{{ active.objective }}</span>
+                <span v-if="active.audience">适用人群：{{ active.audience }}</span>
+              </div>
             </div>
             <div class="actions">
-              <span class="badge" :data-status="active.status">{{
-                statusLabel(active.status)
-              }}</span>
-              <button
+              <el-tag :type="statusType(active.status)" effect="light">{{ statusLabel(active.status) }}</el-tag>
+              <el-button
                 v-if="canPublish"
-                type="button"
-                class="btn"
+                type="primary"
+                plain
                 data-action="publish"
                 :disabled="
                   submitting || (active.status === 'draft' && active.publish_issues?.length > 0)
                 "
                 @click="publishToggle"
               >
+                <el-icon><Promotion /></el-icon>
                 {{ active.status === 'published' ? '下架' : '发布' }}
-              </button>
-              <button
+              </el-button>
+              <el-button
                 v-if="canManage && active.status === 'draft'"
-                type="button"
-                class="btn btn-danger"
+                type="danger"
+                plain
                 :disabled="submitting"
                 @click="destroyActive"
               >
+                <el-icon><Delete /></el-icon>
                 删除草稿
-              </button>
+              </el-button>
             </div>
           </header>
 
-          <section
+          <el-alert
             v-if="active.publish_issues?.length"
             data-role="publish-issues"
             class="publish-issues"
-            aria-labelledby="publish-issues-title"
+            title="发布前需要处理"
+            type="warning"
+            show-icon
+            :closable="false"
           >
-            <h3 id="publish-issues-title">发布前需要处理</h3>
-            <ul>
+            <ul class="issue-list">
               <li
                 v-for="issue in active.publish_issues"
                 :key="`${issue.code}-${issue.stage_id}-${issue.course_id}`"
@@ -444,76 +524,83 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                 {{ publishIssueLabel(issue) }}
               </li>
             </ul>
-          </section>
+          </el-alert>
 
-          <form
+          <el-form
             v-if="canManage"
             data-role="map-settings"
             class="map-settings"
             @submit.prevent="submitMapSettings"
           >
-            <h3>地图设置</h3>
+            <div class="section-title"><Setting /><span>地图设置</span></div>
             <div class="form-grid">
-              <label>
-                所属部门
-                <select v-model.number="mapSettings.department_id" name="department_id">
-                  <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
-                </select>
-              </label>
-              <label>
-                标题
-                <input v-model="mapSettings.title" name="title" type="text" maxlength="128" />
-              </label>
-              <label class="wide">
-                简介
-                <input v-model="mapSettings.summary" name="summary" type="text" maxlength="255" />
-              </label>
-              <label class="wide">
-                封面地址
-                <input
+              <el-form-item label="所属部门" required>
+                <el-select v-model="mapSettings.department_id" name="department_id" data-field="department_id" :teleported="false">
+                  <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="标题" required>
+                <el-input v-model="mapSettings.title" name="title" maxlength="128" />
+              </el-form-item>
+              <el-form-item label="简介" class="wide">
+                <el-input v-model="mapSettings.summary" name="summary" maxlength="255" />
+              </el-form-item>
+              <el-form-item label="封面地址" class="wide">
+                <el-input
                   v-model="mapSettings.cover_url"
                   name="cover_url"
-                  type="url"
                   maxlength="255"
                 />
-              </label>
-              <label>
-                学习目标
-                <textarea v-model="mapSettings.objective" name="objective" rows="3"></textarea>
-              </label>
-              <label>
-                适用人群
-                <textarea v-model="mapSettings.audience" name="audience" rows="3"></textarea>
-              </label>
+              </el-form-item>
+              <el-form-item label="学习目标">
+                <el-input v-model="mapSettings.objective" name="objective" type="textarea" :rows="3" />
+              </el-form-item>
+              <el-form-item label="适用人群">
+                <el-input v-model="mapSettings.audience" name="audience" type="textarea" :rows="3" />
+              </el-form-item>
             </div>
             <div class="row-end">
-              <button
-                type="submit"
-                class="btn btn-primary"
+              <el-button
+                type="primary"
+                native-type="submit"
                 :disabled="submitting || !mapSettings.title.trim()"
               >
+                <el-icon><CircleCheck /></el-icon>
                 保存设置
-              </button>
+              </el-button>
             </div>
-          </form>
+          </el-form>
 
-          <form
+          <el-form
             v-if="canManage"
             data-role="new-stage"
             class="new-stage"
             @submit.prevent="submitStage"
           >
-            <label>
-              新阶段标题
-              <input v-model="newStage.title" type="text" maxlength="128" />
-            </label>
-            <label>
-              简介
-              <input v-model="newStage.summary" type="text" maxlength="255" />
-            </label>
-            <button type="submit" class="btn btn-primary" :disabled="submitting">添加阶段</button>
-          </form>
+            <div class="section-title"><Plus /><span>添加阶段</span></div>
+            <div class="new-stage-form">
+              <el-form-item label="阶段标题" required>
+                <el-input v-model="newStage.title" maxlength="128" placeholder="例如：类型基础" />
+              </el-form-item>
+              <el-form-item label="阶段简介">
+                <el-input v-model="newStage.summary" maxlength="255" placeholder="阶段学习重点" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" native-type="submit" :loading="submitting">
+                  <el-icon><Plus /></el-icon>
+                  添加阶段
+                </el-button>
+              </el-form-item>
+            </div>
+          </el-form>
 
+          <div class="stage-heading">
+            <div>
+              <h3>学习阶段</h3>
+              <span>按顺序组织课程内容</span>
+            </div>
+            <el-tag type="info" effect="plain">{{ active.stages?.length ?? 0 }} 个阶段</el-tag>
+          </div>
           <ol class="stages">
             <li
               v-for="stage in active.stages"
@@ -523,97 +610,93 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             >
               <header class="stage-head">
                 <template v-if="canManage">
-                  <input
+                  <el-input
                     class="stage-title"
-                    :value="stage.title"
-                    type="text"
+                    :model-value="stage.title"
                     maxlength="128"
-                    @change="
-                      updateStageField(stage.id, {
-                        title: ($event.target as HTMLInputElement).value,
-                      })
-                    "
+                    @change="updateStageField(stage.id, { title: $event })"
                   />
-                  <input
+                  <el-input-number
                     class="stage-order"
-                    :value="stage.sort_order"
-                    type="number"
-                    min="1"
-                    @change="
-                      updateStageField(stage.id, {
-                        sort_order: Number(($event.target as HTMLInputElement).value),
-                      })
-                    "
+                    :model-value="stage.sort_order"
+                    :min="1"
+                    controls-position="right"
+                    @change="updateStageField(stage.id, { sort_order: Number($event) })"
                   />
-                  <button
-                    type="button"
-                    class="btn btn-danger"
+                  <el-button
+                    type="danger"
+                    plain
                     data-action="delete-stage"
                     :disabled="submitting"
                     @click="removeStage(stage.id)"
                   >
+                    <el-icon><Delete /></el-icon>
                     删除
-                  </button>
+                  </el-button>
                 </template>
                 <div v-else class="stage-copy">
                   <h3>{{ stage.title }}</h3>
                   <p v-if="stage.summary">{{ stage.summary }}</p>
                 </div>
               </header>
-              <label v-if="canManage" class="stage-summary">
-                阶段说明
-                <textarea
-                  name="stage_summary"
-                  rows="2"
-                  :value="stage.summary ?? ''"
-                  @change="updateStageSummary(stage.id, $event)"
-                ></textarea>
-              </label>
+              <el-form v-if="canManage" label-position="top" class="stage-summary">
+                <el-form-item label="阶段说明">
+                  <el-input
+                    name="stage_summary"
+                    type="textarea"
+                    :rows="2"
+                    :model-value="stage.summary ?? ''"
+                    @change="updateStageSummaryValue(stage.id, $event)"
+                  />
+                </el-form-item>
+              </el-form>
               <ol v-if="stage.courses?.length" class="course-list">
                 <li v-for="sc in stage.courses" :key="sc.map_stage_course_id" class="course">
-                  <span class="course-title">{{
-                    sc.course?.title ?? `课程 #${sc.course_id}`
-                  }}</span>
-                  <span v-if="sc.course" class="course-meta">
-                    {{ sc.course.teacher_name }} · {{ sc.course.status }}
-                  </span>
-                  <button
+                  <div class="course-icon"><Collection /></div>
+                  <div class="course-copy">
+                    <span class="course-title">{{ sc.course?.title ?? `课程 #${sc.course_id}` }}</span>
+                    <span v-if="sc.course" class="course-meta">
+                      {{ sc.course.teacher_name }} · {{ courseStatusLabel(sc.course.status) }}
+                    </span>
+                  </div>
+                  <el-button
                     v-if="canManage"
-                    type="button"
-                    class="btn btn-danger"
+                    type="danger"
+                    link
                     data-action="remove-course"
                     :disabled="submitting"
                     @click="dropCourse(stage.id, sc.course_id)"
                   >
+                    <el-icon><Remove /></el-icon>
                     移除
-                  </button>
+                  </el-button>
                 </li>
               </ol>
-              <p v-else class="notice">该阶段暂无课程.</p>
+              <el-empty v-else description="该阶段暂无课程" :image-size="64" />
 
-              <form
+              <el-form
                 v-if="canManage && addCourseStageId === stage.id"
-                class="add-course"
+                class="add-course add-course-form"
                 @submit.prevent="submitAddCourse"
               >
-                <label>
-                  选择课程
-                  <select v-model.number="addCourseId" name="course_id">
-                    <option :value="0" disabled>请选择课程</option>
-                    <option v-for="c in availableCourses" :key="c.id" :value="c.id">
-                      {{ c.title }}
-                    </option>
-                  </select>
-                </label>
-                <div class="row-end">
-                  <button type="button" class="btn" @click="addCourseStageId = null">取消</button>
-                  <button type="submit" class="btn btn-primary" :disabled="submitting">添加</button>
+                <div>
+                  <el-form-item label="选择课程" required>
+                    <el-select v-model="addCourseId" data-field="course_id" :teleported="false" placeholder="请选择课程">
+                      <el-option v-for="c in availableCourses" :key="c.id" :label="c.title" :value="c.id" />
+                    </el-select>
+                  </el-form-item>
                 </div>
-              </form>
-              <button
+                <div class="row-end">
+                  <el-button @click="addCourseStageId = null">取消</el-button>
+                  <el-button type="primary" native-type="submit" :disabled="submitting">
+                    <el-icon><Plus /></el-icon>
+                    添加课程
+                  </el-button>
+                </div>
+              </el-form>
+              <el-button
                 v-else-if="canManage"
-                type="button"
-                class="btn"
+                plain
                 data-action="add-course"
                 :disabled="submitting || availableCourses.length === 0"
                 @click="
@@ -621,307 +704,115 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                   addCourseId = 0;
                 "
               >
-                + 添加课程
-              </button>
+                <el-icon><Plus /></el-icon>
+                添加课程
+              </el-button>
             </li>
           </ol>
         </template>
-      </article>
+      </el-card>
     </div>
   </section>
 </template>
 
 <style scoped>
-.page {
-  display: grid;
-  gap: 16px;
-}
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.display {
-  margin: 0;
-  font-size: 1.4rem;
-}
-.filter select {
-  padding: 4px 8px;
-}
-.layout {
-  display: grid;
-  grid-template-columns: minmax(260px, 360px) 1fr;
-  gap: 16px;
-}
-@media (max-width: 1000px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
+.page { display: grid; gap: 18px; min-width: 0; }
+.page-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
+.title-block { min-width: 0; }
+.section-kicker { display: block; margin-bottom: 6px; color: #168da7; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
+.display { margin: 0; color: #102a43; font-size: clamp(1.6rem, 2vw, 2rem); letter-spacing: -0.025em; }
+.subtitle { max-width: 620px; margin: 7px 0 0; color: #6b7c93; font-size: 13px; }
+.head-metric { display: grid; min-width: 132px; padding-left: 18px; border-left: 1px solid #d8e2eb; color: #6b7c93; font-size: 12px; line-height: 1.4; }
+.head-metric strong { color: #102a43; font-size: 25px; line-height: 1.15; }
+.filter-panel,
 .left-pane,
-.right-pane {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 8px;
-  padding: 16px;
-  background: #fff;
-}
-.new-map,
-.new-stage {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.new-map label,
-.new-stage label,
-.add-course label,
-.filter {
-  display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
-}
-.new-map input,
-.new-map select,
-.new-stage input,
-.add-course select,
-.stage-title,
-.stage-order,
-.filter select {
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
-}
-.map-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-.map-item {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-}
-.map-item.active {
-  border-color: var(--color-primary, #2563eb);
-}
-.map-button {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  padding: 10px 12px;
-  cursor: pointer;
-  font: inherit;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg-soft, #f5f6fa);
-  border: 1px solid var(--color-border, #d0d4dc);
-  font-size: 0.78rem;
-}
-.badge[data-status='published'] {
-  background: #e7f7ee;
-  border-color: #2bb673;
-}
-.badge[data-status='draft'] {
-  background: #f0f1f3;
-  border-color: #c5c8d0;
-}
-.map-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-.map-head h2 {
-  margin: 0;
-}
-.actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.summary {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0;
-}
-.map-meta {
-  color: var(--color-text-muted, #5b6472);
-  margin: 4px 0 0;
-  font-size: 0.9rem;
-}
-.map-settings {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--color-border, #d0d4dc);
-}
-.map-settings h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-.publish-issues {
-  margin-bottom: 16px;
-  padding: 12px;
-  border-left: 3px solid #b54708;
-  background: #fff7ed;
-  color: #7a2e0e;
-}
-.publish-issues h3 {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-}
-.publish-issues ul {
-  margin: 0;
-  padding-left: 20px;
-}
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.form-grid label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
-}
-.form-grid .wide {
-  grid-column: 1 / -1;
-}
-.form-grid input,
-.form-grid select,
-.form-grid textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
-}
-@media (max-width: 700px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-  .form-grid .wide {
-    grid-column: auto;
-  }
-}
-.stages {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-}
-.stage {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-}
-.stage-head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
+.right-pane { --el-card-border-color: #dce6ef; --el-card-padding: 18px; border-radius: 8px; box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04); }
+.filter-panel :deep(.el-card__body) { padding: 14px 18px; }
+.filter-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; }
+.filter-form :deep(.el-form-item) { margin-bottom: 0; }
+.filter-form :deep(.el-form-item__label) { color: #52667a; font-size: 13px; font-weight: 600; }
+.filter-control { width: 190px; }
+.layout { display: grid; grid-template-columns: minmax(290px, 360px) minmax(0, 1fr); align-items: start; gap: 18px; }
+.left-pane :deep(.el-card__header),
+.right-pane :deep(.el-card__header) { padding: 16px 18px; }
+.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-heading h2 { margin: 0; color: #102a43; font-size: 15px; }
+.panel-heading p { margin: 3px 0 0; color: #829ab1; font-size: 12px; }
+.new-map { display: grid; gap: 8px; }
+.section-title { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: #243b53; font-size: 14px; font-weight: 700; }
+.section-title svg { width: 16px; color: #168da7; }
+.compact-form :deep(.el-form-item),
+.form-grid :deep(.el-form-item) { margin-bottom: 12px; }
+.compact-form :deep(.el-form-item__label),
+.form-grid :deep(.el-form-item__label),
+.new-stage-form :deep(.el-form-item__label),
+.add-course-form :deep(.el-form-item__label),
+.stage-summary :deep(.el-form-item__label) { color: #52667a; font-size: 12px; font-weight: 600; }
+.full-control { width: 100%; }
+.map-list { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.map-item { border: 1px solid #e4ebf1; border-radius: 7px; transition: border-color 0.18s ease, background-color 0.18s ease; }
+.map-item.active { border-color: #55b8c5; background: #f1fafb; }
+.map-button { display: flex; width: 100%; height: auto; min-height: 66px; padding: 10px 11px; align-items: center; gap: 9px; text-align: left; white-space: normal; }
+.map-button:hover { color: #102a43; background: transparent; }
+.map-marker { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 7px; color: #168da7; background: #e7f6f8; }
+.map-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.map-copy strong { overflow-wrap: anywhere; color: #243b53; font-size: 13px; }
+.map-copy small { overflow-wrap: anywhere; color: #829ab1; font-size: 11px; }
+.map-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid #e6edf3; }
+.map-title-block { min-width: 0; }
+.map-head h2 { margin: 0; color: #102a43; font-size: 21px; letter-spacing: -0.02em; }
+.map-meta-list { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 9px; color: #6b7c93; font-size: 12px; }
+.summary { max-width: 680px; margin: 6px 0 0; color: #52667a; font-size: 13px; }
+.actions { display: flex; gap: 8px; align-items: center; }
+.publish-issues { margin-bottom: 16px; }
+.issue-list { padding-left: 18px; margin: 4px 0 0; line-height: 1.7; }
+.map-settings { display: grid; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid #e6edf3; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.form-grid .wide { grid-column: 1 / -1; }
+.row-end { display: flex; justify-content: flex-end; gap: 8px; }
+.new-stage { padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid #e6edf3; }
+.new-stage-form { display: flex; flex-wrap: wrap; gap: 0 14px; align-items: flex-end; }
+.new-stage-form :deep(.el-form-item) { margin-bottom: 0; }
+.new-stage-form :deep(.el-input) { width: 200px; }
+.stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.stage-heading h3 { margin: 0; color: #243b53; font-size: 15px; }
+.stage-heading span { display: block; margin-top: 3px; color: #829ab1; font-size: 12px; }
+.stages { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.stage { display: grid; gap: 10px; padding: 14px; border: 1px solid #e1eaf0; border-radius: 7px; background: #fbfdfe; }
+.stage-head { display: flex; gap: 8px; align-items: center; }
+.stage-title { min-width: 0; flex: 1; }
+.stage-order { width: 88px; }
 .stage-copy h3,
-.stage-copy p {
-  margin: 0;
+.stage-copy p { margin: 0; }
+.stage-copy h3 { color: #243b53; font-size: 15px; }
+.stage-copy p { margin-top: 4px; color: #6b7c93; font-size: 12px; }
+.stage-summary { display: block; }
+.stage-summary :deep(.el-form-item) { margin-bottom: 0; }
+.course-list { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.course { display: flex; min-width: 0; gap: 9px; align-items: center; padding: 8px 10px; border: 1px solid #e5edf2; border-radius: 6px; background: #fff; }
+.course-icon { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border-radius: 6px; color: #168da7; background: #e7f6f8; font-size: 14px; }
+.course-copy { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.course-title { overflow-wrap: anywhere; color: #243b53; font-size: 13px; font-weight: 600; }
+.course-meta { color: #829ab1; font-size: 11px; }
+.add-course { padding: 10px 12px; border: 1px dashed #b9dfe3; border-radius: 7px; background: #f7fcfc; }
+.add-course-form :deep(.el-form-item) { margin-bottom: 0; }
+.add-course-form :deep(.el-select) { width: min(100%, 300px); }
+.right-pane :deep(.el-empty) { min-height: 320px; justify-content: center; }
+.right-pane :deep(.el-alert) { margin-bottom: 14px; }
+@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .wide { grid-column: auto; }
+  .new-stage-form { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .new-stage-form :deep(.el-input) { width: 100%; }
+  .new-stage-form :deep(.el-form-item) { margin-bottom: 12px; }
 }
-.stage-copy p {
-  margin-top: 4px;
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.9rem;
-}
-.stage-summary {
-  display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
-}
-.stage-summary textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
-}
-.stage-title {
-  flex: 1;
-}
-.stage-order {
-  width: 80px;
-}
-.course-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 6px;
-}
-.course {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 10px;
-  background: var(--color-bg-soft, #fafbfd);
-  border-radius: 6px;
-}
-.course-meta {
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.85rem;
-}
-.btn {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-primary {
-  background: var(--color-primary, #2563eb);
-  color: #fff;
-  border-color: transparent;
-}
-.btn-danger {
-  background: #b42318;
-  color: #fff;
-  border-color: transparent;
-}
-.row-end {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.notice {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0;
-}
-.notice.error {
-  color: #b42318;
-}
-.add-course {
-  display: grid;
-  gap: 8px;
-  padding: 8px;
-  border: 1px dashed var(--color-border, #d0d4dc);
-  border-radius: 6px;
+@media (max-width: 560px) {
+  .filter-form { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .filter-form :deep(.el-form-item) { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; }
+  .filter-control { width: 100%; }
+  .stage-head { align-items: stretch; flex-wrap: wrap; }
+  .stage-title { width: 100%; flex-basis: 100%; }
+  .stage-order { width: 110px; }
 }
 </style>
