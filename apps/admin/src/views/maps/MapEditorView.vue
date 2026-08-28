@@ -15,6 +15,7 @@ import {
   unpublishMap,
   updateMap,
   updateStage,
+  uploadMapCover,
 } from '@/api/learningMaps';
 import { listDepartments } from '@/api/org';
 import type {
@@ -26,6 +27,7 @@ import type {
 } from '@learn-site/contracts';
 import { listCourses } from '@/api/catalog';
 import type { CourseDTO } from '@learn-site/contracts';
+import CourseCoverUpload from '@/views/catalog/CourseCoverUpload.vue';
 import {
   CircleCheck,
   Collection,
@@ -67,12 +69,14 @@ const newStage = ref({ title: '', summary: '' });
 const addCourseStageId = ref<number | null>(null);
 const addCourseId = ref<number>(0);
 
-const statusOptions: Array<{ value: '' | MapStatus; label: string }> = [
-  { value: '', label: '全部' },
+type MapStatusFilter = 'all' | MapStatus;
+
+const statusOptions: Array<{ value: MapStatusFilter; label: string }> = [
+  { value: 'all', label: '全部' },
   { value: 'draft', label: '草稿' },
   { value: 'published', label: '已发布' },
 ];
-const filterStatus = ref<'' | MapStatus>('');
+const filterStatus = ref<MapStatusFilter>('all');
 const availableCourses = computed(() => {
   const usedCourseIds = new Set(
     active.value?.stages?.flatMap((stage) => stage.courses?.map((step) => step.course_id) ?? []) ?? [],
@@ -86,7 +90,7 @@ async function loadList(): Promise<void> {
   loadError.value = null;
   try {
     const result = await listMaps({
-      ...(filterStatus.value === '' ? {} : { status: filterStatus.value }),
+      ...(filterStatus.value === 'all' ? {} : { status: filterStatus.value }),
       page: 1,
       limit: 50,
     });
@@ -377,7 +381,10 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
           <el-select
             v-model="filterStatus"
             class="filter-control"
-            :teleported="false"
+            placement="bottom-start"
+            :teleported="true"
+            :clearable="false"
+            placeholder="全部"
             data-field="status"
           >
             <el-option
@@ -530,36 +537,56 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             v-if="canManage"
             data-role="map-settings"
             class="map-settings"
+            label-position="top"
             @submit.prevent="submitMapSettings"
           >
-            <div class="section-title"><Setting /><span>地图设置</span></div>
-            <div class="form-grid">
-              <el-form-item label="所属部门" required>
-                <el-select v-model="mapSettings.department_id" name="department_id" data-field="department_id" :teleported="false">
-                  <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="标题" required>
-                <el-input v-model="mapSettings.title" name="title" maxlength="128" />
-              </el-form-item>
-              <el-form-item label="简介" class="wide">
-                <el-input v-model="mapSettings.summary" name="summary" maxlength="255" />
-              </el-form-item>
-              <el-form-item label="封面地址" class="wide">
-                <el-input
-                  v-model="mapSettings.cover_url"
-                  name="cover_url"
-                  maxlength="255"
-                />
-              </el-form-item>
-              <el-form-item label="学习目标">
-                <el-input v-model="mapSettings.objective" name="objective" type="textarea" :rows="3" />
-              </el-form-item>
-              <el-form-item label="适用人群">
-                <el-input v-model="mapSettings.audience" name="audience" type="textarea" :rows="3" />
-              </el-form-item>
+            <div class="settings-heading">
+              <div>
+                <div class="section-title settings-title"><Setting /><span>地图设置</span></div>
+                <p class="settings-intro">完善地图的定位与学习画像，让学员一眼知道这条路径适合谁。</p>
+              </div>
+              <span class="settings-caption">基础信息</span>
             </div>
-            <div class="row-end">
+            <div class="settings-layout">
+              <div class="settings-fields">
+                <div class="settings-grid">
+                  <el-form-item label="标题" required>
+                    <el-input v-model="mapSettings.title" name="title" maxlength="128" placeholder="例如：前端工程师成长路线" />
+                  </el-form-item>
+                  <el-form-item label="所属部门" required>
+                    <el-select v-model="mapSettings.department_id" name="department_id" data-field="department_id" :teleported="false">
+                      <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="简介" class="settings-wide">
+                    <el-input v-model="mapSettings.summary" name="summary" maxlength="255" placeholder="用一句话说明这条学习路径将带来的成长" />
+                  </el-form-item>
+                  <el-form-item label="学习目标">
+                    <el-input v-model="mapSettings.objective" name="objective" type="textarea" :rows="4" placeholder="学完这条地图后，学员能够独立完成什么？" />
+                  </el-form-item>
+                  <el-form-item label="适用人群">
+                    <el-input v-model="mapSettings.audience" name="audience" type="textarea" :rows="4" placeholder="例如：有 1 年前端经验，希望提升工程能力的开发者" />
+                  </el-form-item>
+                </div>
+              </div>
+              <aside class="cover-workbench" aria-labelledby="map-cover-title">
+                <div class="cover-workbench-head">
+                  <div>
+                    <span class="field-kicker">视觉入口</span>
+                    <h3 id="map-cover-title">地图封面</h3>
+                  </div>
+                  <span class="optional-mark">可选</span>
+                </div>
+                <CourseCoverUpload
+                  v-model="mapSettings.cover_url"
+                  data-role="map-cover-upload"
+                  :upload="uploadMapCover"
+                />
+                <p class="cover-description">选择一张能代表学习主题的横版图片，建议使用 16:9 构图。</p>
+              </aside>
+            </div>
+            <div class="settings-footer">
+              <span class="save-note"><CircleCheck /> 修改信息后记得保存</span>
               <el-button
                 type="primary"
                 native-type="submit"
@@ -575,17 +602,21 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             v-if="canManage"
             data-role="new-stage"
             class="new-stage"
+            label-position="top"
             @submit.prevent="submitStage"
           >
-            <div class="section-title"><Plus /><span>添加阶段</span></div>
+            <div class="stage-form-heading">
+              <div class="section-title"><Plus /><span>添加阶段</span></div>
+              <p>先搭建学习顺序，再把课程放进对应阶段。</p>
+            </div>
             <div class="new-stage-form">
-              <el-form-item label="阶段标题" required>
+              <el-form-item label="阶段标题" required class="stage-name-field">
                 <el-input v-model="newStage.title" maxlength="128" placeholder="例如：类型基础" />
               </el-form-item>
-              <el-form-item label="阶段简介">
+              <el-form-item label="阶段简介" class="stage-summary-field">
                 <el-input v-model="newStage.summary" maxlength="255" placeholder="阶段学习重点" />
               </el-form-item>
-              <el-form-item>
+              <el-form-item class="stage-action-field">
                 <el-button type="primary" native-type="submit" :loading="submitting">
                   <el-icon><Plus /></el-icon>
                   添加阶段
@@ -742,9 +773,9 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
 .section-title { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: #243b53; font-size: 14px; font-weight: 700; }
 .section-title svg { width: 16px; color: #168da7; }
 .compact-form :deep(.el-form-item),
-.form-grid :deep(.el-form-item) { margin-bottom: 12px; }
+.settings-grid :deep(.el-form-item) { margin-bottom: 14px; }
 .compact-form :deep(.el-form-item__label),
-.form-grid :deep(.el-form-item__label),
+.settings-grid :deep(.el-form-item__label),
 .new-stage-form :deep(.el-form-item__label),
 .add-course-form :deep(.el-form-item__label),
 .stage-summary :deep(.el-form-item__label) { color: #52667a; font-size: 12px; font-weight: 600; }
@@ -766,14 +797,46 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
 .actions { display: flex; gap: 8px; align-items: center; }
 .publish-issues { margin-bottom: 16px; }
 .issue-list { padding-left: 18px; margin: 4px 0 0; line-height: 1.7; }
-.map-settings { display: grid; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid #e6edf3; }
-.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
-.form-grid .wide { grid-column: 1 / -1; }
+.map-settings { display: grid; gap: 18px; padding-bottom: 22px; margin-bottom: 18px; border-bottom: 1px solid #dfe9ee; }
+.settings-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding-bottom: 2px; }
+.settings-title { margin-bottom: 5px; }
+.settings-intro { margin: 0; color: #6b7c93; font-size: 12px; line-height: 1.6; }
+.settings-caption { flex: 0 0 auto; padding: 5px 9px; border: 1px solid #d6e5e6; border-radius: 999px; color: #277c7d; background: #f2f9f8; font-size: 11px; font-weight: 700; }
+.settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 20px; align-items: start; }
+.settings-fields { min-width: 0; }
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.settings-grid .settings-wide { grid-column: 1 / -1; }
+.settings-grid :deep(.el-form-item__label),
+.map-settings :deep(.el-form-item__label) { padding-bottom: 6px; color: #52667a; font-size: 12px; font-weight: 700; line-height: 1.2; }
+.settings-grid :deep(.el-select),
+.settings-grid :deep(.el-input) { width: 100%; }
+.settings-grid :deep(.el-input__wrapper),
+.settings-grid :deep(.el-textarea__inner) { border-radius: 7px; }
+.settings-grid :deep(.el-textarea__inner) { min-height: 104px; resize: vertical; }
+.cover-workbench { min-width: 0; padding: 15px; border: 1px solid #cfe5e2; border-left: 3px solid #2ca6a4; border-radius: 9px; background: #f5fbfa; }
+.cover-workbench-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
+.field-kicker { display: block; margin-bottom: 4px; color: #3c9692; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.cover-workbench h3 { margin: 0; color: #173f4a; font-size: 15px; }
+.optional-mark { padding: 3px 6px; border-radius: 4px; color: #a15c16; background: #fff2df; font-size: 10px; font-weight: 700; }
+.cover-description { margin: 12px 0 0; color: #6b7c93; font-size: 11px; line-height: 1.65; }
+.cover-workbench :deep(.cover-upload) { display: grid; gap: 11px; align-items: stretch; }
+.cover-workbench :deep(.cover-preview) { display: grid; gap: 8px; align-items: start; }
+.cover-workbench :deep(.cover-image) { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.cover-workbench :deep(.el-upload),
+.cover-workbench :deep(.el-upload .el-button) { display: block; width: 100%; }
+.cover-workbench :deep(.cover-hint) { display: block; line-height: 1.55; }
+.settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 2px; }
+.save-note { display: inline-flex; align-items: center; gap: 6px; color: #78909c; font-size: 11px; }
+.save-note svg { width: 14px; color: #2ca6a4; }
 .row-end { display: flex; justify-content: flex-end; gap: 8px; }
-.new-stage { padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid #e6edf3; }
-.new-stage-form { display: flex; flex-wrap: wrap; gap: 0 14px; align-items: flex-end; }
-.new-stage-form :deep(.el-form-item) { margin-bottom: 0; }
-.new-stage-form :deep(.el-input) { width: 200px; }
+.new-stage { padding: 1px 0 20px; margin-bottom: 18px; border-bottom: 1px solid #dfe9ee; }
+.stage-form-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.stage-form-heading .section-title { margin-bottom: 11px; }
+.stage-form-heading p { margin: 0; color: #829ab1; font-size: 11px; }
+.new-stage-form { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.35fr) auto; gap: 14px; align-items: end; }
+.new-stage-form :deep(.el-form-item) { min-width: 0; margin-bottom: 0; }
+.new-stage-form :deep(.el-input) { width: 100%; }
+.stage-action-field :deep(.el-form-item__content) { justify-content: flex-end; }
 .stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .stage-heading h3 { margin: 0; color: #243b53; font-size: 15px; }
 .stage-heading span { display: block; margin-top: 3px; color: #829ab1; font-size: 12px; }
@@ -800,9 +863,21 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
 .right-pane :deep(.el-empty) { min-height: 320px; justify-content: center; }
 .right-pane :deep(.el-alert) { margin-bottom: 14px; }
 @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 860px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .cover-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 230px); gap: 0 16px; align-items: center; }
+  .cover-workbench-head { grid-row: span 2; margin-bottom: 0; }
+  .cover-description { grid-column: 2; margin-top: 10px; }
+}
 @media (max-width: 700px) {
-  .form-grid { grid-template-columns: 1fr; }
-  .form-grid .wide { grid-column: auto; }
+  .settings-grid { grid-template-columns: 1fr; }
+  .settings-grid .settings-wide { grid-column: auto; }
+  .settings-heading,
+  .stage-form-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .settings-caption { align-self: flex-start; }
+  .cover-workbench { display: block; }
+  .cover-workbench-head { margin-bottom: 13px; }
+  .cover-description { margin-top: 12px; }
   .new-stage-form { display: grid; grid-template-columns: 1fr; gap: 0; }
   .new-stage-form :deep(.el-input) { width: 100%; }
   .new-stage-form :deep(.el-form-item) { margin-bottom: 12px; }

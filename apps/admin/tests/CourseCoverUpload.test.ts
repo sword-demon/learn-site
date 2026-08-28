@@ -33,7 +33,7 @@ describe('CourseCoverUpload', () => {
 
   function mountField(cover = '') {
     return mount(CourseCoverUpload, {
-      props: { modelValue: cover },
+      props: { modelValue: cover, upload: catalogApi.uploadCourseCover },
       global: {
         stubs: {
           'el-upload': UploadStub,

@@ -1,5 +1,6 @@
 import http from './http'
 import { z } from 'zod'
+import { uploadCover, type UploadCoverInput, type UploadCoverResult } from './covers'
 import type {
   CategoryDTO,
   CourseDTO,
@@ -271,36 +272,13 @@ export async function deleteLesson(
 
 // ─── Course covers ────────────────────────────────────────────────────
 
-const CourseCoverUploadSchema = ApiOk(z.object({
-  key: z.string().min(1),
-  url: z.string().min(1),
-  mime_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-  size_bytes: z.number().int().positive(),
-}))
-
-export interface UploadCourseCoverInput {
-  file: File
-  onUploadProgress?: (event: { loaded: number; total?: number }) => void
-}
-
-export type UploadCourseCoverResult = z.infer<typeof CourseCoverUploadSchema>['data']
+export type UploadCourseCoverInput = UploadCoverInput
+export type UploadCourseCoverResult = UploadCoverResult
 
 export async function uploadCourseCover(
   input: UploadCourseCoverInput,
 ): Promise<UploadCourseCoverResult> {
-  const fd = new FormData()
-  fd.append('file', input.file)
-  const response = await http.post<unknown>('/course-covers', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (event) => {
-      if (input.onUploadProgress && typeof event.loaded === 'number') {
-        const progress: { loaded: number; total?: number } = { loaded: event.loaded }
-        if (event.total !== undefined) progress.total = event.total
-        input.onUploadProgress(progress)
-      }
-    },
-  })
-  return CourseCoverUploadSchema.parse(response.data).data
+  return uploadCover('/course-covers', input)
 }
 
 // ─── Assets ───────────────────────────────────────────────────────────

@@ -80,6 +80,9 @@ final class Authorize implements MiddlewareInterface
         if ($path === '/api/admin/v1/course-covers' && $method === 'POST') {
             return 'course.manage';
         }
+        if ($path === '/api/admin/v1/map-covers' && $method === 'POST') {
+            return 'map.manage';
+        }
         if (preg_match('#^/api/admin/v1/courses(?:/\d+)?$#', $path)) {
             return $method === 'GET' ? 'course.view' : 'course.manage';
         }

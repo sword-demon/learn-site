@@ -39,16 +39,21 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { uploadCourseCover } from '@/api/catalog'
+import type { UploadCoverInput, UploadCoverResult } from '@/api/covers'
 
-defineProps<{ modelValue: string }>()
+export type CoverUploadHandler = (input: UploadCoverInput) => Promise<UploadCoverResult>
+
+const props = defineProps<{
+  modelValue: string
+  upload: CoverUploadHandler
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 const uploading = ref(false)
 
 async function onUpload(request: UploadRequestOptions): Promise<void> {
   uploading.value = true
   try {
-    const result = await uploadCourseCover({ file: request.file })
+    const result = await props.upload({ file: request.file })
     emit('update:modelValue', result.url)
     request.onSuccess(result)
     ElMessage.success('封面上传成功')

@@ -18,9 +18,10 @@ const learningMapApi = vi.hoisted(() => ({
   unpublishMap: vi.fn(),
   updateMap: vi.fn(),
   updateStage: vi.fn(),
+  uploadMapCover: vi.fn(),
 }));
 const orgApi = vi.hoisted(() => ({ listDepartments: vi.fn() }));
-const catalogApi = vi.hoisted(() => ({ listCourses: vi.fn() }));
+const catalogApi = vi.hoisted(() => ({ listCourses: vi.fn(), uploadCourseCover: vi.fn() }));
 const authApi = vi.hoisted(() => ({ hasPermission: vi.fn() }));
 const routerApi = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -180,7 +181,9 @@ describe('MapEditorView', () => {
     const form = wrapper.get('form[data-role="map-settings"]');
     await form.get('input[name="title"]').setValue('  资深前端工程师路线  ');
     await form.get('input[name="summary"]').setValue('  从类型系统到架构实践  ');
-    await form.get('input[name="cover_url"]').setValue('  https://example.test/new-cover.png  ');
+    const coverUpload = wrapper.findComponent({ name: 'CourseCoverUpload' });
+    expect(coverUpload.exists()).toBe(true);
+    await coverUpload.vm.$emit('update:modelValue', '  https://example.test/new-cover.png  ');
     await form.get('textarea[name="objective"]').setValue('  独立负责中大型前端项目  ');
     await form.get('textarea[name="audience"]').setValue('  有两年前端经验的开发者  ');
     await chooseOption(wrapper, 'department_id', '产品技术部');
@@ -197,6 +200,33 @@ describe('MapEditorView', () => {
     });
     expect(wrapper.text()).toContain('资深前端工程师路线');
     expect(wrapper.text()).toContain('独立负责中大型前端项目');
+  });
+
+  it('uses the map cover uploader and preserves the existing cover preview', async () => {
+    const wrapper = await mountEditor();
+    const coverUpload = wrapper.findComponent({ name: 'CourseCoverUpload' });
+
+    expect(coverUpload.exists()).toBe(true);
+    expect(coverUpload.attributes('data-role')).toBe('map-cover-upload');
+    expect(coverUpload.props('modelValue')).toBe(detail.cover_url);
+    expect(coverUpload.props('upload')).toBe(learningMapApi.uploadMapCover);
+    expect(wrapper.find('.settings-layout .settings-grid').exists()).toBe(true);
+    expect(wrapper.get('.settings-layout .cover-workbench').text()).toContain('地图封面');
+    expect(wrapper.get('.settings-footer').text()).toContain('保存设置');
+  });
+
+  it('renders the publish status filter as an explicit all-state select', async () => {
+    const wrapper = await mountEditor();
+    const statusSelect = wrapper
+      .findAllComponents({ name: 'ElSelect' })
+      .find((component) => component.attributes('data-field') === 'status');
+
+    expect(statusSelect).toBeDefined();
+    expect(statusSelect?.props('modelValue')).toBe('all');
+    expect(statusSelect?.props('teleported')).toBe(true);
+    expect(statusSelect?.props('placement')).toBe('bottom-start');
+    expect(statusSelect?.props('clearable')).toBe(false);
+    expect(statusSelect?.props('placeholder')).toBe('全部');
   });
 
   it('lists concrete publish blockers and prevents an invalid publish attempt', async () => {

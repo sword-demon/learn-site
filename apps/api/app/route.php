@@ -158,6 +158,7 @@ Route::group($adminV1, function () {
     // Assets
     Route::post('/assets', [\App\controller\admin\AssetController::class, 'upload']);
     Route::post('/course-covers', [\App\controller\admin\CourseCoverController::class, 'upload']);
+    Route::post('/map-covers', [\App\controller\admin\CourseCoverController::class, 'upload']);
 
     // Phase 11 / US4 — Q&A admin inbox (qa.view / qa.answer)
     Route::get('/questions',           [\App\controller\admin\QuestionController::class, 'inbox']);

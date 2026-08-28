@@ -71,6 +71,7 @@
           <el-form-item label="课程封面">
             <CourseCoverUpload
               v-model="form.cover_url"
+              :upload="uploadCourseCover"
             />
           </el-form-item>
           <el-form-item
@@ -587,6 +588,7 @@ import {
   updateLesson,
   deleteLesson,
   publishCourse,
+  uploadCourseCover,
   uploadAsset,
   type CategoryNode,
 } from '@/api/catalog'

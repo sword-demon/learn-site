@@ -1,5 +1,6 @@
 import http from './http'
 import { z } from 'zod'
+import { uploadCover, type UploadCoverInput, type UploadCoverResult } from './covers'
 import type {
   AddCourseToStageInput,
   AdminMapDetailDTO,
@@ -58,6 +59,10 @@ export async function listMaps(params: AdminListMapParams = {}): Promise<AdminMa
 export async function getMap(id: number): Promise<AdminMapDetailDTO> {
   const response = await http.get<unknown>(`/learning-maps/${id}`)
   return AdminMapDetailEnvelope.parse(response.data).data
+}
+
+export async function uploadMapCover(input: UploadCoverInput): Promise<UploadCoverResult> {
+  return uploadCover('/map-covers', input)
 }
 
 export async function createMap(input: CreateMapInput): Promise<AdminMapDetailDTO> {

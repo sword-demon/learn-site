@@ -41,6 +41,7 @@ final class AuthorizeLeakTest extends TestCase
         yield 'course unpublish' => ['/api/admin/v1/courses/42/unpublish', 'POST', 'course.publish'];
         yield 'asset upload' => ['/api/admin/v1/assets', 'POST', 'asset.upload'];
         yield 'course cover upload' => ['/api/admin/v1/course-covers', 'POST', 'course.manage'];
+        yield 'map cover upload' => ['/api/admin/v1/map-covers', 'POST', 'map.manage'];
         yield 'map list' => ['/api/admin/v1/learning-maps', 'GET', 'map.view'];
         yield 'map update' => ['/api/admin/v1/learning-maps/9', 'PATCH', 'map.manage'];
         yield 'map publish' => ['/api/admin/v1/learning-maps/9/publish', 'POST', 'map.publish'];
