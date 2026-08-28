@@ -22,6 +22,6 @@ use support\think\Model;
  */
 class Account extends Model
 {
-    protected $table = 'accounts';
-    protected $pk = 'id';
+    protected string $table = 'accounts';
+    protected string $pk = 'id';
 }

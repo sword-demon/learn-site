@@ -34,7 +34,9 @@ final class HomeService
             'subtitle' => (string) ($row['subtitle'] ?? ''),
             'body_html' => (string) ($row['body_html'] ?? ''),
             'contact_email' => (string) ($row['contact_email'] ?? ''),
-            'updated_at' => $row['updated_at'] !== null ? (string) $row['updated_at'] : null,
+            'updated_at' => isset($row['updated_at']) && $row['updated_at'] !== null
+                ? (string) $row['updated_at']
+                : null,
         ];
     }
 
@@ -72,7 +74,7 @@ final class HomeService
         $out = [];
         foreach ($rows as $row) {
             $rawParent = $row['parent_id'] ?? 0;
-            $pid = $rawParent === null || $rawParent === '' ? 0 : (int) $rawParent;
+            $pid = $rawParent === '' ? 0 : (int) $rawParent;
             if ($pid !== $parentId) {
                 continue;
             }

@@ -40,7 +40,7 @@ final class HealthController
     private function checkRedis(): bool|string
     {
         try {
-            $reply = Redis::ping();
+            $reply = Redis::rawCommand('PING');
             return $reply === '+PONG' || $reply === true || $reply === 'PONG' ? true : 'redis_down';
         } catch (\Throwable $e) {
             return 'redis_down';

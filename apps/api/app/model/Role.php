@@ -20,6 +20,6 @@ use support\think\Model;
  */
 class Role extends Model
 {
-    protected $table = 'roles';
-    protected $pk = 'id';
+    protected string $table = 'roles';
+    protected string $pk = 'id';
 }

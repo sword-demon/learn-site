@@ -22,6 +22,6 @@ use support\think\Model;
  */
 class Department extends Model
 {
-    protected $table = 'departments';
-    protected $pk = 'id';
+    protected string $table = 'departments';
+    protected string $pk = 'id';
 }

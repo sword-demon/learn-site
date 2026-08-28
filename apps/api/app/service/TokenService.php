@@ -40,6 +40,7 @@ final class TokenService
     ) {}
 
     /** Mint a new (access, refresh) pair bound to a fresh login family. */
+    /** @return array<string, string|int>|null */
     public function issue(string $accountId, string $kind): ?array
     {
         try {
@@ -60,6 +61,7 @@ final class TokenService
     }
 
     /** Rotate a refresh token. Reuse → revoke family, return null. */
+    /** @return array<string, string|int>|null */
     public function rotate(string $refreshToken, ?string $expectedKind = null): ?array
     {
         $hash = self::hash($refreshToken);
@@ -122,6 +124,7 @@ final class TokenService
      * Verify an access token. Returns [account_id, kind, family_id] on success.
      * Returns null when missing, expired, revoked, or Redis is down.
      */
+    /** @return array{account_id: string, kind: string, family_id: string}|null */
     public function verifyAccess(string $accessToken): ?array
     {
         $redis = $this->redis();

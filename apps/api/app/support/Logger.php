@@ -15,16 +15,19 @@ final class Logger
 {
     private static ?\Monolog\Logger $log = null;
 
+    /** @param array<string, mixed> $context */
     public static function info(string $message, array $context = []): void
     {
         self::log()->info($message, self::scrub($context));
     }
 
+    /** @param array<string, mixed> $context */
     public static function warning(string $message, array $context = []): void
     {
         self::log()->warning($message, self::scrub($context));
     }
 
+    /** @param array<string, mixed> $context */
     public static function error(string $message, array $context = []): void
     {
         self::log()->error($message, self::scrub($context));
@@ -46,6 +49,10 @@ final class Logger
     }
 
     /** Strip secrets even if a caller forgets. Defence-in-depth. */
+    /**
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
     private static function scrub(array $context): array
     {
         $blocked = ['password', 'captcha_answer', 'token', 'access_token', 'refresh_token',

@@ -10,7 +10,8 @@ API_PORT     ?= 8787
 .DEFAULT_GOAL := help
 
 .PHONY: help env bootstrap up down restart ps logs build rebuild rebuild-web rebuild-admin rebuild-api rebuild-all \
-	migrate seed health sh-api test test-api test-web debug prototype
+	migrate seed backup restore rehearse-restore verify-images verify-migrations verify-runtime-boundaries \
+	health sh-api test test-api test-web debug prototype
 
 help:
 	@echo "make bootstrap   # .env + 构建启动 + 迁移 + 种子 + 健康检查"
@@ -23,8 +24,11 @@ help:
 	@echo "make ps          # 容器状态"
 	@echo "make logs        # 跟日志 SERVICE=$(SERVICE)"
 	@echo "make health      # curl API /health"
-	@echo "make migrate     # phinx migrate"
+	@echo "make migrate     # 迁移前备份 + phinx migrate + 状态/健康校验"
 	@echo "make seed        # phinx seed:run"
+	@echo "make backup      # 通过 Compose 同时备份 MySQL 与 uploads"
+	@echo "make rehearse-restore BACKUP_DIR=... # 临时 Compose project 恢复演练"
+	@echo "make verify-images / verify-migrations / verify-runtime-boundaries"
 	@echo "make sh-api      # 进入 api 容器"
 	@echo "make test        # api-test + frontend-test"
 	@echo "make test-api    # PHPUnit (compose test profile)"
@@ -75,7 +79,25 @@ rebuild-all:
 	$(COMPOSE) up -d --build --no-deps api web admin
 
 migrate:
-	$(COMPOSE) exec -T api php vendor/bin/phinx migrate
+	COMPOSE="$(COMPOSE)" BACKUP_DIR="$(BACKUP_DIR)" bash ops/backup/migrate.sh
+
+backup:
+	COMPOSE="$(COMPOSE)" BACKUP_DIR="$(BACKUP_DIR)" bash ops/backup/backup.sh
+
+restore:
+	COMPOSE="$(COMPOSE)" BACKUP_DIR="$(BACKUP_DIR)" bash ops/backup/restore.sh "$(BACKUP_DIR)"
+
+rehearse-restore:
+	COMPOSE="$(COMPOSE)" BACKUP_DIR="$(BACKUP_DIR)" bash ops/backup/rehearse-restore.sh
+
+verify-images:
+	bash scripts/verify-images.sh
+
+verify-migrations:
+	COMPOSE="$(COMPOSE)" bash scripts/verify-migrations.sh
+
+verify-runtime-boundaries:
+	bash scripts/verify-runtime-boundaries.sh
 
 seed:
 	$(COMPOSE) exec -T api php vendor/bin/phinx seed:run

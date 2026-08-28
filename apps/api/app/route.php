@@ -71,12 +71,14 @@ Route::group($learnerV1, function () {
     Route::post('/me/notifications/{id}/read', [\App\controller\learner\NotificationController::class, 'read']);
 })->middleware([\App\middleware\LearnerAuth::class]);
 
-// Internal payment webhook surface — no learner auth. The fake adapter
-// is the only one wired in Phase 6. A future phase will add the real
-// WeChat Native notify + a HMAC-verifying middleware here.
-Route::group('/api/internal/v1', function () {
-    Route::post('/payments/fake/notify', [\App\controller\internal\PaymentNotifyController::class, 'fake']);
-});
+// The fake notify seam is test-only. Production settles through the delayed
+// FakePaymentAdapter callback and must not expose a caller-controlled status
+// transition route. A future real provider will add a signed callback here.
+if (getenv('APP_ENV') === 'testing') {
+    Route::group('/api/internal/v1', function () {
+        Route::post('/payments/fake/notify', [\App\controller\internal\PaymentNotifyController::class, 'fake']);
+    });
+}
 
 Route::get('/api/media/{key:.+}', [\App\controller\media\CourseCoverMediaController::class, 'show']);
 

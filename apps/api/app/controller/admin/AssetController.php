@@ -56,7 +56,7 @@ final class AssetController
         }
         $mime = '';
         try {
-            $mime = (string) $file->getMimeType();
+            $mime = (string) $file->getUploadMimeType();
         } catch (\Throwable) {
             $mime = '';
         }

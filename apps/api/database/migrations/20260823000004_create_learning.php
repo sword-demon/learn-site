@@ -15,7 +15,8 @@ use Phinx\Migration\AbstractMigration;
  *   - orders.{(list_price, sale_price, paid_amount)} are immutable snapshots;
  *     course price changes never alter historical rows.
  *   - course_entitlements is unique by (learner_id, course_id) while status
- *     is 'active'; reactivation inserts a new row, not a patch.
+ *     is 'active'; migration 20260828000001 applies the active-only key for
+ *     existing databases, while reactivation inserts a new row, not a patch.
  *   - lesson_progresses.completed is monotonic — flipped 0 → 1 only.
  *
  * FK on delete policy:
@@ -61,11 +62,10 @@ final class CreateLearning extends AbstractMigration
             ->addIndex(['status'])
             ->create();
 
-        // course_entitlements — active grant to a learner. A learner cannot
-        // hold two active entitlements for the same course; the unique index
-        // covers status='active' via the composite (learner_id, course_id,
-        // status) plus a uniqueness check in EntitlementService. Revoked rows
-        // remain for audit; re-join creates a new row.
+        // course_entitlements — active grant to a learner. The follow-up
+        // migration 20260828000001 replaces this bootstrap index with a
+        // generated active-only key so revoked rows remain unlimited audit
+        // history and re-join creates a new row.
         $this->table('course_entitlements', ['id' => false, 'primary_key' => ['id']])
             ->addColumn('id', 'biginteger', ['identity' => true, 'signed' => false])
             ->addColumn('learner_id', 'biginteger', ['signed' => false])

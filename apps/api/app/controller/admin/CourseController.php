@@ -77,7 +77,7 @@ final class CourseController
 
     public function listChapters(Request $request, string $id): \support\Response
     {
-        return $this->wrap(function () use ($request, $id) {
+        return $this->wrap(function () use ($id) {
             $tree = $this->service->getCourseTree($this->id($id));
             return ['items' => $tree['chapters'] ?? []];
         });
@@ -184,6 +184,7 @@ final class CourseController
         return $n;
     }
 
+    /** @return array<string, mixed> */
     private static function readJson(Request $request): array
     {
         $raw = (string) $request->rawBody();

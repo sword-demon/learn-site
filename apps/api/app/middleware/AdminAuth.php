@@ -52,8 +52,8 @@ final class AdminAuth implements MiddlewareInterface
                 return ApiResponse::fail(ApiResponse::FORBIDDEN, 'MUST_CHANGE_PASSWORD', $request->request_id ?? null);
             }
         }
-        $request->account_id = $info['account_id'];
-        $request->family_id = $info['family_id'];
+        $request->account_id = (int) $info['account_id'];
+        $request->family_id = (string) $info['family_id'];
         $request->actor_kind = TokenService::KIND_STAFF;
         $request->permissions = $this->perms->effectiveCodes((int) $info['account_id']);
         return $handler($request);

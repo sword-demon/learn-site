@@ -23,7 +23,7 @@ final class SiteController
 {
     public function show(Request $request): \support\Response
     {
-        return $this->wrap(function () use ($request) {
+        return $this->wrap(function () {
             $row = $this->load();
             return $this->shape($row);
         });
@@ -60,7 +60,7 @@ final class SiteController
             $sanitized = $sanitized['html'];
             $staffId = (int) ($request->account_id ?? 0);
             $now = date('Y-m-d H:i:s');
-            Db::name('site_profile')->replace([
+            Db::name('site_profile')->replace()->insert([
                 'id' => 1,
                 'title' => $title,
                 'subtitle' => $subtitle,
@@ -93,6 +93,7 @@ final class SiteController
         });
     }
 
+    /** @return array<string, mixed> */
     private function load(): array
     {
         $row = Db::name('site_profile')->where('id', 1)->find();
@@ -110,6 +111,10 @@ final class SiteController
         ];
     }
 
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
     private function shape(array $row): array
     {
         return [
@@ -143,6 +148,7 @@ final class SiteController
         };
     }
 
+    /** @return array<string, mixed> */
     private static function readJson(Request $request): array
     {
         $raw = (string) $request->rawBody();

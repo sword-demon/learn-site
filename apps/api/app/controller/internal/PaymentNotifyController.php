@@ -13,7 +13,7 @@ use support\Request;
  * PaymentNotifyController — internal webhook endpoints for payment
  * providers. Phase 6 only ships one:
  *
- *   POST /api/internal/v1/payments/fake/notify
+ *   POST /api/internal/v1/payments/fake/notify (testing only)
  *     Header: X-Fake-Payment-Result: succeeded|failed|cancelled|unknown
  *     Body:   { "order_id": <int>, "out_trade_no"?: <string> }
  *

@@ -23,8 +23,8 @@ final class LearnerAuth implements MiddlewareInterface
         if ($info === null || $info['kind'] !== TokenService::KIND_LEARNER) {
             return ApiResponse::fail(ApiResponse::TOKEN_EXPIRED, 'TOKEN_EXPIRED', $request->request_id ?? null);
         }
-        $request->account_id = $info['account_id'];
-        $request->family_id = $info['family_id'];
+        $request->account_id = (int) $info['account_id'];
+        $request->family_id = (string) $info['family_id'];
         $request->actor_kind = TokenService::KIND_LEARNER;
         return $handler($request);
     }

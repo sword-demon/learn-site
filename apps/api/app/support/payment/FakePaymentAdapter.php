@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\support\payment;
 
 use support\Request;
+use Workerman\Timer;
 
 /**
  * FakePaymentAdapter — FR-094 test-mode stand-in for the real WeChat
@@ -11,11 +12,9 @@ use support\Request;
  * in.
  *
  * createCharge() returns a deterministic synthetic QR string for the
- * learner to "scan". The learner app is expected to:
- *   - render the code_url as a QR image,
- *   - then trigger the fake callback by POSTing to the internal
- *     /api/internal/v1/payments/fake/notify endpoint with the
- *     X-Fake-Payment-Result header (succeeded|failed|cancelled|unknown).
+ * learner to "scan". The application automatically settles success after
+ * the configured delay; tests may use the non-production callback seam for
+ * failed|cancelled|unknown states.
  *
  * The provider name surfaced to the order row is 'fake' so the admin
  * audit trail is honest about what happened.
@@ -34,6 +33,14 @@ final class FakePaymentAdapter implements PaymentAdapter
     private const HEADER = 'X-Fake-Payment-Result';
     private const ALLOWED = ['succeeded', 'failed', 'cancelled', 'unknown'];
 
+    private readonly int $delayMs;
+    private ?\Closure $successHandler = null;
+
+    public function __construct(?int $delayMs = null)
+    {
+        $this->delayMs = max(0, $delayMs ?? (int) (getenv('FAKE_PAYMENT_DELAY_MS') ?: 3000));
+    }
+
     public function createCharge(int $orderId, float $amount, string $currency): array
     {
         $codeUrl = sprintf('fake://wechat-native?order_id=%d&amount=%.2f&currency=%s', $orderId, $amount, $currency);
@@ -45,6 +52,39 @@ final class FakePaymentAdapter implements PaymentAdapter
             'currency'     => $currency,
             'provider'     => 'fake',
         ];
+    }
+
+    /**
+     * Connect the adapter's automatic success callback to the order service.
+     * The adapter never writes orders directly, which keeps the payment port
+     * independent from persistence and leaves the test notify seam intact.
+     */
+    public function setSuccessHandler(callable $handler): void
+    {
+        $this->successHandler = \Closure::fromCallable($handler);
+    }
+
+    /** Schedule the MVP's success-only fake settlement after the configured delay. */
+    public function scheduleSuccess(int $orderId): void
+    {
+        if ($this->successHandler === null) {
+            return;
+        }
+
+        $settle = function () use ($orderId): void {
+            ($this->successHandler)($orderId, 'fake-' . $orderId);
+        };
+        if ($this->delayMs === 0) {
+            $settle();
+            return;
+        }
+
+        try {
+            Timer::add($this->delayMs / 1000, $settle, [], false);
+        } catch (\RuntimeException) {
+            // Unit tests have no Workerman event loop. The real HTTP worker
+            // always has one; without it we fail closed and leave pending.
+        }
     }
 
     public function parseNotify(Request $request): ?NotifyResult

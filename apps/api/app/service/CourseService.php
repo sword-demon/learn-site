@@ -42,6 +42,10 @@ use support\think\Db;
  */
 final class CourseService
 {
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     public function createCourse(array $input, int $actorStaffAccountId): array
     {
         $this->assertCourseInput($input, isUpdate: false);
@@ -72,6 +76,10 @@ final class CourseService
         });
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     public function updateCourse(int $id, array $input, int $actorStaffAccountId): array
     {
         $course = Course::find($id);
@@ -101,7 +109,7 @@ final class CourseService
             $introHtml = HtmlSanitizer::sanitize((string) $input['intro_rich_text'])['html'];
         }
 
-        Db::transaction(function () use ($course, $input, $introHtml, $actorStaffAccountId) {
+        Db::transaction(function () use ($course, $input, $introHtml) {
             $patch = ['updated_at' => date('Y-m-d H:i:s')];
             $map = [
                 'department_id' => 'department_id',
@@ -140,6 +148,7 @@ final class CourseService
         return $this->getCourseTree($id);
     }
 
+    /** @return array<string, mixed> */
     public function publishCourse(int $id): array
     {
         $course = Course::find($id);
@@ -162,6 +171,7 @@ final class CourseService
         return $this->getCourseTree((int) $course->id);
     }
 
+    /** @return array<string, mixed> */
     public function unpublishCourse(int $id): array
     {
         $course = Course::find($id);
@@ -203,6 +213,10 @@ final class CourseService
         Logger::info('course.deleted', ['course_id' => $id]);
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     public function createChapter(int $courseId, array $input): array
     {
         $course = Course::find($courseId);
@@ -228,6 +242,10 @@ final class CourseService
         return $this->chapterRow($id);
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     public function updateChapter(int $chapterId, array $input): array
     {
         $chapter = Chapter::find($chapterId);
@@ -273,6 +291,10 @@ final class CourseService
         });
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     public function createLesson(int $courseId, array $input): array
     {
         $course = Course::find($courseId);
@@ -299,6 +321,10 @@ final class CourseService
         return $this->lessonRow($id);
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     public function updateLesson(int $lessonId, array $input): array
     {
         $lesson = Lesson::find($lessonId);
@@ -378,6 +404,7 @@ final class CourseService
         ];
     }
 
+    /** @return array<string, mixed> */
     public function getCourseTree(int $id): array
     {
         $course = Course::find($id);
@@ -413,6 +440,7 @@ final class CourseService
 
     // ─── internal helpers ──────────────────────────────────────────────
 
+    /** @param array<string, mixed> $input */
     private function assertCourseInput(array $input, bool $isUpdate): void
     {
         $title = trim((string) ($input['title'] ?? ''));
@@ -488,7 +516,7 @@ final class CourseService
         }
     }
 
-    private function assertPublishable($course): void
+    private function assertPublishable(Course $course): void
     {
         $category = Db::name('categories')->where('id', (int) $course->category_id)->find();
         if (!$category || ($category['status'] ?? null) !== 'enabled') {
@@ -524,6 +552,7 @@ final class CourseService
         throw new BusinessException('VALIDATION_FAILED', 'NO_PUBLISHABLE_LESSON');
     }
 
+    /** @param array<string, mixed> $lesson */
     private function lessonHasPayload(array $lesson): bool
     {
         $type = (string) ($lesson['content_type'] ?? '');
@@ -536,6 +565,10 @@ final class CourseService
         return false;
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     private function buildLessonRow(array $input, bool $isUpdate = false): array
     {
         $patch = [];
@@ -605,6 +638,10 @@ final class CourseService
         return $total;
     }
 
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
     private function shapeCourseRow(array $row): array
     {
         return [
@@ -628,6 +665,10 @@ final class CourseService
         ];
     }
 
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
     private function shapeLessonRow(array $row): array
     {
         return [
@@ -644,6 +685,7 @@ final class CourseService
         ];
     }
 
+    /** @return array<string, mixed> */
     private function chapterRow(int $id): array
     {
         $ch = Chapter::find($id);
@@ -659,6 +701,7 @@ final class CourseService
         ];
     }
 
+    /** @return array<string, mixed> */
     private function lessonRow(int $id): array
     {
         $ls = Lesson::find($id);
@@ -668,7 +711,8 @@ final class CourseService
         return $this->shapeLessonRow($ls->toArray());
     }
 
-    private function rowToInput($course): array
+    /** @return array<string, mixed> */
+    private function rowToInput(Course $course): array
     {
         return [
             'department_id' => (int) $course->department_id,

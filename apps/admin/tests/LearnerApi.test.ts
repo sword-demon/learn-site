@@ -7,7 +7,7 @@ const mockHttp = vi.hoisted(() => ({
 
 vi.mock('@/api/http', () => ({ default: mockHttp, http: mockHttp }))
 
-import { listLearners, kickLearner, resetLearnerPassword } from '@/api/learners'
+import { listLearners } from '@/api/learners'
 
 const account = {
   account_id: 1,
@@ -43,8 +43,6 @@ describe('learner API boundary (repro)', () => {
     let caught: unknown
     try { await listLearners() } catch (e) { caught = e }
     expect(caught).toBeInstanceOf(Error)
-    // eslint-disable-next-line no-console
-    console.log('Zod error for empty envelope:', JSON.stringify((caught as Error).message))
   })
 
   it('listLearners: parses a real UNAUTHENTICATED error envelope', async () => {

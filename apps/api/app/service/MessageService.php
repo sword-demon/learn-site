@@ -27,6 +27,7 @@ final class MessageService
      * a duplicate call writes a second row. Callers should not retry the
      * same (learner, kind, target) combination without external dedup.
      */
+    /** @param array<string, mixed> $payload */
     public function emit(string $kind, int $learnerId, string $title, ?string $body = null, array $payload = []): int
     {
         $now = date('Y-m-d H:i:s');

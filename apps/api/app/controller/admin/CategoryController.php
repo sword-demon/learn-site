@@ -215,12 +215,17 @@ final class CategoryController
         return ApiResponse::ok(['deleted' => true]);
     }
 
+    /** @return array<string, mixed> */
     private function row(int $id): array
     {
         $r = Category::find($id);
         return $r ? $this->shape($r->toArray()) : [];
     }
 
+    /**
+     * @param array<string, mixed> $r
+     * @return array<string, mixed>
+     */
     private function shape(array $r): array
     {
         return [
@@ -236,6 +241,7 @@ final class CategoryController
         ];
     }
 
+    /** @return array<string, mixed> */
     private static function readJson(Request $request): array
     {
         $raw = (string) $request->rawBody();

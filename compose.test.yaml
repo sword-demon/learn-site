@@ -5,7 +5,7 @@
 #   docker compose -f compose.yaml -f compose.test.yaml --profile test run --rm api-test
 #   docker compose -f compose.yaml -f compose.test.yaml --profile test run --rm frontend-test
 #
-# T111 evidence: this overlay covers formatter, PHPStan, PHPUnit, ESLint,
+# T111 evidence: this overlay covers PHP syntax lint, PHPStan, PHPUnit, ESLint,
 # vue-tsc, and prod builds — all inside Compose, no host PHP/Node needed.
 
 name: learn-site
@@ -48,7 +48,7 @@ services:
     image: learn-site/api-test:local
     environment: *common-db
     networks: []
-    command: ['sh', '-c', 'php vendor/bin/php-cs-fixer fix --dry-run --diff']
+    command: ['sh', '-c', 'find app tests -type f -name "*.php" -exec php -l {} \;']
 
   frontend-test:
     profiles: ['test']

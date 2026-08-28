@@ -4,10 +4,15 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\model\Account;
+use App\model\CourseEnrollment;
+use App\model\CourseEntitlement;
 use App\model\Department;
 use App\model\Learner;
+use App\model\LessonProgress;
+use App\model\Order;
 use App\model\Permission;
 use App\model\Role;
+use App\model\StaffPermissionOverride;
 use App\model\StaffUser;
 use PHPUnit\Framework\TestCase;
 use support\think\Model;
@@ -65,6 +70,11 @@ final class ThinkOrmStackTest extends TestCase
             [Department::class],
             [Role::class],
             [Permission::class],
+            [Order::class],
+            [CourseEntitlement::class],
+            [CourseEnrollment::class],
+            [LessonProgress::class],
+            [StaffPermissionOverride::class],
         ];
     }
 

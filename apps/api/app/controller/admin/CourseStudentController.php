@@ -189,6 +189,7 @@ final class CourseStudentController
         }
     }
 
+    /** @return array<string, mixed> */
     private static function readJson(Request $request): array
     {
         $raw = (string) $request->rawBody();

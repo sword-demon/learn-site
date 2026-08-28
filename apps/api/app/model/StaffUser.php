@@ -19,6 +19,6 @@ use support\think\Model;
  */
 class StaffUser extends Model
 {
-    protected $table = 'staff_users';
-    protected $pk = 'account_id';
+    protected string $table = 'staff_users';
+    protected string $pk = 'account_id';
 }

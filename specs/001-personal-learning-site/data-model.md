@@ -183,6 +183,16 @@ PDF/视频文件。`kind`、`storage_path`、`status`=`processing`\|`ready`\|`mi
 
 学员站内消息。`type`=`question_update`\|`progress_reset`\|`entitlement_revoked`；`unread`；关联多态 id。不发送邮件/短信。
 
+## ORM 与迁移安全约束
+
+- 领域模型和服务的 MySQL 读写统一经过 `support\think\Db` 或继承 `support\think\Model` 的模型，配置来源唯一为 `apps/api/config/think-orm.php`。`config/database.php` 不承载业务连接配置；`illuminate/database`、Eloquent、业务裸 PDO 和 mysqli 均禁止。
+- `phinxlog` 是 Phinx 的迁移元数据表，不是业务实体。迁移文件位于 `apps/api/database/migrations/`，由 Compose 内受控的一次性迁移命令按版本串行执行；API 启动和健康检查不得自动迁移。
+- 迁移前必须保存同一时间点的 MySQL dump 与 `uploads` 命名卷快照，并生成包含迁移版本、镜像 digest、文件大小和 SHA-256 的 manifest。数据库和文件卷必须作为同一恢复单元验证，避免记录恢复后出现媒体引用悬空。
+- 每个新迁移应优先使用显式 `up()`/`down()`，并在干净数据库和恢复副本上各运行一次。MySQL DDL 的隐式提交意味着失败后不得假设可以整体回滚；必须保留迁移日志，根据已执行部分选择修复迁移、备份恢复或补偿迁移。
+- `course_entitlements` 使用由 `status` 派生的可空生成列 `active_marker`，并与 `learner_id`、`course_id` 组成唯一索引，只限制同一学员/课程的一条 `active` 记录；`revoked` 记录生成 `NULL`，可以无限保留审计历史。回滚前若已有多条撤销历史，必须停止并改用恢复或前向补偿迁移。
+- 破坏性变更（删除数据、收缩列、删除索引或破坏旧应用兼容性的变更）必须走 expand/contract，先完成备份和恢复演练，再进入收缩阶段。生产不得执行未经副本验证的 `down()`；恢复后重新前向迁移或发布补偿迁移。
+- 迁移成功后的验收至少包括：`phinx status` 无待执行版本，关键表、唯一约束、外键和索引检查通过，API `/health` 同时可访问 MySQL/Redis，最小读写用例通过。迁移非零退出或验收失败即停止发布，不手工改表、不盲目重试。
+
 ## 关系要点
 
 - 订单、问答、评价、课程学员名单的数据范围 **跟随课程当前 department_id**。

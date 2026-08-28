@@ -5,6 +5,7 @@ namespace App\service;
 
 use App\support\Logger;
 use App\support\payment\PaymentAdapter;
+use App\support\payment\FakePaymentAdapter;
 use App\service\DataScopeService;
 use support\think\Db;
 
@@ -35,7 +36,13 @@ final class OrderService
     public function __construct(
         private readonly EntitlementService $entitlements,
         private readonly PaymentAdapter $payment,
-    ) {}
+    ) {
+        if ($payment instanceof FakePaymentAdapter) {
+            $payment->setSuccessHandler(function (int $orderId, string $providerRef): void {
+                $this->markSucceeded($orderId, $providerRef);
+            });
+        }
+    }
 
     /**
      * Create a pending order for a paid course. Idempotent per
@@ -114,6 +121,9 @@ final class OrderService
         ]);
 
         $paymentEnvelope = $this->payment->createCharge($orderId, $paidAmount, 'CNY');
+        if ($this->payment instanceof FakePaymentAdapter) {
+            $this->payment->scheduleSuccess($orderId);
+        }
         return [
             'order_id' => $orderId,
             'status'   => 'pending',

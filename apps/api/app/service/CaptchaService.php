@@ -26,6 +26,7 @@ final class CaptchaService
     private const PREFIX = 'captcha:';
     private const TTL    = 120;
 
+    /** @return array{captcha_id: string, image: string, ttl_seconds: int}|null */
     public function issue(): ?array
     {
         $redis = $this->redis();

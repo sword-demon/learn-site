@@ -1,6 +1,6 @@
 # Research: 001-personal-learning-site
 
-日期：2026-08-23。所有 NEEDS CLARIFICATION 必须在本文关闭。
+日期：2026-08-28。所有 NEEDS CLARIFICATION 必须在本文关闭。
 
 ## 后端框架与 PHP
 
@@ -12,6 +12,19 @@
 - https://www.workerman.net/doc/webman/install.html
 - https://packagist.org/packages/workerman/webman-framework
 - https://www.php.net/supported-versions.php
+
+## 运行时 ORM 与迁移工具
+
+- **Decision**: 业务运行时统一使用官方 `webman/think-orm`，查询入口为 `support\think\Db` 或继承 `support\think\Model` 的模型，连接配置唯一放在 `apps/api/config/think-orm.php`。Phinx (`robmorgan/phinx`) 只负责版本化迁移和种子，通过 Compose 内受控的一次性命令运行；它的底层数据库驱动不属于业务数据访问层。
+- **Rationale**: 宪章 v1.2.0 明确禁止 Eloquent、`illuminate/database` 以及业务代码中的裸 PDO/mysqli。保留 Phinx 是为了使用成熟的迁移版本记录 (`phinxlog`)，但必须把 schema tooling 与 Webman 请求处理隔离，避免两套 ORM、连接池和事务边界并存。
+- **Alternatives considered**: 将 Phinx 迁移改为 Webman ORM migration（缺少当前仓库所需的既有版本和命令兼容性）；使用裸 PDO 写业务查询（违反宪章）；继续把 `config/database.php` 当运行时配置（违反 v1.2.0，当前文件仅保留兼容空配置）。
+
+## 数据库迁移安全
+
+- **Decision**: 所有 schema 变更进入 `apps/api/database/migrations/`，生产只通过 Compose 内受控的一次性命令执行（当前入口为 `make migrate`）。迁移前做 MySQL dump 和 `uploads` 命名卷快照，校验非空、SHA-256 和可读性；执行前检查当前 `phinxlog` 版本、连接、磁盘空间和服务兼容窗口。迁移后检查 migration status、关键表/索引/外键、API health 和最小读写路径。
+- **Rationale**: MySQL DDL 可能隐式提交，单个迁移不能假设具备完整事务回滚能力。备份和文件卷必须成对保存，才能恢复数据库中引用的 PDF/视频。失败时保留退出码和日志，不重复执行未知的半完成迁移；根据状态选择修复迁移、恢复副本后前向迁移或业务补偿迁移。
+- **Rollback policy**: 新增表、可空列和兼容索引等安全变更必须提供并在隔离副本验证 `down()`；删除数据、收缩列、删除索引或破坏旧应用兼容性的变更采用 expand/contract。生产破坏性变更不执行未经验证的 `down()`，必须先恢复备份或使用补偿迁移，并完成恢复演练。
+- **Alternatives considered**: 应用启动自动迁移（启动顺序和权限不可控）；生产直接手工改表（不可追溯）；把所有迁移包在一个大事务中（无法覆盖 MySQL DDL 的隐式提交行为）。
 
 ## 前端运行时
 
@@ -32,6 +45,12 @@
 
 来源：https://hub.docker.com/_/mysql
 
+## 基础镜像锁定
+
+- **Decision**: PHP、Node、nginx、MySQL、Redis 全部使用完整版本加 digest，digest 作为发布输入提交并在发布前用 `docker buildx imagetools inspect` 复核。当前设计引用：`php:8.4-cli@sha256:f78661b492226388a7057679cc731c3e43bc92ba66cd49a8cfe12374a56bee9f`、`node:22.11.0-alpine@sha256:b64ced2e7cd0a4816699fe308ce6e8a08ccba463c757c00c14cd372e3d2c763e`、`nginx:1.27.3-alpine@sha256:814a8e88df978ade80e584cc5b333144b9372a8e3c98872d07137dbf3b44d0e4`，以及上文的 MySQL/Redis digest。
+- **Rationale**: 仅固定 tag 仍可能随 registry 重建漂移；digest 同时满足可复现构建和多架构镜像解析。API 镜像还必须在构建阶段安装 GD、Redis、PDO/MySQL、pcntl 和 posix，以满足验证码、数据库和优雅停机约束。
+- **Alternatives considered**: `latest`、浮动小版本 tag 或只锁 tag（均不可复现）；为每个平台手工选不同 digest（破坏 macOS OrbStack 与 Linux CI 的同一运行契约）。
+
 ## Redis 镜像
 
 - **Decision**: Docker Official Image `redis:7.4.11@sha256:91d0f7e8c748ec7a4c2b4fb2c4f84edab794dd91d01e095e38dc906db9d684ab`（Hub tag 的 index digest，2026-08-23 查询）。只允许 `api` 连接，不映射主机端口。
@@ -43,7 +62,7 @@
 ## 认证与令牌
 
 - **Decision**: 不透明访问令牌 + 刷新令牌 (哈希后写入 Redis)，禁止 Session。访问令牌 15 分钟，刷新令牌 7 天，图形验证码 2 分钟，均以 Redis TTL 为准 (规格 FR-091/FR-092)。学习端用中国大陆手机号 + 密码；管理端用后台账号 + 密码；禁止邮箱。后台账号不得为 11 位手机号。两端登录必须先 `GET /auth/captcha`，再提交 `captcha_id` 与输入；验证码一次一用，登录成功后也作废。刷新令牌换发与退出不要求验证码。刷新必须轮换；旧刷新令牌再使用则吊销该登录族并要求重新登录。管理员可踢全部登录或单个登录族。首版不以连续失败锁定账户。密码使用 PHP `password_hash()`。学员自助找回不作为登录前置；首版由具备 `learner.reset_password` 的管理员重置。PHP 使用官方 `webman/redis` (需 redis 扩展)。
-- **Rationale**: 宪章 v1.1.2 要求图形验证码。OWASP 将 CAPTCHA 作为防暴力破解的一层，并强调必须服务端校验、不得默认放行。RFC 9700 要求公共客户端刷新令牌轮换。登录用密码而不是短信验证码。
+- **Rationale**: 宪章 v1.2.0 要求图形验证码。OWASP 将 CAPTCHA 作为防暴力破解的一层，并强调必须服务端校验、不得默认放行。RFC 9700 要求公共客户端刷新令牌轮换。登录用密码而不是短信验证码。
 - **Alternatives considered**: Session Cookie（已被宪章禁止）；邮箱登录（已被宪章禁止）；纯无状态 JWT（无法立即踢人）；短信验证码登录（超出当前范围）；第三方行为验证（隐私与依赖超出首版）。
 
 来源：
@@ -52,9 +71,9 @@
 
 ## 支付
 
-- **Decision**: 后端定义支付端口（创建支付、查询、处理回调）。生产适配器对接微信支付 APIv3 Native（PC 扫码）。开发与自动化测试使用 Fake 适配器，可强制成功/失败/取消/未知四种结果。回调验签失败视为未知，不得授予访问权。
-- **Rationale**: 规格要求外部支付返回四种结果，且规划阶段才定渠道。中国个人教师站点 PC 端 Native 扫码是最小可用路径。适配器隔离后，支付宝可后续加入而不改订单状态机。
-- **Alternatives considered**: 首版只做假支付（无法验证真实回调）；同时接微信+支付宝（超出首版）；Stripe（与人民币默认假设不符）。
+- **Decision**: 后端定义支付端口（创建支付、查询、处理回调）。本期 MVP 由 FakePaymentAdapter 在固定延迟后只产生 `success`，成功后才创建访问权；订单状态模型保留 `pending`、`succeeded`、`failed`、`cancelled`、`unknown`，供后续真实适配器和契约扩展。真实微信支付 APIv3 Native（PC 扫码）不进入本期发布门禁。
+- **Rationale**: 当前规格 FR-094 明确把 Fake success-only 作为本期实现边界，同时要求失败、取消、未知状态不得授权的状态机不被破坏。先隔离支付端口，可以在后续接入微信回调验签、重复通知和乱序通知时不改订单与授权边界；本期不把不可观测的真实回调行为伪装成已验收能力。
+- **Alternatives considered**: 首版接入真实微信（凭据、回调和个人站点运营依赖超出当前范围）；Fake 强制四态（与当前 FR-094 success-only 边界冲突）；同时接微信和支付宝（超出首版）。
 
 ## 文件与媒体
 

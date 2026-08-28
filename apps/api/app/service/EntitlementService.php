@@ -21,9 +21,9 @@ use support\think\Db;
  *
  * Invariants enforced here (and at the schema level where possible):
  *   1. A learner holds at most one ACTIVE entitlement per course. The
- *      unique index covers (learner_id, course_id, status), so a duplicate
- *      active grant from a race is rejected by the DB. We translate the
- *      PDOException into a 409 BusinessException with code ENTITLED.
+     *      active-only unique index covers learner/course, so a duplicate
+     *      active grant from a race is rejected by the DB. Revoked history is
+     *      intentionally excluded from that index.
  *   2. Revoked entitlements remain in the table for audit; re-join creates
  *      a new row, never re-activates an old one.
  *   3. grant() is idempotent for the (learner, course) pair when an active

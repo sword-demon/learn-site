@@ -19,6 +19,8 @@
         </testsuite>
         <testsuite name="Orm">
             <file>tests/ThinkOrmStackTest.php</file>
+            <file>tests/MigrationSafetyTest.php</file>
+            <file>tests/RestoreRehearsalTest.php</file>
             <file>tests/QaSchemaIntegrationTest.php</file>
             <file>tests/MapSchemaIntegrationTest.php</file>
             <file>tests/LearningMapServiceIntegrationTest.php</file>
@@ -34,6 +36,7 @@
             <file>tests/LearningMapRouteTest.php</file>
         </testsuite>
         <testsuite name="Contract">
+            <file>tests/MigrationReleaseGateTest.php</file>
             <file>tests/LearnerControllerTest.php</file>
             <file>tests/RoleControllerTest.php</file>
             <file>tests/CatalogContractTest.php</file>

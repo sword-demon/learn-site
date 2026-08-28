@@ -128,6 +128,7 @@ final class AuthController
         return ApiResponse::ok(['logged_out' => true]);
     }
 
+    /** @return array<string, mixed> */
     private static function readJson(Request $request): array
     {
         $raw = (string) $request->rawBody();
