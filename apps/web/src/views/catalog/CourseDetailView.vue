@@ -103,25 +103,44 @@
                 v-for="lesson in chapter.lessons"
                 :key="lesson.id"
                 class="lesson-row"
-                :data-locked="lesson.locked"
+                :class="{
+                  'is-locked': lesson.locked,
+                  'is-preview': lesson.is_preview,
+                }"
               >
-                <span class="lesson-title">
-                  <span class="lesson-number">{{ lesson.sort + 1 }}.</span>
-                  {{ lesson.title }}
-                  <span v-if="lesson.is_preview" class="tag preview">试看</span>
-                  <span class="kind">{{ kindLabel(lesson.content_type) }}</span>
-                </span>
-                <AccessGate
-                  :locked="lesson.locked"
-                  :viewer-authorized="detail.course.viewer_authorized"
-                  :price-mode="detail.course.price_mode"
-                  :course-id="detail.course.id"
-                  :lesson-title="lesson.title"
-                >
-                  <router-link :to="`/learn/${detail.course.id}/${lesson.id}`" class="btn btn-link">
-                    打开课节 <span aria-hidden="true">→</span>
-                  </router-link>
-                </AccessGate>
+                <div class="lesson-main">
+                  <span class="lesson-index latin">{{
+                    String(lesson.sort + 1).padStart(2, '0')
+                  }}</span>
+                  <div class="lesson-copy">
+                    <p class="lesson-name">
+                      {{ lesson.title }}
+                      <span v-if="lesson.is_preview" class="tag preview">试看</span>
+                    </p>
+                    <p class="lesson-meta">
+                      <span class="kind">{{ kindLabel(lesson.content_type) }}</span>
+                      <span v-if="lesson.locked" class="lock-hint">需登录或取得访问权</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="lesson-action">
+                  <AccessGate
+                    :locked="lesson.locked"
+                    :viewer-authorized="detail.course.viewer_authorized"
+                    :price-mode="detail.course.price_mode"
+                    :course-id="detail.course.id"
+                    :lesson-id="lesson.id"
+                    :lesson-title="lesson.title"
+                    @entitled="onEntitled"
+                  >
+                    <router-link
+                      :to="`/learn/${detail.course.id}/${lesson.id}`"
+                      class="btn btn-link lesson-open"
+                    >
+                      打开课节 <span aria-hidden="true">→</span>
+                    </router-link>
+                  </AccessGate>
+                </div>
               </li>
             </ol>
           </li>
@@ -238,6 +257,10 @@ function kindLabel(kind: string): string {
     default:
       return kind;
   }
+}
+
+function onEntitled(): void {
+  if (detail.value) detail.value.course.viewer_authorized = true;
 }
 </script>
 
@@ -427,49 +450,103 @@ function kindLabel(kind: string): string {
 
 .lesson-list {
   display: grid;
-  gap: 2px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .lesson-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 46px;
-  padding: 7px 10px;
-  border-left: 2px solid transparent;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .lesson-row:hover {
-  border-left-color: var(--accent);
-  background: var(--surface-muted);
+  border-color: var(--line);
+  background: rgba(238, 241, 234, 0.55);
 }
 
-.lesson-row[data-locked='true'] {
-  color: var(--muted);
+.lesson-row.is-locked {
+  background: rgba(255, 254, 250, 0.5);
 }
 
-.lesson-title {
+.lesson-row.is-locked:hover {
+  border-color: rgba(201, 94, 67, 0.35);
+  background: var(--accent-soft);
+}
+
+.lesson-main {
   display: flex;
+  gap: 12px;
+  align-items: flex-start;
   min-width: 0;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  font-size: 0.87rem;
 }
 
-.lesson-number,
-.kind {
+.lesson-index {
+  flex-shrink: 0;
+  padding-top: 2px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.lesson-copy {
+  min-width: 0;
+}
+
+.lesson-name {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--pine-deep);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lesson-row.is-locked .lesson-name {
+  color: var(--ink-soft);
+}
+
+.lesson-meta {
+  margin: 4px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   color: var(--muted);
   font-size: 0.74rem;
 }
 
 .kind {
-  padding-left: 5px;
-  border-left: 1px solid var(--line);
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+
+.lock-hint {
+  color: var(--accent-deep);
+  font-size: 0.72rem;
+}
+
+.lesson-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.lesson-open {
+  white-space: nowrap;
 }
 
 .feedback-frame {
@@ -503,9 +580,12 @@ function kindLabel(kind: string): string {
   }
 
   .lesson-row {
-    align-items: start;
-    flex-direction: column;
-    gap: 6px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .lesson-action {
+    justify-content: flex-start;
   }
 }
 </style>

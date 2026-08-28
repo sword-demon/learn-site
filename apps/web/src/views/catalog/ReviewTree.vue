@@ -641,10 +641,6 @@ watch(
   gap: 10px;
 }
 
-.empty {
-  padding: 10px 0;
-}
-
 .error {
   margin: 0;
   color: #9e3f2c;

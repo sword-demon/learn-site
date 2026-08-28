@@ -113,17 +113,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import type { CategoryNode, CourseListItemDTO, SiteIntro } from '@learn-site/contracts';
-import { fetchHome } from '@/api/learner';
+import { computed, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import type { CategoryNode } from '@learn-site/contracts';
+import { useHomeStore } from '@/stores/home';
 import CategoryBranch from '@/views/home/CategoryBranch.vue';
 import CourseShelfCard from '@/views/home/CourseShelfCard.vue';
 
-const categories = ref<CategoryNode[]>([]);
-const recentCourses = ref<CourseListItemDTO[]>([]);
-const intro = ref<SiteIntro | null>(null);
-const loading = ref(true);
-const error = ref(false);
+const homeStore = useHomeStore();
+const { categories, recentCourses, intro, loading, error } = storeToRefs(homeStore);
 
 function countNodes(nodes: CategoryNode[]): number {
   return nodes.reduce((sum, node) => sum + 1 + countNodes(node.children), 0);
@@ -135,17 +133,8 @@ const freeCourseCount = computed(
 );
 const featuredCourse = computed(() => recentCourses.value[0] ?? null);
 
-onMounted(async () => {
-  try {
-    const home = await fetchHome();
-    categories.value = home.categories;
-    recentCourses.value = home.recent_courses ?? [];
-    intro.value = home.site_intro ?? null;
-  } catch {
-    error.value = true;
-  } finally {
-    loading.value = false;
-  }
+onMounted(() => {
+  void homeStore.load();
 });
 </script>
 
