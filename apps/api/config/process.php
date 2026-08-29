@@ -28,7 +28,7 @@ return [
             'publicPath' => public_path(),
         ],
     ],
-    'notification_cleanup' => [
-        'handler' => app\process\NotificationCleanup::class,
+    'scheduled_tasks_runner' => [
+        'handler' => app\process\ScheduledTaskRunner::class,
     ],
 ];

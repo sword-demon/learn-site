@@ -19,4 +19,5 @@ export * from "./learnerProfile.js";
 export * from "./courseStudent.js";
 export * from "./notification.js";
 export * from "./adminNotification.js";
+export * from "./adminScheduledTask.js";
 export * from "./order.js";

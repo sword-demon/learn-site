@@ -44,6 +44,7 @@ final class PermissionSeeder extends AbstractSeed
         ['code' => 'site.manage', 'module' => 'site', 'description' => 'Edit public site profile'],
         ['code' => 'audit.view', 'module' => 'site', 'description' => 'Read moderation logs'],
         ['code' => 'notification.manage', 'module' => 'notification', 'description' => 'Send and review learner notifications'],
+        ['code' => 'scheduled_task.manage', 'module' => 'scheduled_task', 'description' => 'Manage scheduled background tasks'],
         ['code' => 'dashboard.view', 'module' => 'site', 'description' => 'Read admin dashboard'],
     ];
 

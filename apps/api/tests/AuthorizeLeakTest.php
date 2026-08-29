@@ -48,6 +48,8 @@ final class AuthorizeLeakTest extends TestCase
         yield 'audit list' => ['/api/admin/v1/moderation-logs', 'GET', 'audit.view'];
         yield 'notification list' => ['/api/admin/v1/notifications', 'GET', 'notification.manage'];
         yield 'notification send' => ['/api/admin/v1/notifications/announcements', 'POST', 'notification.manage'];
+        yield 'scheduled tasks list' => ['/api/admin/v1/scheduled-tasks', 'GET', 'scheduled_task.manage'];
+        yield 'scheduled tasks run' => ['/api/admin/v1/scheduled-tasks/1/run', 'POST', 'scheduled_task.manage'];
     }
 
     public function testMiddlewareReturnsFixed403WithoutCallingHandler(): void

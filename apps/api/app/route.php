@@ -235,6 +235,15 @@ Route::group($adminV1, function () {
     Route::get('/notifications/{id}', [\App\controller\admin\NotificationController::class, 'show']);
     Route::post('/notifications/announcements', [\App\controller\admin\NotificationController::class, 'storeAnnouncement']);
     Route::post('/notifications/internal-messages', [\App\controller\admin\NotificationController::class, 'storeInternalMessage']);
+
+    // 004-admin-crontab-tasks — scheduled task management
+    Route::get('/scheduled-tasks/runs', [\App\controller\admin\ScheduledTaskController::class, 'runsIndex']);
+    Route::get('/scheduled-tasks/runs/{id}', [\App\controller\admin\ScheduledTaskController::class, 'runsShow']);
+    Route::post('/scheduled-tasks/validate-expression', [\App\controller\admin\ScheduledTaskController::class, 'validateExpression']);
+    Route::get('/scheduled-tasks', [\App\controller\admin\ScheduledTaskController::class, 'index']);
+    Route::get('/scheduled-tasks/{id}', [\App\controller\admin\ScheduledTaskController::class, 'show']);
+    Route::patch('/scheduled-tasks/{id}', [\App\controller\admin\ScheduledTaskController::class, 'update']);
+    Route::post('/scheduled-tasks/{id}/run', [\App\controller\admin\ScheduledTaskController::class, 'run']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,

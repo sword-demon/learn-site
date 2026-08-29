@@ -21,6 +21,8 @@ import CourseStudentView from '@/views/students/CourseStudentView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
 import NotificationListView from '@/views/notifications/NotificationListView.vue';
+import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView.vue';
+import ScheduledTaskRunLogView from '@/views/scheduled-tasks/ScheduledTaskRunLogView.vue';
 import ForbiddenView from '@/views/errors/ForbiddenView.vue';
 import { hasTokens, mustChangePassword, permissionCodes } from '@/api/http';
 import { firstVisiblePath } from '@/layouts/AdminMenu';
@@ -196,6 +198,18 @@ const routes: RouteRecordRaw[] = [
         name: 'notifications',
         component: NotificationListView,
         meta: { title: '通知管理', permission: 'notification.manage' },
+      },
+      {
+        path: 'scheduled-tasks',
+        name: 'scheduled-tasks',
+        component: ScheduledTaskListView,
+        meta: { title: '自动任务', permission: 'scheduled_task.manage' },
+      },
+      {
+        path: 'scheduled-tasks/runs',
+        name: 'scheduled-task-runs',
+        component: ScheduledTaskRunLogView,
+        meta: { title: '执行日志', permission: 'scheduled_task.manage' },
       },
       {
         path: 'site/profile',

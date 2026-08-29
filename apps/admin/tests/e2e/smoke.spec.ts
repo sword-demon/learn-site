@@ -85,4 +85,11 @@ test.describe.serial('管理端核心旅程', () => {
     await page.getByRole('button', { name: '发送通知', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
   })
+
+  test('超级管理员可进入自动任务列表', async ({ page }) => {
+    await login(page, OWNER_ACCOUNT, OWNER_PASSWORD)
+    await page.getByText('自动任务', { exact: true }).click()
+    await expect(page).toHaveURL(/\/scheduled-tasks$/)
+    await expect(page.getByRole('heading', { name: '自动任务', exact: true })).toBeVisible()
+  })
 })
