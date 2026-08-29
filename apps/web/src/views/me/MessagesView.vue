@@ -1,56 +1,70 @@
 <template>
-  <main class="page account-page messages-page">
-    <header class="account-head">
-      <div>
-        <p class="eyebrow"><span class="eyebrow-rule" />个人书架 · 消息</p>
-        <h1 class="display">消息</h1>
-        <p class="lede">课程通知和学习提醒会集中放在这里。</p>
-      </div>
-    </header>
+  <main class="page messages-page">
+    <div class="list-head">
+      <h2>消息中心</h2>
+      <span v-if="!loading && !errorMessage" class="cnt">
+        {{ unreadCount }} 条未读 · {{ messages.length }} 条
+      </span>
+    </div>
+    <p class="muted small" style="margin: 0 0 14px">
+      公告与站内信来自系统通知，问答 / 进度 / 授权为课程相关提醒。
+    </p>
+
     <p v-if="loading" class="notice">消息加载中…</p>
     <p v-else-if="errorMessage" class="notice error">{{ errorMessage }}</p>
-    <section v-else-if="messages.length === 0" class="empty-state">
-      <span class="empty-mark" aria-hidden="true">—</span>
-      <h2 class="display">暂时没有新消息</h2>
-      <p>有新的课程动态时会出现在这里。</p>
-      <router-link to="/" class="btn btn-primary">
-        回到课程目录 <span aria-hidden="true">→</span>
-      </router-link>
-    </section>
-    <ol v-else class="message-list">
-      <li v-for="message in messages" :key="message.id" :class="{ unread: !message.read }">
-        <div class="message-copy">
-          <div class="message-meta">
-            <span>{{ kindLabel(message.kind) }}</span>
-            <time>{{ message.created_at }}</time>
+    <div v-else-if="messages.length === 0" class="empty">
+      <span class="serif">没有消息</span>
+      公告、站内信与问答、进度、授权等系统通知会出现在这里
+    </div>
+    <div v-else class="panel">
+      <article
+        v-for="message in messages"
+        :key="message.id"
+        class="msg-row"
+        :class="{ unread: !message.read }"
+      >
+        <span class="msg-dot" :class="{ read: message.read }" aria-hidden="true" />
+        <div>
+          <div class="mtitle">
+            <span v-if="!message.read" class="tag tag-sale" style="font-size: 10px; margin-right: 6px">
+              未读
+            </span>
+            <span class="tag" :class="kindTagClass(message.kind)" style="font-size: 10px; margin-right: 6px">
+              {{ kindLabel(message.kind) }}
+            </span>
+            {{ message.title }}
           </div>
-          <h2>{{ message.title }}</h2>
-          <p v-if="message.body">{{ message.body }}</p>
+          <div v-if="message.body" class="mbody">{{ message.body }}</div>
           <router-link
             v-if="message.resource_available && resourcePath(message)"
             :to="resourcePath(message)!"
+            class="btn-link"
+            style="margin-top: 6px; display: inline-block"
           >
             查看关联内容
           </router-link>
-          <span v-else-if="message.resource_type" class="unavailable">关联内容已不可用</span>
+          <span v-else-if="message.resource_type" class="small muted">关联内容已不可用</span>
         </div>
-        <button
-          v-if="!message.read"
-          type="button"
-          class="btn"
-          :data-read-id="message.id"
-          :disabled="readingId === message.id"
-          @click="markRead(message.id)"
-        >
-          标记已读
-        </button>
-      </li>
-    </ol>
+        <div style="display: grid; gap: 8px; justify-items: end">
+          <time class="when small muted">{{ message.created_at }}</time>
+          <button
+            v-if="!message.read"
+            type="button"
+            class="btn btn-ghost btn-sm"
+            :data-read-id="message.id"
+            :disabled="readingId === message.id"
+            @click="markRead(message.id)"
+          >
+            标记已读
+          </button>
+        </div>
+      </article>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { LearnerNotificationDTO } from '@learn-site/contracts';
 import { listNotifications, markNotificationRead } from '@/api/notifications';
 
@@ -61,13 +75,25 @@ const loading = ref(true);
 const errorMessage = ref('');
 const readingId = ref<number | null>(null);
 
+const unreadCount = computed(() => messages.value.filter((message) => !message.read).length);
+
 function kindLabel(kind: LearnerNotificationDTO['kind']): string {
   return {
     question_update: '问答',
-    progress_reset: '学习进度',
-    entitlement_revoked: '课程授权',
+    progress_reset: '进度',
+    entitlement_revoked: '授权',
     announcement: '公告',
     internal_message: '站内信',
+  }[kind];
+}
+
+function kindTagClass(kind: LearnerNotificationDTO['kind']): string {
+  return {
+    question_update: 'tag-trial',
+    progress_reset: 'tag-free',
+    entitlement_revoked: 'tag-free',
+    announcement: 'tag-sale',
+    internal_message: 'tag-on',
   }[kind];
 }
 
@@ -105,89 +131,3 @@ onMounted(async () => {
   }
 });
 </script>
-
-<style scoped>
-.account-page {
-  display: grid;
-  gap: 28px;
-}
-.account-head {
-  padding: 18px 0 26px;
-  border-bottom: 1px solid var(--line);
-}
-.account-head .eyebrow {
-  margin-bottom: 16px;
-}
-.account-head .display {
-  margin: 0 0 9px;
-  color: var(--pine-deep);
-}
-.empty-state {
-  display: grid;
-  justify-items: start;
-  gap: 12px;
-  padding: 48px 6px 60px;
-  border-bottom: 1px solid var(--line);
-}
-.empty-mark {
-  color: var(--accent);
-  font: 700 2.4rem var(--font-mono);
-  line-height: 1;
-}
-.empty-state h2 {
-  margin: 0;
-  color: var(--pine-deep);
-  font-size: 1.55rem;
-}
-.empty-state p {
-  margin: 0 0 6px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-.message-list {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--line);
-}
-.message-list li {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 22px 6px;
-  border-bottom: 1px solid var(--line);
-}
-.message-list li.unread {
-  border-left: 3px solid var(--accent);
-  padding-left: 14px;
-}
-.message-copy {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-}
-.message-copy h2,
-.message-copy p {
-  margin: 0;
-}
-.message-copy h2 {
-  font-size: 1rem;
-}
-.message-copy p,
-.message-meta,
-.unavailable {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-.message-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.unavailable {
-  display: inline-block;
-}
-</style>

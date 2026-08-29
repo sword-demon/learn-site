@@ -74,6 +74,11 @@ async function loadList(page = 1): Promise<void> {
 }
 
 async function openReview(id: number): Promise<void> {
+  if (openThread.value?.review.id === id) {
+    openThread.value = null;
+    threadError.value = null;
+    return;
+  }
   threadLoading.value = true;
   threadError.value = null;
   replyError.value = null;
@@ -216,6 +221,18 @@ function ratingStars(rating: number): string {
   return '★'.repeat(rating) + '☆'.repeat(5 - rating);
 }
 
+function renderStars(rating: number): Array<{ on: boolean }> {
+  return Array.from({ length: 5 }, (_, index) => ({ on: index < Math.round(rating) }));
+}
+
+const ratingSummary = computed(() => {
+  if (!list.value.total) return null;
+  const items = list.value.items;
+  if (!items.length) return { avg: 0, count: list.value.total };
+  const avg = items.reduce((sum, review) => sum + review.rating, 0) / items.length;
+  return { avg, count: list.value.total };
+});
+
 function authorLabel(review: ReviewDTO): string {
   return review.viewer_owned ? '我' : review.author_name;
 }
@@ -237,35 +254,51 @@ watch(
 
 <template>
   <section class="review-tree" aria-labelledby="review-heading">
-    <header class="head">
+    <div v-if="ratingSummary" class="panel rate-summary">
       <div>
-        <h2 id="review-heading" class="display">学员评价</h2>
-        <p class="count">{{ list.total }} 条公开评价</p>
+        <div class="score">{{ ratingSummary.avg ? ratingSummary.avg.toFixed(1) : '—' }}</div>
+        <span class="stars" aria-hidden="true">
+          <span
+            v-for="(star, index) in renderStars(ratingSummary.avg)"
+            :key="index"
+            :class="{ off: !star.on }"
+            >★</span
+          >
+        </span>
       </div>
-      <button v-if="authorized" type="button" class="btn btn-primary" @click="beginCompose">
+      <div class="small muted">
+        {{ ratingSummary.count }} 条学员评价<br />仅统计当前公开有效的评价
+      </div>
+    </div>
+
+    <header class="review-toolbar">
+      <p v-if="!authorized" class="form-note">
+        取得课程访问权并完成至少一个课节后，可以发表评价和参与讨论。
+      </p>
+      <p v-else class="form-note">完成至少一个课节后即可发表评价。</p>
+      <button v-if="authorized" type="button" class="btn btn-primary btn-sm" @click="beginCompose">
         {{ reviewActionLabel }}
       </button>
     </header>
 
-    <p v-if="!authorized" class="notice">
-      取得课程访问权并完成至少一个课节后，可以发表评价和参与讨论。
-    </p>
-    <p v-else class="notice">完成至少一个课节后即可发表评价。</p>
-
-    <form v-if="composing && authorized" class="composer" @submit.prevent="submitReview">
-      <div class="composer-head">
-        <h3>{{ composerTitle }}</h3>
-        <button type="button" class="link" @click="cancelCompose">取消</button>
-      </div>
-      <label>
+    <form v-if="composing && authorized" class="panel rv-form" @submit.prevent="submitReview">
+      <h3 class="serif" style="margin: 0; font-size: 16px">{{ composerTitle }}</h3>
+      <label class="field">
         评分
-        <select v-model.number="newRating">
-          <option v-for="rating in [5, 4, 3, 2, 1]" :key="rating" :value="rating">
-            {{ rating }} 星
-          </option>
-        </select>
+        <span class="star-input" role="radiogroup" aria-label="评分">
+          <button
+            v-for="rating in [1, 2, 3, 4, 5]"
+            :key="rating"
+            type="button"
+            :class="{ on: newRating >= rating }"
+            :aria-label="`${rating} 星`"
+            @click="newRating = rating"
+          >
+            ★
+          </button>
+        </span>
       </label>
-      <label>
+      <label class="field">
         正文
         <textarea
           v-model="newBody"
@@ -274,53 +307,114 @@ watch(
           placeholder="分享课程内容、节奏或学习收获"
         />
       </label>
-      <p v-if="submitError" class="error" role="alert">{{ submitError }}</p>
-      <div class="row-end">
-        <button type="submit" class="btn btn-primary" :disabled="submitting">
+      <p v-if="submitError" class="notice error" role="alert">{{ submitError }}</p>
+      <div class="review-actions">
+        <button type="button" class="btn btn-ghost btn-sm" @click="cancelCompose">取消</button>
+        <button type="submit" class="btn btn-primary btn-sm" :disabled="submitting">
           {{ submitting ? '保存中…' : editingReviewId === null ? '提交评价' : '保存修改' }}
         </button>
       </div>
     </form>
 
     <p v-if="loading" class="notice" aria-live="polite">评价加载中…</p>
-    <p v-else-if="loadError" class="error" role="alert">{{ loadError }}</p>
+    <p v-else-if="loadError" class="notice error" role="alert">{{ loadError }}</p>
     <template v-else>
-      <ol v-if="list.items.length" class="review-list">
-        <li v-for="review in list.items" :key="review.id" class="review-summary">
-          <button
-            type="button"
-            class="review-button"
-            :class="{ selected: openThread?.review.id === review.id }"
-            @click="openReview(review.id)"
-          >
-            <span class="summary-head">
-              <strong>{{ authorLabel(review) }}</strong>
-              <span class="status">公开</span>
-              <span v-if="review.edited">已编辑</span>
-              <time :datetime="review.created_at">{{ formattedAt(review.created_at) }}</time>
-            </span>
-            <span class="rating" :aria-label="`${review.rating} 星`">
-              {{ ratingStars(review.rating) }}
-            </span>
-            <span class="body">{{ review.body }}</span>
-          </button>
-        </li>
-      </ol>
-      <p v-else class="notice empty">还没有公开评价。</p>
-
-      <nav v-if="totalPages > 1" class="pagination" aria-label="评价分页">
-        <button
-          type="button"
-          class="btn"
-          :disabled="list.page <= 1"
-          @click="loadList(list.page - 1)"
+      <div v-if="list.items.length">
+        <article
+          v-for="review in list.items"
+          :key="review.id"
+          class="review"
+          :class="{ open: openThread?.review.id === review.id }"
         >
+          <div class="review-head">
+            <span class="stars" :aria-label="`${review.rating} 星`">{{ ratingStars(review.rating) }}</span>
+            <span class="who">{{ authorLabel(review) }}</span>
+            <time class="when" :datetime="review.created_at">{{ formattedAt(review.created_at) }}</time>
+            <span v-if="review.edited" class="small muted">已编辑</span>
+          </div>
+          <div class="review-body">{{ review.body }}</div>
+          <button type="button" class="btn-link reply-toggle" @click="openReview(review.id)">
+            {{ openThread?.review.id === review.id ? '收起讨论' : '查看讨论' }}
+          </button>
+
+          <div v-if="openThread?.review.id === review.id && !threadLoading" class="thread">
+            <div v-if="openThread.review.viewer_owned" class="review-actions">
+              <button type="button" class="btn btn-ghost btn-sm" @click="beginEdit(openThread.review)">
+                编辑
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" @click="confirmingDelete = true">
+                删除
+              </button>
+            </div>
+
+            <div v-if="confirmingDelete" class="panel delete-confirm" role="alert">
+              <p class="form-note">删除后评价及其全部回复都无法恢复。</p>
+              <div class="review-actions">
+                <button type="button" class="btn btn-ghost btn-sm" @click="confirmingDelete = false">
+                  取消
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  :disabled="deleting"
+                  @click="removeReview"
+                >
+                  {{ deleting ? '删除中…' : '确认删除' }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="replyForest.length" class="reply">
+              <ol class="reply-tree">
+                <ReviewReplyBranch
+                  v-for="root in replyForest"
+                  :key="root.id"
+                  :node="root"
+                  :depth="1"
+                  :can-reply="authorized"
+                  @reply="startReply"
+                />
+              </ol>
+            </div>
+            <p v-else class="form-note">还没有回复。</p>
+
+            <form v-if="authorized" class="rv-form" @submit.prevent="submitReply">
+              <h4 class="serif" style="margin: 0; font-size: 15px">{{ replyTargetLabel }}</h4>
+              <label class="field">
+                回复内容
+                <textarea v-model="replyBody" rows="3" maxlength="4000" placeholder="留下你的看法" />
+              </label>
+              <p v-if="replyError" class="notice error" role="alert">{{ replyError }}</p>
+              <div class="review-actions">
+                <button
+                  v-if="replyTo !== null"
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  @click="startReply(null)"
+                >
+                  取消定向回复
+                </button>
+                <button type="submit" class="btn btn-primary btn-sm" :disabled="replySubmitting">
+                  {{ replySubmitting ? '提交中…' : '提交回复' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </article>
+      </div>
+      <div v-else class="empty">
+        <span class="serif">还没有评价</span>
+        完成一个课节后，来写下第一条吧
+      </div>
+
+      <nav v-if="totalPages > 1" class="review-pagination" aria-label="评价分页">
+        <button type="button" class="btn btn-ghost btn-sm" :disabled="list.page <= 1" @click="loadList(list.page - 1)">
           上一页
         </button>
-        <span>第 {{ list.page }} / {{ totalPages }} 页</span>
+        <span class="small muted">第 {{ list.page }} / {{ totalPages }} 页</span>
         <button
           type="button"
-          class="btn"
+          class="btn btn-ghost btn-sm"
           :disabled="list.page >= totalPages"
           @click="loadList(list.page + 1)"
         >
@@ -330,74 +424,7 @@ watch(
     </template>
 
     <p v-if="threadLoading" class="notice" aria-live="polite">讨论加载中…</p>
-    <p v-else-if="threadError" class="error" role="alert">{{ threadError }}</p>
-
-    <article v-if="openThread && !threadLoading" class="thread" aria-label="评价讨论">
-      <header class="thread-head">
-        <div class="thread-meta">
-          <span class="summary-head">
-            <strong>{{ authorLabel(openThread.review) }}</strong>
-            <span class="status">公开</span>
-            <span v-if="openThread.review.edited">已编辑</span>
-            <time :datetime="openThread.review.created_at">
-              {{ formattedAt(openThread.review.created_at) }}
-            </time>
-          </span>
-          <span class="rating" :aria-label="`${openThread.review.rating} 星`">
-            {{ ratingStars(openThread.review.rating) }}
-          </span>
-          <p class="body">{{ openThread.review.body }}</p>
-        </div>
-        <div v-if="openThread.review.viewer_owned" class="owner-actions">
-          <button type="button" class="btn" @click="beginEdit(openThread.review)">编辑</button>
-          <button type="button" class="btn danger" @click="confirmingDelete = true">删除</button>
-        </div>
-      </header>
-
-      <div v-if="confirmingDelete" class="delete-confirm" role="alert">
-        <p>删除后评价及其全部回复都无法恢复。</p>
-        <div class="row-end">
-          <button type="button" class="btn" @click="confirmingDelete = false">取消</button>
-          <button type="button" class="btn danger" :disabled="deleting" @click="removeReview">
-            {{ deleting ? '删除中…' : '确认删除' }}
-          </button>
-        </div>
-      </div>
-
-      <section class="discussion" aria-labelledby="discussion-heading">
-        <h3 id="discussion-heading">讨论</h3>
-        <ol v-if="replyForest.length" class="reply-tree">
-          <ReviewReplyBranch
-            v-for="root in replyForest"
-            :key="root.id"
-            :node="root"
-            :depth="1"
-            :can-reply="authorized"
-            @reply="startReply"
-          />
-        </ol>
-        <p v-else class="notice empty">还没有回复。</p>
-      </section>
-
-      <form v-if="authorized" class="reply-form" @submit.prevent="submitReply">
-        <div class="composer-head">
-          <h3>{{ replyTargetLabel }}</h3>
-          <button v-if="replyTo !== null" type="button" class="link" @click="startReply(null)">
-            取消定向回复
-          </button>
-        </div>
-        <label>
-          回复内容
-          <textarea v-model="replyBody" rows="3" maxlength="4000" placeholder="留下你的看法" />
-        </label>
-        <p v-if="replyError" class="error" role="alert">{{ replyError }}</p>
-        <div class="row-end">
-          <button type="submit" class="btn btn-primary" :disabled="replySubmitting">
-            {{ replySubmitting ? '提交中…' : '提交回复' }}
-          </button>
-        </div>
-      </form>
-    </article>
+    <p v-else-if="threadError" class="notice error" role="alert">{{ threadError }}</p>
   </section>
 </template>
 
@@ -407,267 +434,84 @@ watch(
   gap: 18px;
 }
 
-.head,
-.composer-head,
-.thread-head,
-.summary-head,
-.owner-actions,
-.pagination,
-.row-end {
+.review-toolbar {
   display: flex;
   align-items: center;
-}
-
-.head,
-.thread-head {
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.display,
-.composer-head h3,
-.discussion h3,
-.reply-form h3 {
+.review-toolbar .form-note {
   margin: 0;
-  color: var(--pine-deep);
-  font-family: var(--font-display);
-  font-size: 1.15rem;
+  flex: 1;
 }
 
-.count,
-.notice {
-  margin: 4px 0 0;
-  color: var(--muted);
-}
-
-.btn {
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.btn-primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fffefa;
-}
-
-.btn.danger {
-  border-color: #d99a8c;
-  color: #9e3f2c;
-}
-
-.link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  cursor: pointer;
-}
-
-.composer,
-.reply-form,
-.delete-confirm {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border-left: 3px solid var(--accent);
-  background: var(--surface-muted);
-}
-
-.composer-head {
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.composer label,
-.reply-form label {
-  display: grid;
-  gap: 6px;
-  color: var(--pine-deep);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.composer textarea,
-.reply-form textarea,
-.composer select {
-  width: 100%;
-  min-height: 38px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  font: inherit;
-}
-
-.composer textarea,
-.reply-form textarea {
-  resize: vertical;
-}
-
-.row-end {
+.review-actions {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.review-list,
+.review.open {
+  background: var(--card-2);
+}
+
+.review-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .reply-tree {
-  display: grid;
-  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.review-list {
-  border-top: 1px solid var(--line);
-}
-
-.review-summary {
-  border-bottom: 1px solid var(--line);
-}
-
-.review-button {
-  display: grid;
-  width: 100%;
-  gap: 7px;
-  padding: 14px 7px;
-  border: 0;
-  border-left: 3px solid transparent;
-  background: transparent;
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    padding-left 0.2s ease;
-}
-
-.review-button:hover,
-.review-button.selected {
-  padding-left: 12px;
-  border-left-color: var(--accent);
-  background: var(--surface-muted);
-}
-
-.summary-head {
-  gap: 6px 10px;
-  flex-wrap: wrap;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.summary-head strong {
-  color: var(--pine-deep);
-}
-
-.status {
-  padding: 2px 6px;
-  border: 1px solid #bad4c1;
-  border-radius: 999px;
-  color: var(--pine-deep);
-  background: #eef7f0;
-  font-size: 0.72rem;
-}
-
-.rating {
-  color: var(--accent);
-  letter-spacing: 0;
-}
-
-.body {
-  margin: 0;
-  line-height: 1.65;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.pagination {
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.thread {
-  display: grid;
-  gap: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.thread-head {
-  align-items: start;
-}
-
-.thread-meta {
-  display: grid;
-  flex: 1 1 420px;
-  gap: 8px;
-  min-width: 0;
-}
-
-.owner-actions {
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .delete-confirm {
-  border-left-color: #c75c44;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-color: #e7b8ab;
   background: #fff5f1;
 }
 
-.delete-confirm p {
-  margin: 0;
-}
-
-.discussion {
-  display: grid;
-  gap: 10px;
-}
-
-.error {
-  margin: 0;
+.delete-confirm .form-note {
+  margin: 0 0 10px;
   color: #9e3f2c;
-  font-size: 0.82rem;
+}
+
+.rv-form .field textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  line-height: 1.7;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--card);
+  color: var(--ink);
+  padding: 9px 12px;
+}
+
+.rv-form .field textarea:focus {
+  outline: 2px solid rgba(181, 64, 44, 0.25);
+  border-color: var(--seal);
 }
 
 @media (max-width: 640px) {
-  .head .btn-primary {
-    width: 100%;
-  }
-
-  .thread-head {
+  .review-toolbar {
     align-items: stretch;
+    flex-direction: column;
   }
 
-  .owner-actions {
+  .review-toolbar .btn {
     width: 100%;
-  }
-
-  .owner-actions .btn {
-    flex: 1;
-  }
-
-  .composer,
-  .reply-form,
-  .delete-confirm {
-    padding: 12px;
   }
 }
 </style>

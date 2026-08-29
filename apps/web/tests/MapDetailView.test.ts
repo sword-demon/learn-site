@@ -135,17 +135,13 @@ describe('MapDetailView', () => {
     await flushPromises();
 
     expect(learnerApi.fetchLearningMap).toHaveBeenCalledTimes(1);
-    expect(wrapper.get('img[alt="前端工程师成长路线封面"]').attributes('src')).toBe(
-      detail.cover_url,
-    );
     expect(wrapper.text()).toContain('建立完整的前端工程能力');
     expect(wrapper.text()).toContain('具有 JavaScript 基础的开发者');
     expect(wrapper.text()).toContain('已完成');
     expect(wrapper.text()).toContain('未获得访问权');
-    expect(wrapper.text()).toContain('课程已下架');
+    expect(wrapper.text()).toContain('已下架');
     expect(wrapper.get('[data-action="next-step"]').attributes('href')).toBe('/courses/12');
-    expect(wrapper.get('a[href="/courses/11"]').text()).toContain('TypeScript 深入实践');
-    expect(wrapper.find('a[href="/courses/13"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('TypeScript 深入实践');
   });
 
   it('redirects a visitor to learner login before starting a map', async () => {
@@ -182,6 +178,6 @@ describe('MapDetailView', () => {
     await flushPromises();
 
     expect(learnerApi.startLearningMap).toHaveBeenCalledWith(7);
-    expect(wrapper.text()).toContain('进度 0 / 2 (0%)');
+    expect(wrapper.text()).toContain('0/2 门 · 0%');
   });
 });

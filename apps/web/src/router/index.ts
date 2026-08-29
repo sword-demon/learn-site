@@ -18,8 +18,7 @@ const router = createRouter({
         },
         {
           path: 'categories/:id',
-          name: 'category',
-          component: () => import('@/views/catalog/CategoryView.vue'),
+          redirect: (to) => ({ path: '/', query: { cat: String(to.params.id) } }),
         },
         {
           path: 'courses/:id',

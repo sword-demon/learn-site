@@ -1,14 +1,32 @@
 <template>
   <div class="campus auth-page">
-    <header class="topnav">
-      <router-link to="/" class="brand">
-        <span class="latin">Linjian</span>
-        <strong class="display">林间课室</strong>
-      </router-link>
+    <header class="masthead">
+      <div class="masthead-inner">
+        <router-link to="/" class="brand">
+          <div class="seal-mark" aria-hidden="true">
+            <span>拾</span><span>阶</span><span>学</span><span>社</span>
+          </div>
+          <div class="brand-txt">
+            <h1>拾阶学社</h1>
+            <p>拾级而上 · 日进一阶</p>
+          </div>
+        </router-link>
+        <div class="masthead-tools">
+          <button
+            type="button"
+            class="btn-night"
+            :title="isNight ? '切换日间模式' : '夜读模式'"
+            :aria-pressed="isNight"
+            @click="toggleNight"
+          >
+            {{ isNight ? '☀' : '☾' }}
+          </button>
+        </div>
+      </div>
     </header>
     <main class="auth-shell">
       <aside class="auth-aside">
-        <p class="eyebrow"><span class="eyebrow-rule" />林间课室 · 学员入口</p>
+        <p class="eyebrow"><span class="eyebrow-rule" />拾阶学社 · 学员入口</p>
         <p class="auth-index latin">READ / 02</p>
         <h1 class="display">给自己留一间安静的课室。</h1>
         <p>注册后可以加入课程、记录进度，也可以沿着学习地图逐阶段完成。</p>
@@ -64,6 +82,7 @@
           已经有学号？
           <router-link to="/login" class="switch-link">登录</router-link>
         </p>
+        <p class="form-note">注册成功后会自动登录，并保留你的学习进度与收藏。</p>
       </section>
     </main>
   </div>
@@ -74,9 +93,11 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { fetchCaptcha, registerLearner } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
+import { useTheme } from '@/composables/useTheme';
 
 const router = useRouter();
 const session = useLoginFamilyStore();
+const { isNight, toggleNight } = useTheme();
 
 const form = reactive({
   phone: '',

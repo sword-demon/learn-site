@@ -1,14 +1,32 @@
 <template>
   <div class="campus auth-page">
-    <header class="topnav">
-      <router-link to="/" class="brand">
-        <span class="latin">Linjian</span>
-        <strong class="display">林间课室</strong>
-      </router-link>
+    <header class="masthead">
+      <div class="masthead-inner">
+        <router-link to="/" class="brand">
+          <div class="seal-mark" aria-hidden="true">
+            <span>拾</span><span>阶</span><span>学</span><span>社</span>
+          </div>
+          <div class="brand-txt">
+            <h1>拾阶学社</h1>
+            <p>拾级而上 · 日进一阶</p>
+          </div>
+        </router-link>
+        <div class="masthead-tools">
+          <button
+            type="button"
+            class="btn-night"
+            :title="isNight ? '切换日间模式' : '夜读模式'"
+            :aria-pressed="isNight"
+            @click="toggleNight"
+          >
+            {{ isNight ? '☀' : '☾' }}
+          </button>
+        </div>
+      </div>
     </header>
     <main class="auth-shell">
       <aside class="auth-aside">
-        <p class="eyebrow"><span class="eyebrow-rule" />林间课室 · 学员入口</p>
+        <p class="eyebrow"><span class="eyebrow-rule" />拾阶学社 · 学员入口</p>
         <p class="auth-index latin">READ / 01</p>
         <h1 class="display">从上次停下的地方，继续读下去。</h1>
         <p>课程、学习地图和进度记录都会留在你的个人书架里。</p>
@@ -64,6 +82,7 @@
           还没有学号？
           <router-link to="/register" class="switch-link">注册</router-link>
         </p>
+        <p class="form-note">学员账户与后台账户相互独立，请使用学员手机号登录。</p>
       </section>
     </main>
   </div>
@@ -74,10 +93,12 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { fetchCaptcha, loginLearner } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
+import { useTheme } from '@/composables/useTheme';
 
 const router = useRouter();
 const route = useRoute();
 const session = useLoginFamilyStore();
+const { isNight, toggleNight } = useTheme();
 
 const form = reactive({
   phone: '',

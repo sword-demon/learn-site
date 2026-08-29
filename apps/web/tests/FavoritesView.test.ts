@@ -45,6 +45,6 @@ describe('FavoritesView', () => {
     await flushPromises()
 
     expect(learnerApi.removeFavorite).toHaveBeenCalledWith(9)
-    expect(wrapper.text()).toContain('还没有收藏课程')
+    expect(wrapper.text()).toContain('收藏夹还是空的')
   })
 })

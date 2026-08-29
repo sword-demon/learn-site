@@ -89,8 +89,8 @@ describe('App footer', () => {
 
     const footer = wrapper.get('footer[aria-label="站点页脚"]');
     expect(wrapper.text()).toContain('当前页面');
-    expect(footer.text()).toContain('林间课室');
-    expect(footer.get('nav[aria-label="页脚导航"] a[href="/"]').text()).toContain('课程分类');
+    expect(footer.text()).toContain('拾阶学社');
+    expect(footer.get('nav[aria-label="页脚导航"] a[href="/"]').text()).toContain('首页');
     expect(footer.get('a[href="/maps"]').text()).toContain('学习地图');
     expect(footer.get('a[href="mailto:courses@example.test"]').text()).toBe(
       'courses@example.test',
@@ -104,7 +104,7 @@ describe('App footer', () => {
     await flushPromises();
 
     const footer = wrapper.get('footer[aria-label="站点页脚"]');
-    expect(footer.text()).toContain('林间课室');
+    expect(footer.text()).toContain('拾阶学社');
     expect(footer.get('a[href="/maps"]').text()).toContain('学习地图');
     expect(footer.find('a[href^="mailto:"]').exists()).toBe(false);
   });

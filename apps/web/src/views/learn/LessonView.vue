@@ -5,54 +5,102 @@
       {{ errorMessage || '课节暂时读不到, 请稍后再试.' }}
     </p>
     <template v-else-if="delivery">
-      <header class="lesson-head">
-        <div class="head-text">
-          <p class="badge">
-            <router-link :to="`/courses/${courseId}`">← 返回课程</router-link>
-          </p>
-          <h1 class="display">{{ deliveryTitle }}</h1>
-          <p class="lede">{{ kindLabel }}</p>
+      <header class="learn-top">
+        <h2>{{ courseTitle || deliveryTitle }}</h2>
+        <div class="pbar">
+          <div class="mini-progress" style="flex: 1">
+            <i :style="{ width: `${positionPercent}%` }" />
+          </div>
+          <span>{{ positionLabel }}</span>
         </div>
-        <nav class="pager" aria-label="上下节">
-          <button v-if="prev" type="button" class="btn" @click="goSibling(prev)">上一节</button>
-          <button v-if="next" type="button" class="btn" @click="goSibling(next)">下一节</button>
-        </nav>
+        <router-link :to="`/courses/${courseId}`" class="btn btn-ghost btn-sm">返回课程</router-link>
       </header>
 
-      <MarkdownRenderer v-if="delivery.kind === 'markdown'" :html="delivery.html" />
-      <PdfViewer
-        v-else-if="delivery.kind === 'pdf'"
-        :url="mediaObjectUrl"
-        :status="delivery.status"
-        @open="openPdf"
-      />
-      <VideoPlayer
-        v-else-if="delivery.kind === 'video'"
-        :url="mediaObjectUrl"
-        :status="delivery.status"
-        @timeupdate="onVideoTimeUpdate"
-        @ended="onVideoEnded"
-      />
+      <div class="learn-grid">
+        <div class="panel stage">
+          <div class="stage-head">
+            <h3>{{ deliveryTitle }}</h3>
+            <span class="typechip" :class="typechipClass">{{ kindLabel }}</span>
+          </div>
+          <p class="stage-sub">{{ chapterLabel }}</p>
 
-      <section
-        v-if="delivery.kind === 'markdown' || delivery.kind === 'pdf'"
-        class="lesson-completion"
-        aria-live="polite"
-      >
-        <p v-if="completed" class="notice success">本节已完成.</p>
-        <button
-          v-else
-          type="button"
-          class="btn btn-primary"
-          :disabled="completionPending"
-          @click="completeLesson"
-        >
-          {{ completionPending ? '提交中…' : '标记为已完成' }}
-        </button>
-        <p v-if="completionError" class="notice error">{{ completionError }}</p>
-      </section>
+          <div v-if="delivery.kind === 'markdown'" class="article">
+            <MarkdownRenderer :html="delivery.html" />
+          </div>
+          <PdfViewer
+            v-else-if="delivery.kind === 'pdf'"
+            :url="mediaObjectUrl"
+            :status="delivery.status"
+            @open="openPdf"
+          />
+          <VideoPlayer
+            v-else-if="delivery.kind === 'video'"
+            :url="mediaObjectUrl"
+            :status="delivery.status"
+            @timeupdate="onVideoTimeUpdate"
+            @ended="onVideoEnded"
+          />
 
-      <QuestionPanel :lesson-id="lessonId" />
+          <div
+            v-if="delivery.kind === 'markdown' || delivery.kind === 'pdf'"
+            class="stage-foot"
+            aria-live="polite"
+          >
+            <span class="muted small">{{ completed ? '本节已完成' : '阅读后请标记完成' }}</span>
+            <span class="spacer" />
+            <button v-if="prev" type="button" class="btn btn-ghost btn-sm" @click="goSibling(prev)">
+              ← 上一节
+            </button>
+            <button v-if="next" type="button" class="btn btn-ghost btn-sm" @click="goSibling(next)">
+              下一节 →
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :class="completed ? 'btn-ghost' : 'btn-primary'"
+              :disabled="completionPending || completed"
+              @click="completeLesson"
+            >
+              {{ completionPending ? '提交中…' : completed ? '✓ 已完成' : '标记本节完成' }}
+            </button>
+            <p v-if="completionError" class="notice error">{{ completionError }}</p>
+          </div>
+
+          <div v-else class="stage-foot">
+            <span class="spacer" />
+            <button v-if="prev" type="button" class="btn btn-ghost btn-sm" @click="goSibling(prev)">
+              ← 上一节
+            </button>
+            <button v-if="next" type="button" class="btn btn-ghost btn-sm" @click="goSibling(next)">
+              下一节 →
+            </button>
+          </div>
+
+          <QuestionPanel :lesson-id="lessonId" />
+        </div>
+
+        <aside class="panel sidecat" aria-label="课程目录">
+          <h4>课程目录</h4>
+          <template v-for="(chapter, chapterIndex) in courseChapters" :key="chapter.id">
+            <div class="chapter-name">第 {{ chapterIndex + 1 }} 章 · {{ chapter.title }}</div>
+            <router-link
+              v-for="lesson in chapter.lessons"
+              :key="lesson.id"
+              :to="`/learn/${courseId}/${lesson.id}`"
+              class="slesson"
+              :class="{ cur: lesson.id === lessonId }"
+            >
+              <span>
+                {{ lesson.title }}
+                <span v-if="lesson.is_preview" class="tag tag-trial" style="font-size: 10px; padding: 0 5px">
+                  试
+                </span>
+              </span>
+              <span class="st">{{ lesson.locked ? '🔒' : lesson.id === lessonId ? '·' : '' }}</span>
+            </router-link>
+          </template>
+        </aside>
+      </div>
     </template>
   </main>
 </template>
@@ -81,6 +129,8 @@ const loading = ref(true);
 const loadError = ref(false);
 const errorMessage = ref('');
 const deliveryTitle = ref('');
+const courseTitle = ref('');
+const chapterLabel = ref('');
 const courseChapters = ref<ChapterWithLessonSummariesDTO[]>([]);
 const completionPending = ref(false);
 const completed = ref(false);
@@ -98,14 +148,53 @@ const kindLabel = computed(() => {
   if (!delivery.value) return '';
   switch (delivery.value.kind) {
     case 'markdown':
-      return '图文课节';
+      return '图文';
     case 'pdf':
-      return 'PDF 课节';
+      return 'PDF';
     case 'video':
-      return '视频课节';
+      return '视频';
     default:
       return '';
   }
+});
+
+const typechipClass = computed(() => {
+  if (!delivery.value) return '';
+  switch (delivery.value.kind) {
+    case 'markdown':
+      return 't-md';
+    case 'pdf':
+      return 't-pdf';
+    case 'video':
+      return 't-video';
+    default:
+      return '';
+  }
+});
+
+const flatLessons = computed(() => {
+  const items: Array<{ id: number; title: string }> = [];
+  for (const chapter of courseChapters.value) {
+    for (const lesson of chapter.lessons) {
+      items.push({ id: lesson.id, title: lesson.title });
+    }
+  }
+  return items;
+});
+
+const positionPercent = computed(() => {
+  const total = flatLessons.value.length;
+  if (!total) return 0;
+  const index = flatLessons.value.findIndex((lesson) => lesson.id === lessonId.value);
+  if (index < 0) return 0;
+  return Math.round(((index + 1) / total) * 100);
+});
+
+const positionLabel = computed(() => {
+  const total = flatLessons.value.length;
+  const index = flatLessons.value.findIndex((lesson) => lesson.id === lessonId.value);
+  if (index < 0 || !total) return '课节进度';
+  return `${index + 1}/${total} 节`;
 });
 
 interface Sibling {
@@ -135,11 +224,13 @@ function goSibling(s: Sibling): void {
 async function loadCourseMeta(): Promise<void> {
   try {
     const detail: PublicCourseDetailDTO = await fetchCourseDetail(courseId.value);
+    courseTitle.value = detail.course.title;
     courseChapters.value = detail.chapters;
     for (const ch of detail.chapters) {
       for (const ls of ch.lessons) {
         if (ls.id === lessonId.value) {
           deliveryTitle.value = ls.title;
+          chapterLabel.value = `第 ${ch.sort + 1} 章 · ${ch.title}`;
           return;
         }
       }
@@ -284,91 +375,13 @@ onMounted(async () => {
 <style scoped>
 .lesson-page {
   display: grid;
-  gap: 24px;
+  gap: 0;
 }
 
-.lesson-head {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 22px 0 25px;
-  border-bottom: 1px solid var(--line);
-}
-
-.head-text .display {
-  max-width: 18ch;
-  margin: 7px 0 7px;
-  color: var(--pine-deep);
-  font-size: 2.55rem;
-}
-
-.lede {
-  margin: 0;
-  color: var(--muted);
-}
-
-.badge a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.rich-html,
-.asset-block {
-  width: min(820px, 100%);
-  margin: 0 auto;
-  padding: 28px 32px 34px;
-  border-top: 3px solid var(--pine);
-  border-bottom: 1px solid var(--line);
-  background: rgba(255, 254, 250, 0.78);
-}
-
-.asset-block {
-  display: grid;
-  justify-items: start;
-  gap: 14px;
-}
-
-.asset-block p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.7;
-}
-
-.lesson-completion {
-  display: grid;
-  justify-items: start;
-  gap: 9px;
-}
-
-.player {
-  display: block;
-  width: 100%;
-  max-height: 70vh;
-  background: #15201c;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-}
-
-@media (max-width: 560px) {
-  .lesson-head {
-    align-items: start;
-    flex-direction: column;
-  }
-
-  .head-text .display {
-    font-size: 2.2rem;
-  }
-
-  .rich-html,
-  .asset-block {
-    padding: 22px 17px 26px;
-  }
+.article :deep(.rich-html) {
+  max-width: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 </style>

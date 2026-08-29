@@ -112,7 +112,7 @@ describe('CourseDetailView', () => {
     })
     await flushPromises()
 
-    await wrapper.get('.hero-actions .btn-primary').trigger('click')
+    await wrapper.get('.buy-panel .btn-primary').trigger('click')
 
     expect(routerApi.push).toHaveBeenCalledWith('/login?redirect=%2Fcourses%2F9')
     expect(learnerApi.startCourse).not.toHaveBeenCalled()

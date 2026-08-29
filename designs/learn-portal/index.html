@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="TINwzs78YGhB0ARJRMu26z">
+<head data-page-node-id="yE6mrVGExAeJZ1fva0B4cP">
+<meta charset="utf-8" data-page-node-id="0JODXShCVWWcSL09fEAIfs">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="16bc4SBCEBayAJfv2MzECy">
+<title>拾阶学社 · 个人课程学习站（高保真原型）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" data-page-node-id="SKh2QlttlyzJRAC9BqBvQv">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin" data-page-node-id="cVotdEGXP3FTR82AxJU3oB">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet" data-page-node-id="VmtXI2naeHmoNNAznmVe8i">
+<style>
+/* ============================================================
+   拾阶学社 · 新中式纸墨编辑风 视觉系统
+   纸 paper / 墨 ink / 朱砂 seal / 黛青 indigo / 苔绿 moss
+   ============================================================ */
+:root {
+  --paper: #f6f1e7;
+  --paper-2: #efe8da;
+  --card: #fffdf8;
+  --card-2: #faf6ec;
+  --ink: #2b2620;
+  --ink-2: #6b6355;
+  --ink-3: #998f7d;
+  --line: #e3d9c6;
+  --line-2: #d2c5a9;
+  --seal: #b5402c;
+  --seal-soft: #f3ded7;
+  --seal-deep: #8f3121;
+  --indigo: #33566b;
+  --indigo-soft: #e2ebee;
+  --moss: #2f7d57;
+  --moss-soft: #e0ede4;
+  --gold: #a8842c;
+  --gold-soft: #f1e8d2;
+  --shadow: 0 6px 24px rgba(43, 38, 32, .07);
+  --shadow-lg: 0 18px 48px rgba(43, 38, 32, .14);
+  --r: 4px;
+  --serif: "Noto Serif SC", "Songti SC", serif;
+  --sans: "Noto Sans SC", "PingFang SC", sans-serif;
+  --mono: "JetBrains Mono", "PingFang SC", monospace;
+}
+html[data-theme="night"] {
+  --paper: #23201b;
+  --paper-2: #1c1a15;
+  --card: #2b2721;
+  --card-2: #322d26;
+  --ink: #e9e2d2;
+  --ink-2: #b0a691;
+  --ink-3: #7d7462;
+  --line: #3d382f;
+  --line-2: #4c453a;
+  --seal: #d05a43;
+  --seal-soft: #40261f;
+  --seal-deep: #e0785f;
+  --indigo: #8fb4c9;
+  --indigo-soft: #26333b;
+  --moss: #6cb38c;
+  --moss-soft: #263629;
+  --gold: #c9a45a;
+  --gold-soft: #3a3122;
+  --shadow: 0 6px 24px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, .5);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.75;
+  font-size: 15px;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(43, 38, 32, .05) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: .5;
+}
+html[data-theme="night"] body::before { opacity: .25; }
+#page { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+a { color: var(--indigo); text-decoration: none; }
+a:hover { color: var(--seal); }
+button { font-family: inherit; }
+::selection { background: var(--seal-soft); }
+
+/* ---------- 报头 masthead ---------- */
+.masthead { border-bottom: 1px solid var(--line-2); background: var(--card); }
+.masthead-inner {
+  max-width: 1180px; margin: 0 auto; padding: 14px 24px 0;
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.seal-mark {
+  width: 52px; height: 52px; background: var(--seal); color: #f9f3e8;
+  font-family: var(--serif); font-weight: 900; font-size: 17px; line-height: 1.15;
+  display: grid; grid-template-columns: 1fr 1fr; place-items: center;
+  border-radius: 6px; transform: rotate(-3deg);
+  box-shadow: inset 0 0 0 2px rgba(249, 243, 232, .55), inset 0 0 0 4px var(--seal), 0 4px 10px rgba(143, 49, 33, .3);
+  padding: 4px;
+}
+.seal-mark span { display: block; }
+.brand-txt h1 { font-family: var(--serif); font-size: 22px; margin: 0; font-weight: 900; letter-spacing: .12em; }
+.brand-txt p { margin: 0; font-size: 12px; color: var(--ink-2); letter-spacing: .18em; }
+.mainnav { display: flex; gap: 4px; flex: 1; min-height: 56px; align-items: stretch; }
+.mainnav a {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 16px;
+  color: var(--ink-2); font-size: 15px; border-bottom: 3px solid transparent;
+  position: relative; cursor: pointer;
+}
+.mainnav a:hover { color: var(--ink); }
+.mainnav a.on { color: var(--seal); font-weight: 700; border-bottom-color: var(--seal); }
+.nav-badge {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--seal); color: #fff; font-size: 11px; line-height: 18px;
+  text-align: center; font-family: var(--mono);
+}
+.masthead-tools { display: flex; align-items: center; gap: 10px; }
+.chip-user {
+  display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-2);
+  background: var(--card-2); border-radius: 999px; padding: 5px 14px 5px 6px;
+  font-size: 13px; cursor: pointer; color: var(--ink);
+}
+.chip-user .avatar {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--indigo);
+  color: #fff; display: grid; place-items: center; font-size: 12px; font-family: var(--serif);
+}
+.btn-night {
+  border: 1px solid var(--line-2); background: var(--card-2); color: var(--ink-2);
+  width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 15px;
+}
+.btn-night:hover { color: var(--seal); border-color: var(--seal); }
+
+/* ---------- 通用 ---------- */
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; width: 100%; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid transparent; cursor: pointer; border-radius: var(--r);
+  font-size: 15px; padding: 10px 22px; font-weight: 500;
+  transition: transform .06s ease, box-shadow .15s ease;
+  text-decoration: none;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--seal); color: #f9f3e8; box-shadow: 0 4px 14px rgba(181, 64, 44, .28); }
+.btn-primary:hover { background: var(--seal-deep); color: #fff; }
+.btn-primary[disabled] { background: var(--ink-3); box-shadow: none; cursor: not-allowed; }
+.btn-ghost { background: var(--card); border-color: var(--line-2); color: var(--ink); box-shadow: var(--shadow); }
+.btn-ghost:hover { border-color: var(--seal); color: var(--seal); }
+.btn-sm { padding: 5px 14px; font-size: 13px; }
+.btn-link { border: 0; background: none; color: var(--indigo); cursor: pointer; padding: 0; font-size: 13px; }
+.btn-link:hover { color: var(--seal); }
+.tag {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+  padding: 1px 9px; border-radius: 3px; border: 1px solid var(--line-2);
+  color: var(--ink-2); background: var(--card); font-family: var(--mono); white-space: nowrap;
+}
+.tag-free { color: var(--moss); border-color: var(--moss); background: var(--moss-soft); }
+.tag-sale { color: var(--seal); border-color: var(--seal); background: var(--seal-soft); }
+.tag-trial { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
+.tag-lock { color: var(--ink-3); }
+.tag-on { color: var(--indigo); border-color: var(--indigo); background: var(--indigo-soft); }
+.mono { font-family: var(--mono); }
+.serif { font-family: var(--serif); }
+.muted { color: var(--ink-2); }
+.small { font-size: 12.5px; }
+.stars { color: var(--gold); letter-spacing: 2px; font-size: 14px; }
+.stars .off { color: var(--line-2); }
+.price-now { font-family: var(--serif); font-weight: 900; }
+.price-std { text-decoration: line-through; color: var(--ink-3); font-size: 13px; }
+.crumbs { font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.crumbs .sep { color: var(--line-2); }
+.hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.empty {
+  text-align: center; color: var(--ink-3); padding: 64px 20px; font-size: 14px;
+  border: 1px dashed var(--line-2); border-radius: var(--r); background: var(--card-2);
+}
+.empty .serif { font-size: 17px; display: block; margin-bottom: 6px; color: var(--ink-2); }
+
+/* ---------- 封面 ---------- */
+.cover {
+  position: relative; overflow: hidden; border-radius: 3px; display: grid;
+  place-items: center; background: var(--hue, #34566b);
+  border: 1px solid var(--line-2);
+}
+.cover::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 253, 248, .06) 0 2px, transparent 2px 14px),
+    linear-gradient(160deg, rgba(255, 253, 248, .14), transparent 55%);
+}
+.cover::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 26%;
+  background: rgba(20, 16, 12, .22);
+  border-top: 1px solid rgba(255, 253, 248, .25);
+}
+.cover b {
+  font-family: var(--serif); font-weight: 900; color: rgba(255, 253, 248, .92);
+  position: relative; z-index: 1; text-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+}
+.cover .cover-meta {
+  position: absolute; z-index: 2; left: 10px; bottom: 6px; color: rgba(255, 253, 248, .95);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+}
+
+/* ---------- 首页：分类树 + 书目列表 ---------- */
+.home-grid { display: grid; grid-template-columns: 250px 1fr; gap: 32px; align-items: start; }
+@media (max-width: 900px) { .home-grid { grid-template-columns: 1fr; } }
+.tree-panel { position: sticky; top: 20px; }
+.tree-panel h3 {
+  font-family: var(--serif); font-size: 15px; margin: 0 0 10px; letter-spacing: .2em;
+  color: var(--ink-2); border-bottom: 2px solid var(--ink); padding-bottom: 8px;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.tree { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.tree .tree-row {
+  display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 3px;
+  cursor: pointer; color: var(--ink-2); position: relative;
+}
+.tree .tree-row:hover { background: var(--card-2); color: var(--ink); }
+.tree .tree-row.on { background: var(--seal-soft); color: var(--seal); font-weight: 700; }
+.tree .tree-row.on::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: var(--seal); }
+.tree .tree-branch { list-style: none; margin: 0; padding-left: 20px; border-left: 1px solid var(--line-2); margin-left: 10px; }
+.tree .caret { font-size: 10px; color: var(--ink-3); width: 12px; transition: transform .15s; }
+.tree .closed > .tree-branch { display: none; }
+.tree .closed > .tree-row .caret { transform: rotate(-90deg); }
+.tree .cnt { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.list-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+.list-head h2 { font-family: var(--serif); font-size: 24px; margin: 0; font-weight: 900; letter-spacing: .04em; }
+.list-head .cnt { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+.entry-list { display: flex; flex-direction: column; }
+.entry {
+  display: grid; grid-template-columns: 148px 1fr auto; gap: 20px;
+  padding: 22px 6px; border-bottom: 1px solid var(--line); align-items: center;
+  cursor: pointer; position: relative; border-radius: 3px;
+}
+.entry:hover { background: var(--card-2); }
+.entry .cover { height: 96px; }
+.entry h3 { font-family: var(--serif); font-size: 18px; margin: 2px 0 6px; font-weight: 700; }
+.entry:hover h3 { color: var(--seal); }
+.entry .digest { margin: 0 0 8px; color: var(--ink-2); font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.entry .meta { display: flex; gap: 12px; align-items: center; font-size: 12.5px; color: var(--ink-3); flex-wrap: wrap; }
+.entry .meta b { color: var(--ink-2); font-weight: 500; }
+.entry-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 120px; }
+.entry-side .price-line { display: flex; align-items: baseline; gap: 8px; }
+.favbtn {
+  border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 17px;
+  padding: 4px; line-height: 1;
+}
+.favbtn.on { color: var(--seal); }
+.mini-progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; width: 100%; }
+.mini-progress i { display: block; height: 100%; background: var(--moss); }
+@media (max-width: 720px) { .entry { grid-template-columns: 1fr; } .entry-side { flex-direction: row; align-items: center; } }
+
+/* ---------- 课程详情 ---------- */
+.course-head { display: grid; grid-template-columns: 300px 1fr; gap: 32px; margin-top: 18px; }
+@media (max-width: 860px) { .course-head { grid-template-columns: 1fr; } }
+.course-head .cover { height: 188px; }
+.course-head h2 { font-family: var(--serif); font-size: 28px; font-weight: 900; margin: 4px 0 10px; letter-spacing: .02em; }
+.course-stats { display: flex; gap: 18px; color: var(--ink-2); font-size: 13.5px; flex-wrap: wrap; margin: 12px 0; }
+.course-stats b { font-family: var(--mono); color: var(--ink); font-weight: 500; }
+.buy-panel { position: sticky; top: 20px; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+.buy-panel .big-price { display: flex; align-items: baseline; gap: 10px; }
+.buy-panel .big-price .price-now { font-size: 34px; color: var(--seal); }
+.buy-panel .hint { font-size: 12px; color: var(--ink-3); }
+.buy-panel .row { display: flex; gap: 10px; }
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--line-2); margin: 34px 0 26px; }
+.tabs button {
+  border: 0; background: none; cursor: pointer; font-size: 15px; color: var(--ink-2);
+  padding: 10px 20px; position: relative; font-family: var(--serif); letter-spacing: .1em;
+}
+.tabs button.on { color: var(--seal); font-weight: 700; }
+.tabs button.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; background: var(--seal); }
+
+/* 富文本简介 */
+.rich { max-width: 720px; }
+.rich h3 { font-family: var(--serif); font-size: 19px; margin: 28px 0 10px; padding-left: 12px; border-left: 4px solid var(--seal); }
+.rich p { margin: 10px 0; }
+.rich blockquote {
+  margin: 18px 0; padding: 14px 20px; background: var(--card-2);
+  border-left: 4px solid var(--gold); color: var(--ink-2); font-family: var(--serif);
+}
+.rich ul { padding-left: 22px; }
+.rich li { margin: 6px 0; }
+.fig {
+  margin: 20px 0; border: 1px solid var(--line-2); background: var(--card-2);
+  border-radius: 3px; padding: 18px 20px; font-family: var(--mono); font-size: 12.5px;
+  color: var(--ink-2); line-height: 2;
+}
+.fig .fig-cap { font-family: var(--sans); color: var(--ink-3); font-size: 12px; margin-top: 8px; border-top: 1px dashed var(--line-2); padding-top: 8px; }
+
+/* 目录 */
+.chapter { margin-bottom: 26px; }
+.chapter > h4 {
+  font-family: var(--serif); font-size: 16px; margin: 0 0 4px; display: flex;
+  align-items: baseline; gap: 12px;
+}
+.chapter > h4 .no { color: var(--seal); font-family: var(--mono); font-size: 13px; }
+.chapter > .cdesc { font-size: 13px; color: var(--ink-3); margin: 0 0 10px; }
+.lesson-row {
+  display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: center;
+  padding: 12px 10px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 3px;
+}
+.lesson-row:hover { background: var(--card-2); }
+.lesson-row.cur { background: var(--seal-soft); }
+.lesson-row.cur .l-title { color: var(--seal); font-weight: 700; }
+.l-title { font-size: 14.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.l-meta { font-size: 12px; color: var(--ink-3); font-family: var(--mono); margin-top: 2px; }
+.typechip {
+  font-family: var(--mono); font-size: 10.5px; padding: 1px 7px; border-radius: 2px;
+  border: 1px solid var(--line-2); color: var(--ink-2); letter-spacing: .05em; white-space: nowrap;
+}
+.typechip.t-md { color: var(--indigo); border-color: var(--indigo); }
+.typechip.t-pdf { color: var(--gold); border-color: var(--gold); }
+.typechip.t-video { color: var(--seal); border-color: var(--seal); }
+.l-done { color: var(--moss); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.l-lock { color: var(--ink-3); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+
+/* ---------- 评价 ---------- */
+.rate-summary { display: flex; gap: 28px; align-items: center; padding: 18px 20px; margin-bottom: 24px; }
+.rate-summary .score { font-family: var(--serif); font-size: 44px; font-weight: 900; color: var(--gold); line-height: 1; }
+.review { padding: 20px 4px; border-bottom: 1px solid var(--line); }
+.review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.review-head .who { font-weight: 700; font-size: 14px; }
+.review-head .when { color: var(--ink-3); font-size: 12px; font-family: var(--mono); }
+.review-body { margin: 8px 0 6px; }
+.reply { border-left: 2px solid var(--line-2); padding: 10px 0 2px 18px; margin-top: 10px; }
+.reply .review-head .who { font-size: 13px; }
+.reply .review-body { font-size: 13.5px; color: var(--ink-2); margin: 4px 0; }
+.reply-toggle { margin-top: 8px; }
+.thread { margin-top: 4px; }
+.rv-form { padding: 18px 20px; margin-bottom: 26px; display: flex; flex-direction: column; gap: 12px; }
+.star-input { display: flex; gap: 6px; font-size: 26px; color: var(--line-2); cursor: pointer; }
+.star-input span.on { color: var(--gold); }
+textarea, input[type="text"], input[type="password"], input[type="tel"] {
+  font-family: inherit; font-size: 14px; border: 1px solid var(--line-2); border-radius: 3px;
+  background: var(--card); color: var(--ink); padding: 9px 12px; width: 100%;
+}
+textarea { min-height: 88px; resize: vertical; line-height: 1.7; }
+textarea:focus, input:focus { outline: 2px solid rgba(181, 64, 44, .25); border-color: var(--seal); }
+.form-note { font-size: 12.5px; color: var(--ink-3); }
+
+/* ---------- 学习页 ---------- */
+.learn-top {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 14px 0; border-bottom: 2px solid var(--ink); margin-bottom: 26px;
+}
+.learn-top h2 { font-family: var(--serif); font-size: 20px; margin: 0; font-weight: 900; }
+.learn-top .pbar { flex: 1; min-width: 180px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.learn-grid { display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start; }
+@media (max-width: 980px) { .learn-grid { grid-template-columns: 1fr; } }
+.stage { padding: 28px 32px; min-height: 340px; }
+.stage-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.stage-head h3 { font-family: var(--serif); font-size: 20px; margin: 0; font-weight: 900; }
+.stage-sub { color: var(--ink-3); font-size: 12.5px; margin-bottom: 18px; font-family: var(--mono); }
+.article { font-size: 15.5px; max-width: 680px; }
+.article h4 { font-family: var(--serif); font-size: 17px; margin: 26px 0 8px; }
+.article code { font-family: var(--mono); background: var(--card-2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; font-size: 13px; }
+.article pre {
+  font-family: var(--mono); font-size: 13px; background: var(--card-2); border: 1px solid var(--line);
+  border-radius: 3px; padding: 14px 16px; overflow-x: auto; line-height: 1.8; color: var(--ink-2);
+}
+.stage-foot { display: flex; align-items: center; gap: 14px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.stage-foot .spacer { flex: 1; }
+
+/* PDF 模拟 */
+.pdf-frame {
+  background: var(--card-2); border: 1px solid var(--line-2); border-radius: 3px;
+  aspect-ratio: 1 / 1.28; max-width: 620px; padding: 40px 46px; position: relative;
+  box-shadow: var(--shadow-lg); overflow: auto;
+}
+.pdf-frame h4 { font-family: var(--serif); font-size: 18px; margin: 0 0 4px; }
+.pdf-frame .pdfno { font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .2em; }
+.pdf-frame p { font-size: 14px; }
+.pdf-frame ul { padding-left: 20px; font-size: 14px; }
+.pdf-pager { display: flex; align-items: center; gap: 14px; margin-top: 14px; font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+
+/* 视频模拟 */
+.video-shell { background: #17140f; border-radius: 3px; overflow: hidden; box-shadow: var(--shadow-lg); }
+html[data-theme="night"] .video-shell { background: #0d0b08; }
+.video-stage { aspect-ratio: 16 / 9; position: relative; display: grid; place-items: center; }
+.video-stage .v-title { color: rgba(249, 243, 232, .8); font-family: var(--serif); font-size: 15px; letter-spacing: .3em; }
+.video-stage .v-glyph { color: rgba(249, 243, 232, .06); font-size: 150px; font-family: var(--serif); font-weight: 900; position: absolute; user-select: none; }
+.v-play {
+  position: absolute; width: 72px; height: 72px; border-radius: 50%; cursor: pointer;
+  background: rgba(181, 64, 44, .9); border: 0; color: #f9f3e8; font-size: 26px;
+  display: grid; place-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
+.v-play:hover { background: var(--seal-deep); }
+.video-ctrl { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #221e18; color: #d9d2c2; }
+html[data-theme="night"] .video-ctrl { background: #171410; }
+.video-ctrl button { border: 0; background: none; color: #d9d2c2; cursor: pointer; font-size: 15px; padding: 4px; }
+.v-track { flex: 1; height: 5px; background: rgba(249, 243, 232, .18); border-radius: 3px; cursor: pointer; position: relative; }
+.v-track i { display: block; height: 100%; background: var(--seal); border-radius: 3px; position: relative; }
+.v-track i::after { content: ""; position: absolute; right: -5px; top: -3px; width: 11px; height: 11px; border-radius: 50%; background: #f9f3e8; }
+.v-time { font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; }
+
+/* 学习页目录侧栏 */
+.sidecat { position: sticky; top: 20px; padding: 18px; max-height: calc(100vh - 40px); overflow: auto; }
+.sidecat h4 { font-family: var(--serif); font-size: 14px; margin: 0 0 12px; letter-spacing: .2em; color: var(--ink-2); }
+.sidecat .chapter-name { font-size: 12px; color: var(--ink-3); font-family: var(--mono); margin: 12px 0 4px; }
+.slesson { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 7px 8px; border-radius: 3px; cursor: pointer; font-size: 13px; align-items: center; }
+.slesson:hover { background: var(--card-2); }
+.slesson.cur { background: var(--seal-soft); color: var(--seal); font-weight: 700; }
+.slesson .st { font-size: 12px; }
+
+/* 问答 */
+.qa-panel { margin-top: 30px; }
+.qa-panel > h3 { font-family: var(--serif); font-size: 18px; margin: 0 0 4px; }
+.qa-list { margin-top: 16px; }
+.qa { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.qa-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.qa-title { font-weight: 700; font-size: 14.5px; }
+.qa-body { color: var(--ink-2); font-size: 13.5px; margin: 8px 0; }
+.qa-thread { border-left: 2px solid var(--line-2); padding-left: 16px; margin: 10px 0 2px; }
+.qa-a { margin: 10px 0; }
+.qa-a .who { font-size: 12.5px; font-weight: 700; color: var(--seal); }
+.qa-a .who.is-asker { color: var(--indigo); }
+.qa-a .txt { font-size: 13.5px; color: var(--ink-2); }
+.qa-a .when { font-size: 11.5px; color: var(--ink-3); font-family: var(--mono); }
+.statuschip { font-size: 11px; padding: 1px 8px; border-radius: 2px; font-family: var(--mono); }
+.st-pending { color: var(--gold); border: 1px solid var(--gold); background: var(--gold-soft); }
+.st-answered { color: var(--moss); border: 1px solid var(--moss); background: var(--moss-soft); }
+.st-closed { color: var(--ink-3); border: 1px solid var(--line-2); }
+
+/* ---------- 学习地图 ---------- */
+.map-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 22px; padding: 22px 16px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: center; }
+.map-row:hover h3 { color: var(--seal); }
+.map-row h3 { font-family: var(--serif); font-size: 19px; margin: 0 0 6px; font-weight: 900; }
+.map-row .goal { color: var(--ink-2); font-size: 13.5px; margin: 0 0 8px; }
+.map-row .cover { height: 84px; }
+.stage-line { margin: 0; padding: 6px 0 6px 8px; }
+.stage-node { display: grid; grid-template-columns: 34px 1fr; gap: 16px; position: relative; }
+.stage-node::before {
+  content: ""; position: absolute; left: 12px; top: 34px; bottom: -10px; width: 2px;
+  background: var(--line-2);
+}
+.stage-node:last-child::before { display: none; }
+.stage-dot {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--seal);
+  background: var(--card); color: var(--seal); font-family: var(--mono); font-size: 12px;
+  display: grid; place-items: center; z-index: 1;
+}
+.stage-node h4 { font-family: var(--serif); font-size: 17px; margin: 2px 0 2px; font-weight: 900; }
+.stage-node .sdesc { font-size: 13px; color: var(--ink-2); margin: 0 0 12px; }
+.step-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 3px;
+  padding: 12px 16px; margin-bottom: 10px;
+}
+.step-row .sn { font-size: 13px; color: var(--ink-3); font-family: var(--mono); }
+.step-row .sc { font-size: 14px; font-weight: 500; cursor: pointer; }
+.step-row .sc:hover { color: var(--seal); }
+.step-row.done { border-color: var(--moss); }
+.step-row.next { border-color: var(--seal); box-shadow: 0 0 0 3px var(--seal-soft); }
+.next-chip { font-size: 11px; color: var(--seal); border: 1px solid var(--seal); padding: 0 7px; border-radius: 2px; font-family: var(--mono); }
+
+/* ---------- 我的学习 / 收藏 / 订单 / 消息 ---------- */
+.rec { display: grid; grid-template-columns: 148px 1fr auto; gap: 20px; padding: 20px 8px; border-bottom: 1px solid var(--line); align-items: center; }
+.rec .cover { height: 92px; }
+.rec h3 { font-family: var(--serif); font-size: 17px; margin: 0 0 6px; cursor: pointer; }
+.rec h3:hover { color: var(--seal); }
+.rec .lmeta { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+@media (max-width: 720px) { .rec { grid-template-columns: 1fr; } }
+.order-row { padding: 18px 20px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.order-row .o-course { font-weight: 700; font-size: 15px; cursor: pointer; }
+.order-row .o-course:hover { color: var(--seal); }
+.order-row .o-snap { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+.pay-state { font-size: 12px; font-family: var(--mono); }
+.pay-state.s-paying { color: var(--gold); }
+.pay-state.s-ok { color: var(--moss); }
+.msg-row { display: grid; grid-template-columns: 10px 1fr auto; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: baseline; }
+.msg-row:hover { background: var(--card-2); }
+.msg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--seal); margin-top: 8px; }
+.msg-dot.read { background: var(--line-2); }
+.msg-row .mtitle { font-weight: 700; font-size: 14px; }
+.msg-row .mbody { font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+
+/* ---------- 弹层 ---------- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(28, 24, 18, .55); z-index: 60;
+  display: grid; place-items: center; padding: 20px; backdrop-filter: blur(3px);
+}
+.modal {
+  background: var(--card); border-radius: 6px; width: min(480px, 100%);
+  box-shadow: var(--shadow-lg); border: 1px solid var(--line-2);
+  animation: pop .18s ease;
+}
+@keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 0; }
+.modal-head h3 { font-family: var(--serif); font-size: 18px; margin: 0; font-weight: 900; }
+.modal-x { border: 0; background: none; font-size: 20px; color: var(--ink-3); cursor: pointer; line-height: 1; }
+.modal-body { padding: 18px 22px 24px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; font-size: 13px; }
+.field label { color: var(--ink-2); }
+.cap-row { display: flex; gap: 10px; align-items: stretch; }
+.cap-row canvas { border: 1px solid var(--line-2); border-radius: 3px; cursor: pointer; background: var(--card-2); }
+.form-err { color: var(--seal); font-size: 12.5px; min-height: 18px; margin: 2px 0 8px; }
+.snap-line { display: flex; justify-content: space-between; font-size: 13.5px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+.snap-line b { font-family: var(--mono); font-weight: 500; }
+.snap-line.total b { color: var(--seal); font-size: 17px; font-family: var(--serif); font-weight: 900; }
+.poster-card { margin: 6px auto 16px; width: 280px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 4px; overflow: hidden; box-shadow: var(--shadow); }
+.poster-card .cover { height: 120px; }
+.poster-card .p-body { padding: 16px; }
+.poster-card h4 { font-family: var(--serif); margin: 0 0 6px; font-size: 16px; }
+.qrbox {
+  width: 74px; height: 74px; border: 2px dashed var(--line-2); border-radius: 3px;
+  display: grid; place-items: center; font-family: var(--serif); color: var(--ink-3);
+  font-size: 22px; margin-left: auto;
+}
+.toast {
+  position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: var(--paper); padding: 11px 22px; border-radius: 4px;
+  font-size: 14px; z-index: 90; box-shadow: var(--shadow-lg); opacity: 0;
+  transition: all .25s ease; pointer-events: none; max-width: 86vw;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 页脚 ---------- */
+.foot { border-top: 1px solid var(--line-2); background: var(--card); margin-top: auto; }
+.foot-inner {
+  max-width: 1180px; margin: 0 auto; padding: 26px 24px;
+  display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--ink-3);
+}
+.foot .seal-mark { width: 34px; height: 34px; font-size: 11px; transform: rotate(-3deg); }
+
+.fade { animation: fade .3s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(8px); } }
+</style>
+</head>
+<body data-page-node-id="p9oeP0uozyaZUWb1xvytQu">
+<div id="page" data-page-node-id="6wveycqSMxhM9tZK3Na6sY">
+  <header class="masthead" data-page-node-id="PcR4zoaHsURaV3tSCggkFn">
+    <div class="masthead-inner" data-page-node-id="gmdAS2D8piihwEjxG8hj31">
+      <div class="brand" data-page-node-id="D2bubojdJzHpuUtN7lGwAx">
+        <div class="seal-mark" data-page-node-id="sgR0H0asM20bryBLIClI6J"><span data-page-node-id="H0bXFZh8i4b0CuC2FHxRp9">拾</span><span data-page-node-id="jXSgWb1sa1GfnWNqFIVsWz">阶</span><span data-page-node-id="WadEViRcoGUUcPAgc7Gy3S">学</span><span data-page-node-id="61HX8yeL9Z9EU8tOxJgwyF">社</span></div>
+        <div class="brand-txt" data-page-node-id="fxenlcxF0xjdCNmaMMFM3a">
+          <h1 data-page-node-id="Ld9ZcSYo4BMayCtlNku73x">拾阶学社</h1>
+          <p data-page-node-id="vvRqoPuKySCCC6HfOv8nBB">拾级而上 · 日进一阶</p>
+        </div>
+      </div>
+      <nav class="mainnav" id="mainnav" data-page-node-id="0C8EoZLtJwZrVosorIixdi"></nav>
+      <div class="masthead-tools" data-page-node-id="DlqbU5f9CqsT4m5doLqNNH">
+        <button type="button" class="btn-night" id="btn-night" title="夜读模式" data-page-node-id="iKa1bcW60FpSeqSOnijhbH">☾</button>
+        <div id="userzone" data-page-node-id="TeGfvAbeBMH1cm23kE3O5T"></div>
+      </div>
+    </div>
+  </header>
+  <main class="wrap" id="app" data-page-node-id="UtxSeeKCvBhZ3eYIRUNCR1"></main>
+  <footer class="foot" data-page-node-id="CfZnoKAs5xf0rRnc8XkOi5">
+    <div class="foot-inner" data-page-node-id="OhN7SJxjeODMRM15JWfO35">
+      <div style="display:flex;gap:12px;align-items:center" data-page-node-id="K62OPAFB5IiHppZKbDnVqz">
+        <div class="seal-mark" data-page-node-id="9XH2hUnUl6xEo7sf3AQ88V"><span data-page-node-id="aBEMhlFPkCNCHUPB8tnn4R">拾</span><span data-page-node-id="M8UYq2bjWAIl2kGobn0e2R">阶</span></div>
+        <div data-page-node-id="xma4yEad6Ci7QunMVDeZE6">拾阶学社 · 陈拾阶的个人课程站 —— 把每一步都走扎实。<br  data-page-node-id="DfkhqCNZmMqJkma3NbaYeH"/>高保真交互原型，数据保存在内存中，刷新即重置。</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" data-act="reset" data-page-node-id="gxUCdXNrzAME6xRJgakcBB">重置演示数据</button>
+    </div>
+  </footer>
+</div>
+<div id="modal-root" data-page-node-id="vpBcTvKUwHXSSS5qDzjiyI"></div>
+<div class="toast" id="toast" data-page-node-id="4tIqXcNToLFLmn1tfBfqTD"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   数据：分类树 / 课程 / 评价 / 问答 / 学习地图
+   ============================================================ */
+const CATS = [
+  { id: "fe", name: "前端开发", children: [
+    { id: "vue", name: "Vue 生态", children: [
+      { id: "vue3", name: "Vue 3 实战" },
+      { id: "eng", name: "工程化构建" }
+    ] },
+    { id: "ts", name: "TypeScript" }
+  ] },
+  { id: "be", name: "后端开发", children: [
+    { id: "go", name: "Go 语言" }
+  ] },
+  { id: "paper", name: "纸面手艺", children: [
+    { id: "water", name: "钢笔淡彩" },
+    { id: "write", name: "写作与笔记" }
+  ] }
+];
+
+const COURSES = [
+  {
+    id: "c1", title: "Vue 3 从手写到实战", catPath: ["fe", "vue", "vue3"],
+    teacher: "陈拾阶", learners: 1286, hue: "#34566b", glyph: "V", coverMeta: "VUE · MINI",
+    digest: "不用脚手架，从一行响应式代码开始，把 Vue 3 的核心机制亲手写一遍，再接回真实页面。",
+    price: { mode: "free" },
+    intro: `<h3>这门课不讲「怎么用」，讲「为什么是这样」</h3>
+      <p>大多数 Vue 教程从安装脚手架开始。这门课反着来：我们先用 40 行原生 JavaScript 写出一个能跑的响应式系统，再把组件、调度、更新一个个装回去。等你写完，<code>ref</code>、<code>computed</code>、<code>watchEffect</code> 对你来说将不再是魔法。</p>
+      <blockquote>「看得懂源码」不是目的，「删掉框架也敢写」才是。</blockquote>
+      <h3>你会亲手完成</h3>
+      <ul>
+        <li>一个 90 行的 mini reactive：依赖收集、触发更新、清理副作用</li>
+        <li>把 mini-vue 挂到真实 DOM 上，跑通一个待办清单</li>
+        <li>对照官方源码的关键路径，逐段确认你写的就是它做的事</li>
+      </ul>
+      <div class="fig">effect(() =&gt; render())<br />&nbsp;&nbsp;├─ track(target, key)<br />&nbsp;&nbsp;└─ trigger(target, key)<br /><div class="fig-cap">讲义手稿：第一节课你将写出的结构</div></div>
+      <h3>适合谁</h3>
+      <p>写过几个 Vue 项目、但被面试官追问原理时语塞的同学。不需要读过高深源码，会基本的 JavaScript 即可。</p>`,
+    chapters: [
+      { id: "ch1", name: "打好地基：响应式与组件", desc: "先立心智模型，再动手", lessons: [
+        { id: "l1", title: "响应式到底响应了什么", type: "md", trial: true, meta: "约 12 分钟" },
+        { id: "l2", title: "亲手实现一个 mini reactive", type: "md", trial: false, meta: "约 18 分钟" }
+      ] },
+      { id: "ch2", name: "从纸面到页面：实战串联", desc: "讲义在手，视频跟练", lessons: [
+        { id: "l3", title: "实战讲义：组件化拆分清单（可打印）", type: "pdf", trial: false, meta: "共 3 页" },
+        { id: "l4", title: "手把手：把 mini-vue 接到真实页面", type: "video", trial: false, meta: "12:00" }
+      ] }
+    ]
+  },
+  {
+    id: "c2", title: "TypeScript 类型体操入门", catPath: ["fe", "ts"],
+    teacher: "陈拾阶", learners: 642, hue: "#4c7a5a", glyph: "T", coverMeta: "TS · TYPES",
+    digest: "从 Partial 到条件类型推断，二十道题练完，泛型不再劝退。",
+    price: { mode: "paid", std: 199, off: { price: 129, until: "2026-09-12" } },
+    intro: `<h3>类型是另一门语言</h3><p>很多人写了三年 TypeScript，却只用到 <code>interface</code> 和 <code>any</code>。这门课用二十道渐进的「体操题」带你把类型系统当成一门真正的语言来学。</p><blockquote>类型写得好，重构的时候编译器会替你加班。</blockquote><h3>课程结构</h3><ul><li>上篇：映射类型与工具类型的手工实现</li><li>中篇：条件类型与 infer 的推理规则</li><li>下篇：把类型体操用到真实业务里（表单、接口、状态机）</li></ul>`,
+    chapters: [
+      { id: "ch1", name: "工具类型是怎么造出来的", lessons: [
+        { id: "l1", title: "Partial 与 Required 的实现原理", type: "md", trial: true, meta: "约 10 分钟" },
+        { id: "l2", title: "条件类型：类型层面的 if", type: "video", trial: false, meta: "15:00" }
+      ] },
+      { id: "ch2", name: "进阶与实战", lessons: [
+        { id: "l3", title: "讲义：二十道体操题题解", type: "pdf", trial: false, meta: "共 2 页" }
+      ] }
+    ]
+  },
+  {
+    id: "c3", title: "Go 并发模型八讲", catPath: ["be", "go"],
+    teacher: "陈拾阶", learners: 318, hue: "#a8842c", glyph: "G", coverMeta: "GO · GOROUTINE",
+    digest: "goroutine、channel、context、内存模型——八讲把 Go 并发的骨架立起来。",
+    price: { mode: "paid", std: 259 },
+    intro: `<h3>并发是 Go 的母语</h3><p>八讲直播课的文字精修版。每一讲围绕一个可运行的小程序展开，从「跑起来」到「讲清楚为什么」。</p><ul><li>前四讲：goroutine 调度、channel 语义、select 模式</li><li>后四讲：context 取消传播、常见竞态与 race detector、内存模型 happens-before</li></ul>`,
+    chapters: [
+      { id: "ch1", name: "语言原语", lessons: [
+        { id: "l1", title: "goroutine：轻量在哪", type: "md", trial: false, meta: "约 14 分钟" },
+        { id: "l2", title: "channel 的六种形态", type: "video", trial: false, meta: "18:00" }
+      ] }
+    ]
+  },
+  {
+    id: "c4", title: "钢笔淡彩：城市速写", catPath: ["paper", "water"],
+    teacher: "沈青梧", learners: 891, hue: "#6b4a5e", glyph: "彩", coverMeta: "INK · WASH",
+    digest: "一支钢笔、一盒固体水彩，把通勤路上看到的街角画下来。",
+    price: { mode: "paid", std: 159, off: { price: 99, until: "2026-09-06" } },
+    intro: `<h3>画得好不好，先画起来</h3><p>这门课不要求素描基础。前两节教你用钢笔肯定地勾线，后面跟着画四个街角场景，每幅都有分步演示与常见失误点评。</p><blockquote>「城市速写的意义不是记录建筑，是记录你停下来看它的那十分钟。」</blockquote>`,
+    chapters: [
+      { id: "ch1", name: "工具与线条", lessons: [
+        { id: "l1", title: "钢笔的选择与握笔姿势", type: "md", trial: true, meta: "约 9 分钟" },
+        { id: "l2", title: "第一幅：便利店门口（跟画）", type: "video", trial: false, meta: "22:00" }
+      ] },
+      { id: "ch2", name: "上色与点评", lessons: [
+        { id: "l3", title: "淡彩讲义：五色平涂法", type: "pdf", trial: false, meta: "共 2 页" }
+      ] }
+    ]
+  },
+  {
+    id: "c5", title: "Markdown 笔读：写清一件事", catPath: ["paper", "write"],
+    teacher: "陈拾阶", learners: 2033, hue: "#3d6b6b", glyph: "M", coverMeta: "MD · WRITE",
+    digest: "给开发者的写作小课：标题、列表、引用怎么用，才真的把事情写清楚。",
+    price: { mode: "free" },
+    intro: `<h3>写清楚，是想清楚的结果</h3><p>两节小课，讲透 Markdown 里最容易被用坏的三个东西：标题层级、列表粒度、引用边界。适合经常要写文档、周报和技术方案的同学。</p>`,
+    chapters: [
+      { id: "ch1", name: "结构", lessons: [
+        { id: "l1", title: "标题不是字号，是目录", type: "md", trial: true, meta: "约 8 分钟" },
+        { id: "l2", title: "列表的粒度：一段一件事", type: "md", trial: false, meta: "约 10 分钟" }
+      ] }
+    ]
+  },
+  {
+    id: "c6", title: "Vite 工程化实战", catPath: ["fe", "vue", "eng"],
+    teacher: "陈拾阶", learners: 455, hue: "#5a6470", glyph: "工", coverMeta: "VITE · BUILD",
+    digest: "从 dev 到 build：插件机制、环境变量、分包策略与部署检查单。",
+    price: { mode: "paid", std: 199 },
+    intro: `<h3>让构建回归工具</h3><p>三个模块：dev server 的按需编译原理、插件流水线的 Hook 顺序、生产构建的分包与缓存策略。每节都配一个可直接抄走配置。</p>`,
+    chapters: [
+      { id: "ch1", name: "原理与配置", lessons: [
+        { id: "l1", title: "dev server 为什么快", type: "md", trial: false, meta: "约 12 分钟" },
+        { id: "l2", title: "插件流水线实作", type: "video", trial: false, meta: "16:00" }
+      ] }
+    ]
+  },
+  {
+    id: "c7", title: "Go Web 服务设计", catPath: ["be", "go"],
+    teacher: "陈拾阶", learners: 214, hue: "#8a5a2c", glyph: "W", coverMeta: "GO · WEB",
+    digest: "中间件、依赖注入、优雅退出——把一个 HTTP 服务写得可维护。",
+    price: { mode: "paid", std: 299 },
+    intro: `<h3>服务是长出来的</h3><p>从一个裸 handler 开始，随需求生长出中间件、配置、数据库层与优雅退出，每一步先写坏、再写好，看清设计的动机。</p>`,
+    chapters: [
+      { id: "ch1", name: "骨架", lessons: [
+        { id: "l1", title: "从裸 handler 到路由树", type: "md", trial: false, meta: "约 15 分钟" }
+      ] }
+    ]
+  }
+];
+
+/* 评价种子数据（树形回复） */
+const REVIEWS_SEED = [
+  { id: "r1", courseId: "c1", who: "林晚", stars: 5, body: "跟亲手写一遍 reactive 比看十遍文档都清楚，讲义我打印出来贴在工位了。", time: "2026-08-21", replies: [
+    { id: "rp1", who: "陈拾阶", isTeacher: true, body: "讲义会随课程更新，记得下载最新版。", time: "2026-08-21", replies: [
+      { id: "rp2", who: "林晚", body: "收到，已经开始刷第二遍了。", time: "2026-08-22", replies: [] }
+    ] },
+    { id: "rp3", who: "阿蒲", body: "同感，第二章的 PDF 清单特别实用，照着拆了一个老项目。", time: "2026-08-23", replies: [] }
+  ] },
+  { id: "r2", courseId: "c1", who: "阿蒲", stars: 4, body: "视频部分希望再长一点，其余都很扎实。", time: "2026-08-19", replies: [
+    { id: "rp4", who: "陈拾阶", isTeacher: true, body: "下个月补一节番外：调度器的实现。", time: "2026-08-19", replies: [] }
+  ] },
+  { id: "r3", courseId: "c2", who: "郑一", stars: 5, body: "类型体操练完，看团队里的泛型工具不再发怵。", time: "2026-08-25", replies: [] },
+  { id: "r4", courseId: "c4", who: "木南", stars: 5, body: "沈老师的声音很适合画画（笑），作业点评认真到每根线条。", time: "2026-08-27", replies: [] }
+];
+
+/* 课节问答种子数据 */
+const QUESTIONS_SEED = [
+  { id: "q1", courseId: "c1", lessonId: "l2", title: "effect 的清理时机在哪里触发？", status: "answered",
+    who: "林晚", time: "2026-08-22", body: "讲义里说 effect 重新执行前会先清理副作用，但没展开讲这个清理是在哪个环节插入的。",
+    thread: [
+      { who: "陈拾阶", isTeacher: true, time: "2026-08-22", body: "在 trigger 触发调度之后、effect 重新执行之前。你可以理解为调度器持有当前活跃的 effect，重跑前先调用它登记的 cleanup——对应源码里 effect.run 之前的 cleanup 部分。" },
+      { who: "林晚", time: "2026-08-22", body: "明白了，那 cleanup 里如果又改了被依赖的值，会死循环吗？" },
+      { who: "陈拾阶", isTeacher: true, time: "2026-08-22", body: "不会无限循环，调度器会用一个「正在执行」标记挡住重入；这也是第二节课手写时要留意的坑。" }
+    ] },
+  { id: "q2", courseId: "c1", lessonId: "l4", title: "视频 07:20 处的代码能贴一下吗", status: "pending",
+    who: "阿蒲", time: "2026-08-27", body: "屏幕字号有点小，07:20 那段 reactive 的 bind 部分看不清，麻烦老师贴一下代码。", thread: [] }
+];
+
+const MAPS = [
+  { id: "m1", title: "前端进阶之路", coverMeta: "PATH · FE",
+    goal: "从零手写到工程化上线，三步走完前端进阶的主干道。",
+    audience: "有一点 HTML / CSS 基础、想系统补齐框架与工程化的同学。",
+    hue: "#33566b", glyph: "径",
+    stages: [
+      { name: "打基础", desc: "先把响应式与组件的心智模型立起来", steps: ["c1"] },
+      { name: "强类型", desc: "让编译器替你加班", steps: ["c2"] },
+      { name: "工程化", desc: "从能跑到好维护", steps: ["c6"] }
+    ] },
+  { id: "m2", title: "纸上的代码生活", coverMeta: "PATH · PAPER",
+    goal: "代码写累了，让手离开键盘一小时。",
+    audience: "想培养一个屏幕之外爱好的开发者。",
+    hue: "#6b4a5e", glyph: "纸",
+    stages: [
+      { name: "写下来", desc: "用文字理清思路", steps: ["c5"] },
+      { name: "画下来", desc: "用画笔记录街角", steps: ["c4"] }
+    ] }
+];
+
+/* ============================================================
+   状态（内存态，刷新即丢）
+   ============================================================ */
+function freshState() {
+  return {
+    user: null,
+    access: {},        // courseId -> { source: "free" | "paid", at }
+    progress: {},      // courseId -> { lessons: { lessonId: { done, pos } }, lastLesson, lastAt }
+    favorites: [],
+    orders: [],        // { id, courseId, snap: {std, off, paid}, status, createdAt, paidAt }
+    /* 消息：type = notice 公告 | dm 站内信 | qa 问答 | progress 进度 | auth 授权 */
+    messages: (function seedMessages() {
+      const now = Date.now(), D = 864e5;
+      return [
+        { id: "m-n1", type: "notice", title: "「拾阶学社」九月升级维护公告", body: "平台将于本周六 02:00–04:00 升级维护，期间课程视频暂停播放，图文讲义不受影响，敬请谅解。", read: false, time: "2 小时前", createdAt: now - 2 * 36e5 },
+        { id: "m-d1", type: "dm", title: "学习提醒：限时优惠即将结束", body: "你收藏的《Vue 3 从手写到实战》限时优惠将于 3 天后结束并恢复原价，可在课程页完成购买。", read: false, time: "昨天", createdAt: now - 1 * D },
+        { id: "m-q1", type: "qa", title: "你的问题有了新回答", body: "「《Vue 3 从手写到实战》· 环境搭建」已由 沈砚 老师回答。", courseId: "c1", lessonId: "l1", read: true, time: "3 天前", createdAt: now - 3 * D },
+        { id: "m-a1", type: "auth", title: "课程授权已开通", body: "你已获得《水彩街角速写》的正式学习权限，祝学习顺利。", courseId: "c4", read: true, time: "12 天前", createdAt: now - 12 * D },
+        { id: "m-n0", type: "notice", title: "开学季课程上新公告", body: "新学期课程目录已上线，涵盖前端、后端与视觉三个方向，欢迎按学习地图规划新学期。", read: true, time: "61 天前", createdAt: now - 61 * D }
+      ];
+    })(),
+    joinedMaps: [],
+    reviews: JSON.parse(JSON.stringify(REVIEWS_SEED)),
+    questions: JSON.parse(JSON.stringify(QUESTIONS_SEED)),
+    route: { name: "home", cat: null, courseId: null, lessonId: null, mapId: null, tab: "intro" },
+    paying: false
+  };
+}
+let S = freshState();
+
+/* ============================================================
+   工具
+   ============================================================ */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtTime = d => {
+  const p = n => String(n).padStart(2, "0");
+  return (d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+};
+function catName(id) {
+  for (const a of CATS) {
+    if (a.id === id) return a.name;
+    for (const b of a.children || []) {
+      if (b.id === id) return b.name;
+      for (const c of b.children || []) if (c.id === id) return c.name;
+    }
+  }
+  return "";
+}
+function courseById(id) { return COURSES.find(c => c.id === id); }
+function lessonsOf(course) { return course.chapters.flatMap(ch => ch.lessons); }
+function findLesson(course, lessonId) {
+  for (let ci = 0; ci < course.chapters.length; ci++) {
+    const ch = course.chapters[ci];
+    const li = ch.lessons.findIndex(l => l.id === lessonId);
+    if (li >= 0) return { chapter: ch, lesson: ch.lessons[li], ci, li };
+  }
+  return null;
+}
+function catPathName(course) { return course.catPath.map(catName).join(" / "); }
+function priceText(course) {
+  const p = course.price;
+  if (p.mode === "free") return { main: "免费", cls: "tag-free" };
+  return { main: "¥" + (p.off ? p.off.price : p.std), cls: p.off ? "tag-sale" : "" };
+}
+
+/* ============================================================
+   业务计算
+   ============================================================ */
+function hasAccess(courseId) { return !!(S.user && S.access[courseId]); }
+function isTrial(courseId, lessonId) {
+  const c = courseById(courseId);
+  const f = c && findLesson(c, lessonId);
+  return !!(f && f.lesson.trial);
+}
+function canViewLesson(courseId, lessonId) { return hasAccess(courseId) || isTrial(courseId, lessonId); }
+function progressOf(courseId) {
+  const course = courseById(courseId);
+  const total = lessonsOf(course).length;
+  const rec = S.progress[courseId];
+  const done = rec ? lessonsOf(course).filter(l => rec.lessons[l.id] && rec.lessons[l.id].done).length : 0;
+  return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
+}
+function isCourseCompleted(courseId) { const p = progressOf(courseId); return p.total > 0 && p.done === p.total; }
+function ratingOf(courseId) {
+  const rs = S.reviews.filter(r => r.courseId === courseId);
+  if (!rs.length) return null;
+  const avg = rs.reduce((s, r) => s + r.stars, 0) / rs.length;
+  return { avg: Math.round(avg * 10) / 10, count: rs.length };
+}
+function starsHTML(n, count) {
+  let h = '<span class="stars">';
+  for (let i = 1; i <= 5; i++) h += '<span class="' + (i <= Math.round(n) ? "" : "off") + '">★</span>';
+  h += "</span>";
+  if (count != null) h += ' <span class="small muted mono">' + n.toFixed(1) + " · " + count + " 条</span>";
+  return h;
+}
+function unreadCount() { return S.messages.filter(m => !m.read).length; }
+function effectivePrice(course) {
+  const p = course.price;
+  if (p.mode === "free") return { paid: 0 };
+  return { std: p.std, off: p.off ? p.off.price : null, paid: p.off ? p.off.price : p.std, until: p.off ? p.off.until : null };
+}
+function ensureProgress(courseId) {
+  if (!S.progress[courseId]) S.progress[courseId] = { lessons: {}, lastLesson: null, lastAt: null };
+  return S.progress[courseId];
+}
+
+/* ============================================================
+   动作
+   ============================================================ */
+function grantAccess(courseId, source) {
+  if (S.access[courseId]) return;
+  S.access[courseId] = { source: source, at: new Date() };
+  ensureProgress(courseId); // 授权即建立 0% 学习记录（FR-030）
+}
+function markLessonDone(courseId, lessonId, silent) {
+  const rec = ensureProgress(courseId);
+  if (!rec.lessons[lessonId]) rec.lessons[lessonId] = {};
+  if (!rec.lessons[lessonId].done) {
+    rec.lessons[lessonId].done = true;
+    rec.lastLesson = lessonId;
+    rec.lastAt = new Date();
+    if (!silent) toast("已标记完成 · 课程进度已更新");
+  }
+  render();
+}
+function savePos(courseId, lessonId, pos) {
+  const rec = ensureProgress(courseId);
+  if (!rec.lessons[lessonId]) rec.lessons[lessonId] = {};
+  rec.lessons[lessonId].pos = pos;
+  rec.lastLesson = lessonId;
+  rec.lastAt = new Date();
+}
+function buyCourse(courseId) {
+  const course = courseById(courseId);
+  if (!S.user) { openLogin("登录后即可购买课程"); return; }
+  if (hasAccess(courseId)) return;
+  if (S.orders.some(o => o.courseId === courseId && o.status === "paying")) return;
+  const ep = effectivePrice(course);
+  const order = {
+    id: "PO" + String(Date.now()).slice(-8),
+    courseId: courseId,
+    snap: { std: ep.std, off: ep.off, paid: ep.paid, until: ep.until },
+    status: "paying", createdAt: new Date(), paidAt: null
+  };
+  S.orders.unshift(order);
+  closeModal();
+  toast("订单已创建，模拟支付处理中（约 3 秒）…");
+  setTimeout(() => {
+    order.status = "success";
+    order.paidAt = new Date();
+    grantAccess(courseId, "paid");
+    toast("支付成功 · 已开通《" + course.title + "》");
+    render();
+  }, 3000);
+  render();
+}
+function startFree(courseId) {
+  if (!S.user) { openLogin("登录后即可开始学习"); return; }
+  grantAccess(courseId, "free");
+  toast("已开始学习 · 课程访问权已开通");
+  render();
+}
+function toggleFav(courseId) {
+  if (!S.user) { openLogin("登录后即可收藏课程"); return; }
+  const i = S.favorites.indexOf(courseId);
+  if (i >= 0) { S.favorites.splice(i, 1); toast("已取消收藏"); }
+  else { S.favorites.push(courseId); toast("已加入收藏"); }
+  render();
+}
+function unreadPath() { return S.route; }
+
+/* ============================================================
+   弹层 / 提示
+   ============================================================ */
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._h);
+  toast._h = setTimeout(() => t.classList.remove("show"), 2400);
+}
+function closeModal() { $("#modal-root").innerHTML = ""; }
+function modal(html) {
+  $("#modal-root").innerHTML = '<div class="overlay" data-act="overlay"><div class="modal">' + html + '</div></div>';
+}
+function openLogin(reason) {
+  modal(`<div class="modal-head"><h3>学员登录</h3><button type="button" class="modal-x" data-act="close">×</button></div>
+    <div class="modal-body">
+      ${reason ? '<p class="form-note" style="margin:0 0 12px">' + esc(reason) + "</p>" : ""}
+      <div class="field"><label>手机号（中国大陆）</label><input type="tel" id="lg-phone" maxlength="11" placeholder="请输入 11 位手机号" /></div>
+      <div class="field"><label>密码</label><input type="password" id="lg-pass" placeholder="至少 6 位" /></div>
+      <div class="field"><label>图形验证码（点击图片可刷新）</label>
+        <div class="cap-row"><input type="text" id="lg-cap" maxlength="4" placeholder="输入右侧字符" style="flex:1" /><canvas id="lg-canvas" width="92" height="40" data-act="refresh-cap"></canvas></div>
+      </div>
+      <div class="form-err" id="lg-err"></div>
+      <button type="button" class="btn btn-primary" style="width:100%" data-act="do-login">登录 / 注册</button>
+      <p class="form-note" style="margin:12px 0 0">学员账户与后台账户相互独立；演示环境下任意符合格度的手机号即可登录。</p>
+    </div>`);
+  drawCaptcha();
+  $("#lg-phone").focus();
+}
+let CAP_CODE = "";
+function drawCaptcha() {
+  const cv = $("#lg-canvas");
+  if (!cv) return;
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  CAP_CODE = "";
+  for (let i = 0; i < 4; i++) CAP_CODE += chars[Math.floor(Math.random() * chars.length)];
+  const ctx2d = cv.getContext("2d");
+  ctx2d.clearRect(0, 0, 92, 40);
+  ctx2d.fillStyle = "#efe8da"; ctx2d.fillRect(0, 0, 92, 40);
+  ctx2d.strokeStyle = "rgba(107,99,85,.4)";
+  for (let i = 0; i < 4; i++) {
+    ctx2d.beginPath(); ctx2d.moveTo(Math.random() * 92, Math.random() * 40);
+    ctx2d.lineTo(Math.random() * 92, Math.random() * 40); ctx2d.stroke();
+  }
+  for (let i = 0; i < 4; i++) {
+    ctx2d.save();
+    ctx2d.translate(14 + i * 21, 22 + (Math.random() * 8 - 4));
+    ctx2d.rotate((Math.random() - 0.5) * 0.6);
+    ctx2d.font = "700 20px 'JetBrains Mono', monospace";
+    ctx2d.fillStyle = ["#b5402c", "#33566b", "#4c7a5a", "#a8842c"][i % 4];
+    ctx2d.textAlign = "center";
+    ctx2d.fillText(CAP_CODE[i], 0, 0);
+    ctx2d.restore();
+  }
+}
+function tryLogin() {
+  const phone = $("#lg-phone").value.trim();
+  const pass = $("#lg-pass").value;
+  const cap = $("#lg-cap").value.trim();
+  const err = $("#lg-err");
+  const fail = msg => { err.textContent = msg; drawCaptcha(); $("#lg-cap").value = ""; };
+  if (!/^1[3-9]\d{9}$/.test(phone)) return fail("请输入正确的 11 位手机号");
+  if (pass.length < 6) return fail("密码至少 6 位");
+  if (cap.toUpperCase() !== CAP_CODE) return fail("验证码错误或已过期，请重试");
+  S.user = { phone: phone, nick: "拾阶同学" + phone.slice(-2) };
+  closeModal();
+  toast("欢迎回来，" + S.user.nick);
+  render();
+}
+function openBuy(courseId) {
+  const course = courseById(courseId);
+  const ep = effectivePrice(course);
+  modal(`<div class="modal-head"><h3>确认购买</h3><button type="button" class="modal-x" data-act="close">×</button></div>
+    <div class="modal-body">
+      <p style="margin:0 0 4px;font-family:var(--serif);font-size:17px;font-weight:700">《${esc(course.title)}》</p>
+      <p class="form-note" style="margin:0 0 12px">${esc(course.teacher)} · ${catPathName(course)}</p>
+      <div class="snap-line"><span>标准价</span><b>¥${ep.std}</b></div>
+      ${ep.off != null ? '<div class="snap-line"><span>限时优惠（至 ' + ep.until + '）</span><b>−¥' + (ep.std - ep.off) + "</b></div>" : ""}
+      <div class="snap-line total"><span>实付</span><b>¥${ep.paid}</b></div>
+      <p class="form-note" style="margin:10px 0 14px">订单将保留以上价格快照；演示环境由模拟支付在约 3 秒后自动回调成功。</p>
+      <button type="button" class="btn btn-primary" style="width:100%" data-act="confirm-buy" data-course="${courseId}">确认支付 ¥${ep.paid}</button>
+    </div>`);
+}
+function openPoster(courseId) {
+  const course = courseById(courseId);
+  const ep = effectivePrice(course);
+  const priceTag = course.price.mode === "free" ? "免费" : "现价 ¥" + ep.paid;
+  const url = "https://shijie.example.cn/course/" + courseId;
+  modal(`<div class="modal-head"><h3>分享课程</h3><button type="button" class="modal-x" data-act="close">×</button></div>
+    <div class="modal-body">
+      <div class="poster-card">
+        <div class="cover" style="--hue:${course.hue};height:120px"><b style="font-size:44px">${esc(course.glyph)}</b><span class="cover-meta">${esc(course.coverMeta)}</span></div>
+        <div class="p-body">
+          <h4>《${esc(course.title)}》</h4>
+          <p class="small muted" style="margin:0 0 4px">${esc(course.teacher)} · ${esc(priceTag)}</p>
+          <p class="small" style="margin:0;color:var(--ink-2)">${esc(course.digest)}</p>
+          <div style="display:flex;align-items:flex-end;gap:10px;margin-top:12px">
+            <div class="qrbox">码</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button type="button" class="btn btn-ghost" style="flex:1" data-act="copy-link" data-url="${url}">复制课程链接</button>
+        <button type="button" class="btn btn-primary" style="flex:1" data-act="dl-poster">保存海报图片</button>
+      </div>
+      <p class="form-note" style="margin:12px 0 0">海报生成失败时，课程链接仍然可用（FR-051）。</p>
+    </div>`);
+}
+function copyLink(url) {
+  const done = () => toast("链接已复制：" + url);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, done);
+  else done();
+}
+
+/* ============================================================
+   视图：导航与外壳
+   ============================================================ */
+const NAV = [
+  { key: "home", name: "首页 · 分类", route: "#/home" },
+  { key: "maps", name: "学习地图", route: "#/maps" },
+  { key: "my", name: "我的学习", route: "#/my", auth: true },
+  { key: "fav", name: "收藏", route: "#/fav", auth: true },
+  { key: "orders", name: "我的订单", route: "#/orders", auth: true },
+  { key: "msgs", name: "消息", route: "#/msgs", auth: true }
+];
+function renderNav() {
+  const cur = S.route.name;
+  let h = "";
+  for (const n of NAV) {
+    const on = (n.key === "home" && (cur === "home" || cur === "course" || cur === "learn")) || n.key === cur ? " on" : "";
+    const badge = n.key === "msgs" && S.user && unreadCount() ? '<span class="nav-badge">' + unreadCount() + "</span>" : "";
+    h += '<a data-act="nav" data-route="' + n.route + '"' + (on ? ' class="on"' : "") + ">" + n.name + badge + "</a>";
+  }
+  $("#mainnav").innerHTML = h;
+  const uz = $("#userzone");
+  if (S.user) {
+    uz.innerHTML = '<span class="chip-user" data-act="user-menu"><span class="avatar">' + esc(S.user.nick.slice(-1)) + "</span>" + esc(S.user.nick) + " · " + esc(S.user.phone.slice(0, 3) + "****" + S.user.phone.slice(-4)) + "</span>";
+  } else {
+    uz.innerHTML = '<button type="button" class="btn btn-primary btn-sm" data-act="login">登录 / 注册</button>';
+  }
+}
+
+/* ---------- 封面 / 条目 ---------- */
+function coverHTML(course, h, glyphSize) {
+  return '<div class="cover" style="--hue:' + course.hue + ";height:" + h + 'px"><b style="font-size:' + (glyphSize || 34) + 'px">' + esc(course.glyph) + '</b><span class="cover-meta">' + esc(course.coverMeta) + "</span></div>";
+}
+function priceHTML(course) {
+  const p = course.price;
+  if (p.mode === "free") return '<span class="tag tag-free">免费</span>';
+  if (p.off) return '<span class="price-line"><span class="tag tag-sale">限时 ¥' + p.off.price + "</span>" + '<span class="price-std">¥' + p.std + "</span></span>";
+  return '<span class="price-now" style="font-size:17px">¥' + p.std + "</span>";
+}
+
+/* ---------- 首页（分类浏览为默认，无搜索无推荐位） ---------- */
+function countUnder(catId) {
+  if (!catId) return COURSES.length;
+  return COURSES.filter(c => c.catPath.slice(0, c.catPath.indexOf(catId) + 1).includes(catId)).length;
+}
+function treeHTML(nodes, level, sel) {
+  let h = "";
+  for (const n of nodes) {
+    const kids = n.children || [];
+    const on = sel === n.id ? " on" : "";
+    h += '<li class="' + (kids.length && treeClosed[n.id] ? "closed" : "") + '">';
+    h += '<div class="tree-row' + on + '" data-act="cat" data-cat="' + n.id + '">';
+    h += kids.length ? '<span class="caret">▼</span>' : '<span class="caret" style="visibility:hidden">·</span>';
+    h += esc(n.name) + '<span class="cnt">' + countUnder(n.id) + "</span></div>";
+    if (kids.length) h += '<ul class="tree-branch">' + treeHTML(kids, level + 1, sel) + "</ul>";
+    h += "</li>";
+  }
+  return h;
+}
+let treeClosed = {};
+function vHome() {
+  const sel = S.route.cat;
+  const list = sel ? COURSES.filter(c => c.catPath.includes(sel)) : COURSES;
+  const path = [];
+  (function walk(nodes, trail) {
+    for (const n of nodes) {
+      if (n.id === sel) { path.push.apply(path, trail.concat(n.name)); return true; }
+      if (n.children && walk(n.children, trail.concat(n.name))) return true;
+    }
+    return false;
+  })(CATS, []);
+  let entries = "";
+  for (const c of list) {
+    const prog = S.progress[c.id];
+    const rating = ratingOf(c.id);
+    const fav = S.favorites.includes(c.id);
+    entries += `<div class="entry" data-act="go-course" data-course="${c.id}">
+      ${coverHTML(c, 96, 30)}
+      <div>
+        <h3>《${esc(c.title)}》</h3>
+        <p class="digest">${esc(c.digest)}</p>
+        <div class="meta">
+          <b>${esc(c.teacher)}</b><span>${catPathName(c)}</span>
+          <span>${c.learners + (prog ? +1 : 0)} 人在学</span>
+          ${rating ? starsHTML(rating.avg, rating.count) : '<span>暂无评价</span>'}
+        </div>
+        ${prog ? '<div class="mini-progress" style="margin-top:8px;max-width:260px"><i style="width:' + progressOf(c.id).pct + '%"></i></div>' : ""}
+      </div>
+      <div class="entry-side">
+        ${priceHTML(c)}
+        <button type="button" class="favbtn ${fav ? "on" : ""}" data-act="fav" data-course="${c.id}" title="收藏"> ${fav ? "♥" : "♡"} </button>
+      </div>
+    </div>`;
+  }
+  return `<div class="home-grid">
+    <aside class="tree-panel">
+      <h3>分类目录</h3>
+      <ul class="tree">
+        <li><div class="tree-row ${!sel ? "on" : ""}" data-act="cat" data-cat=""><span class="caret" style="visibility:hidden">·</span>全部分类<span class="cnt">${COURSES.length}</span></div></li>
+        ${treeHTML(CATS, 1, sel)}
+      </ul>
+    </aside>
+    <section>
+      <div class="list-head">
+        <h2>${sel ? esc(path[path.length - 1] || "") : "全部课程"}</h2>
+        <span class="cnt">${list.length} 门课程</span>
+      </div>
+      <div class="crumbs" style="margin-bottom:6px">${sel ? path.map((p, i) => (i ? '<span class="sep">/</span>' : "") + esc(p)).join("") : "拾阶学社 · 分类浏览"}</div>
+      <div class="entry-list">${entries || '<div class="empty"><span class="serif">这一类暂时还没有课程</span>换个分类看看吧</div>'}</div>
+    </section>
+  </div>`;
+}
+
+/* ---------- 课程详情 ---------- */
+function lessonRowHTML(course, chapter, lesson, ci, li, ctx) {
+  const rec = S.progress[course.id];
+  const done = rec && rec.lessons[lesson.id] && rec.lessons[lesson.id].done;
+  const locked = !canViewLesson(course.id, lesson.id);
+  const cur = ctx && ctx.lessonId === lesson.id;
+  return `<div class="lesson-row ${cur ? "cur" : ""}" data-act="open-lesson" data-course="${course.id}" data-lesson="${lesson.id}">
+    <span class="typechip t-${lesson.type}">${lesson.type === "md" ? "MD 文" : lesson.type === "pdf" ? "PDF" : "视频"}</span>
+    <div>
+      <div class="l-title">${esc(lesson.title)}
+        ${lesson.trial ? '<span class="tag tag-trial">可试看</span>' : ""}
+        ${done ? '<span class="l-done">✓ 已完成</span>' : ""}
+      </div>
+      <div class="l-meta">${esc(chapter.name)} · 第 ${li + 1} 节 · ${esc(lesson.meta)}</div>
+    </div>
+    ${locked ? '<span class="l-lock">🔒 需购买</span>' : '<span class="l-lock" style="color:var(--indigo)">进入 →</span>'}
+  </div>`;
+}
+function replyTreeHTML(nodes, courseId) {
+  let h = "";
+  for (const r of nodes) {
+    h += `<div class="reply">
+      <div class="review-head">
+        <span class="who">${esc(r.who)}${r.isTeacher ? ' <span class="tag tag-on">教师</span>' : ""}</span>
+        <span class="when">${esc(r.time)}</span>
+      </div>
+      <div class="review-body">${esc(r.body)}</div>
+      ${S.user && hasAccess(courseId) ? '<button type="button" class="btn-link" data-act="reply-form" data-rid="' + r.id + '">回复</button>' : ""}
+      ${r.replies && r.replies.length ? '<button type="button" class="btn-link reply-toggle" data-act="toggle-node" data-rid="' + r.id + '">' + (r.closed ? "展开 " : "收起 ") + r.replies.length + " 条回复</button>" : ""}
+      ${r.replies && r.replies.length && !r.closed ? '<div class="thread">' + replyTreeHTML(r.replies, courseId) + "</div>" : ""}
+    </div>`;
+  }
+  return h;
+}
+function findReviewNode(rootId) {
+  function walk(nodes) {
+    for (const n of nodes) {
+      if (n.id === rootId) return n;
+      const f = n.replies && walk(n.replies);
+      if (f) return f;
+    }
+    return null;
+  }
+  return walk(S.reviews);
+}
+function reviewFormHTML(course) {
+  if (!S.user) return '<p class="form-note">登录后即可评价。</p>';
+  if (!hasAccess(course.id)) return '<p class="form-note">获得课程（开始学习或购买）后即可评价。</p>';
+  const p = progressOf(course.id);
+  if (p.done < 1) return '<p class="form-note">完成至少一个课节后即可评价（当前 ' + p.done + " / " + p.total + "）。</p>";
+  const mine = S.reviews.find(r => r.courseId === course.id && r.who === S.user.nick);
+  if (mine) return `<div class="panel rv-form" id="rv-form-box">
+    <div class="form-note">你已评价过这门课程，可以继续编辑（每人每课一条有效评价）。</div>
+    <div class="star-input" id="star-input">${[1, 2, 3, 4, 5].map(i => '<span data-star="' + i + '" class="' + (i <= mine.stars ? "on" : "") + '">★</span>').join("")}</div>
+    <textarea id="rv-body" placeholder="写下这门课给你的收获…">${esc(mine.body)}</textarea>
+    <div><button type="button" class="btn btn-primary btn-sm" data-act="save-review" data-course="${course.id}" data-edit="1">更新我的评价</button></div>
+  </div>`;
+  return `<div class="panel rv-form" id="rv-form-box">
+    <div class="star-input" id="star-input">${[1, 2, 3, 4, 5].map(i => '<span data-star="' + i + '">★</span>').join("")}</div>
+    <textarea id="rv-body" placeholder="写下这门课给你的收获…"></textarea>
+    <div><button type="button" class="btn btn-primary btn-sm" data-act="save-review" data-course="${course.id}">提交评价</button></div>
+  </div>`;
+}
+function vCourse() {
+  const course = courseById(S.route.courseId);
+  if (!course) return '<div class="empty">课程不存在</div>';
+  const rating = ratingOf(course.id);
+  const prog = progressOf(course.id);
+  const rec = S.progress[course.id];
+  const ep = effectivePrice(course);
+  const isFree = course.price.mode === "free";
+  const payingOrder = S.orders.find(o => o.courseId === course.id && o.status === "paying");
+  let cta;
+  if (payingOrder) {
+    cta = '<button type="button" class="btn btn-primary" disabled>支付处理中…</button>';
+  } else if (hasAccess(course.id)) {
+    const nextLesson = rec && rec.lastLesson && !isCourseCompleted(course.id)
+      ? rec.lastLesson
+      : lessonsOf(course).find(l => !(rec && rec.lessons[l.id] && rec.lessons[l.id].done));
+    cta = nextLesson
+      ? '<a class="btn btn-primary" href="#/learn/' + course.id + "/" + nextLesson.id + '">' + (prog.done > 0 ? "继续学习 · " + esc(findLesson(course, nextLesson.id).lesson.title) : "开始学习") + "</a>"
+      : '<span class="tag tag-free">✓ 已完成全部课节</span>';
+  } else if (isFree) {
+    cta = '<button type="button" class="btn btn-primary" data-act="start-free" data-course="' + course.id + '">开始学习（免费）</button>';
+  } else {
+    cta = '<button type="button" class="btn btn-primary" data-act="buy" data-course="' + course.id + '">立即购买 ¥' + ep.paid + "</button>";
+  }
+  const fav = S.favorites.includes(course.id);
+  let tab = S.route.tab || "intro";
+  let body = "";
+  if (tab === "intro") {
+    body = '<div class="rich">' + course.intro + "</div>";
+  } else if (tab === "catalog") {
+    body = course.chapters.map((ch, ci) =>
+      '<div class="chapter"><h4><span class="no">第 ' + (ci + 1) + " 章</span>" + esc(ch.name) + "</h4>" +
+      (ch.desc ? '<p class="cdesc">' + esc(ch.desc) + "</p>" : "") +
+      ch.lessons.map((l, li) => lessonRowHTML(course, ch, l, ci, li, null)).join("") + "</div>"
+    ).join("");
+  } else {
+    const rs = S.reviews.filter(r => r.courseId === course.id);
+    body = `<div class="panel rate-summary">
+        <div><div class="score">${rating ? rating.avg.toFixed(1) : "—"}</div>${rating ? starsHTML(rating.avg) : ""}</div>
+        <div class="small muted">${rating ? rating.count + " 条学员评价" : "暂无评价"}<br />仅统计当前公开有效的评价</div>
+      </div>
+      ${reviewFormHTML(course)}
+      ${rs.map(r => `<div class="review">
+        <div class="review-head">${starsHTML(r.stars)}<span class="who">${esc(r.who)}</span><span class="when">${esc(r.time)}</span></div>
+        <div class="review-body">${esc(r.body)}</div>
+        ${S.user && hasAccess(course.id) ? '<button type="button" class="btn-link" data-act="reply-form" data-rid="' + r.id + '">回复</button>' : ""}
+        ${r.replies.length ? '<button type="button" class="btn-link reply-toggle" data-act="toggle-node" data-rid="' + r.id + '">' + (r.closed ? "展开 " : "收起 ") + r.replies.length + " 条回复</button>" : ""}
+        ${r.replies.length && !r.closed ? '<div class="thread">' + replyTreeHTML(r.replies, course.id) + "</div>" : ""}
+      </div>`).join("") || '<div class="empty"><span class="serif">还没有评价</span>完成一个课节后，来写下第一条吧</div>'}`;
+  }
+  return `
+  <div class="crumbs"><a href="#/home">首页</a><span class="sep">/</span>${course.catPath.map(id => '<a href="#/home/' + id + '">' + esc(catName(id)) + "</a>").join('<span class="sep">/</span>')}<span class="sep">/</span><span>${esc(course.title)}</span></div>
+  <div class="course-head">
+    <div>${coverHTML(course, 188, 56)}</div>
+    <div>
+      <h2>《${esc(course.title)}》</h2>
+      <p class="muted" style="margin:0">${esc(course.digest)}</p>
+      <div class="course-stats">
+        <span>教师 <b>${esc(course.teacher)}</b></span>
+        <span><b>${course.learners + (rec ? +1 : 0)}</b> 人在学</span>
+        <span>${rating ? starsHTML(rating.avg, rating.count) : "暂无评价"}</span>
+        <span>共 <b>${lessonsOf(course).length}</b> 节</span>
+        ${rec ? '<span>进度 <b>' + prog.pct + "%</b></span>" : ""}
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:32px;align-items:start;margin-top:10px">
+    <div>
+      <div class="tabs">
+        <button type="button" class="${tab === "intro" ? "on" : ""}" data-act="course-tab" data-tab="intro">课程简介</button>
+        <button type="button" class="${tab === "catalog" ? "on" : ""}" data-act="course-tab" data-tab="catalog">目录（${lessonsOf(course).length}）</button>
+        <button type="button" class="${tab === "reviews" ? "on" : ""}" data-act="course-tab" data-tab="reviews">评价${rating ? "（" + rating.count + "）" : ""}</button>
+      </div>
+      <div class="fade">${body}</div>
+    </div>
+    <aside class="panel buy-panel">
+      <div class="big-price">
+        ${isFree ? '<span class="price-now" style="color:var(--moss)">免费</span>' : '<span class="price-now">¥' + ep.paid + "</span>" + (ep.off != null ? '<span class="price-std">¥' + ep.std + "</span>" : "")}
+      </div>
+      ${ep.until ? '<div class="hint">优惠至 ' + ep.until + "，过期恢复 ¥" + ep.std + "</div>" : ""}
+      ${cta}
+      ${hasAccess(course.id) ? '<div class="hint">访问权来源：' + (S.access[course.id].source === "paid" ? "付费购买" : "免费加入") + " · " + fmtTime(S.access[course.id].at) + "</div>" : ""}
+      ${!hasAccess(course.id) && !isFree ? '<div class="hint">首节支持免费试看；购买后解锁全部课节</div>' : ""}
+      <div class="row">
+        <button type="button" class="btn btn-ghost btn-sm" style="flex:1" data-act="fav" data-course="${course.id}">${fav ? "♥ 已收藏" : "♡ 收藏"}</button>
+        <button type="button" class="btn btn-ghost btn-sm" style="flex:1" data-act="poster" data-course="${course.id}">⤴ 分享海报</button>
+      </div>
+      ${rec ? '<div class="mini-progress"><i style="width:' + prog.pct + '%"></i></div><div class="hint">已学 ' + prog.done + " / " + prog.total + " 节</div>" : ""}
+    </aside>
+  </div>`;
+}
+
+/* ---------- 课节学习页 ---------- */
+let VT = null; // 视频模拟计时器
+const MD_CONTENT = {
+  c1l1: `<h4>从一个赋值说起</h4>
+    <p>把一个普通对象赋给变量，改了属性，页面不会自己动起来——因为我们没有「登记谁在依赖它」。响应式的全部秘密就一句话：<b>读取时登记，写入时通知</b>。</p>
+    <pre>let price = 10, qty = 2
+let total = 0
+effect(() => { total = price * qty })   // 读取时登记
+price = 20                               // 写入时通知，total 重新计算</pre>
+    <h4>登记发生在哪里</h4>
+    <p>函数执行期间发生的每一次属性读取，都会把当前正在执行的 effect 记到这个属性的「订户名单」上。写入时翻名单逐个通知即可。注意名单要判重，否则同一个 effect 会收到重复通知。</p>
+    <blockquote>本节对应 mini reactive 的 track / trigger 两个函数，下一节我们亲手把它们写出来。</blockquote>`,
+  c1l2: `<h4>目标：40 行实现 track 与 trigger</h4>
+    <p>上一节我们确认了「读取登记、写入通知」的模型，现在补上三个工程细节：<b>判重</b>、<b>清理</b>、<b>嵌套</b>。</p>
+    <pre>const bucket = new WeakMap()
+function track(target, key) {
+  /* target -> key -> Set<effect> 两级映射 */
+}
+function trigger(target, key) {
+  /* 取出名单，逐个执行；执行前先跑 cleanup */
+}</pre>
+    <h4>清理为什么不能省</h4>
+    <p>分支切换时（<code>v-if</code>），旧的依赖已经不该再通知这个 effect。每次执行前先把自己从所有名单里摘掉、执行中重新登记，是最省心的方案。这也是问答区被问得最多的一题——清理时机在调度之后、重新执行之前。</p>
+    <p>写完这一节，你可以做一个实验：把通知改成同步循环调用，观察栈溢出，再补上「正在执行」标记挡住重入。</p>`,
+  c5l1: `<h4>标题是目录，不是字号</h4>
+    <p>很多人用标题，是在挑「多大的字合适」。但渲染器眼里只有层级：一级之下是二级，二级之下是三级。层级乱了，大纲视图和锚点导航都会跟着乱。</p>
+    <h4>一条够用的规矩</h4>
+    <p>全文只允许一个一级标题（文章名）；每往下一层，必须有上一层的存在。写完把文档折叠成大纲看一眼——如果大纲读起来像目录，结构就对了。</p>`,
+  c5l2: `<h4>一段一件事</h4>
+    <p>列表项的粒度，决定读者扫读的效率。一个列表项如果塞了两件事，读者就必须整句读完才能定位——粒度拆细，扫读才有锚点。</p>
+    <blockquote>判断方法：把列表读成一句「以下分别是……」，如果接不通顺，就是混了。</blockquote>`
+};
+const PDF_PAGES = {
+  c1l3: [
+    { no: "PICKUP · 组件化拆分清单 · 第 1 页 / 共 3 页", h: "拆分前先回答三个问题", ps: [
+      "① 这块界面换一个页面还能用吗？（能 → 独立组件）",
+      "② 它的状态来自父级还是自己持有？（来自父级 → props 传入）",
+      "③ 它的变化需要通知别人吗？（需要 → emit，而不是改父级数据）"
+    ], ul: [] },
+    { no: "PICKUP · 组件化拆分清单 · 第 2 页 / 共 3 页", h: "拆分顺序（自底向上）", ps: [
+      "先拆「纯展示」：没有状态、只有 props，随时可搬走。",
+      "再拆「有状态」：状态收敛到最小 owner，其余下放。",
+      "最后拆「容器」：只负责取数与编排，不写样式。"
+    ], ul: [] },
+    { no: "PICKUP · 组件化拆分清单 · 第 3 页 / 共 3 页", h: "自查清单", ps: [], ul: [
+      "props 是否只进不出？",
+      "事件命名是否是动词过去式？",
+      "有没有超过三层的 props 穿透？",
+      "样式是否全部收敛在组件内？"
+    ] }
+  ],
+  c2l3: [
+    { no: "TS · 二十道体操题题解 · 第 1 页 / 共 2 页", h: "上篇答案速查（1–10）", ps: [], ul: [
+      "MyPartial：映射类型 + never 索引签名",
+      "MyReadonly：映射时加 readonly 修饰",
+      "TupleToUnion：T[number]",
+      "First：T extends [any, ...any[]] ? T[0] : never"
+    ] },
+    { no: "TS · 二十道体操题题解 · 第 2 页 / 共 2 页", h: "下篇答案速查（11–20）", ps: [], ul: [
+      "DeepReadonly：递归映射的终止条件",
+      "PromiseReturnType：infer 提取 then 的参数",
+      "Trim：模板字面量类型的嵌套递归"
+    ] }
+  ],
+  c4l3: [
+    { no: "INK · 五色平涂法 · 第 1 页 / 共 2 页", h: "五色怎么选", ps: [
+      "一组淡彩只留五个颜色：天蓝、赭石、熟褐、橄榄、胭脂。",
+      "远处少蘸色多蘸水，近处相反——层次靠水分不靠颜色数量。"
+    ], ul: [] },
+    { no: "INK · 五色平涂法 · 第 2 页 / 共 2 页", h: "平涂三遍法", ps: [], ul: [
+      "第一遍：大块铺水色，不管细节；",
+      "第二遍：半干时叠暗部；",
+      "第三遍：全干后点最高光留白。"
+    ] }
+  ]
+};
+function vLearn() {
+  const course = courseById(S.route.courseId);
+  const lessonId = S.route.lessonId;
+  const f = findLesson(course, lessonId);
+  if (!f) return '<div class="empty">课节不存在</div>';
+  const { chapter, lesson, ci, li } = f;
+  const all = lessonsOf(course);
+  const idx = all.findIndex(l => l.id === lessonId);
+  const prog = progressOf(course.id);
+  const rec = S.progress[course.id];
+  const done = rec && rec.lessons[lessonId] && rec.lessons[lessonId].done;
+  const locked = !canViewLesson(course.id, lessonId);
+  const prev = all[idx - 1], next = all[idx + 1];
+
+  /* 目录侧栏 */
+  let sidecat = course.chapters.map((ch, i) =>
+    '<div class="chapter-name">第 ' + (i + 1) + " 章 · " + esc(ch.name) + "</div>" +
+    ch.lessons.map(l => {
+      const d = rec && rec.lessons[l.id] && rec.lessons[l.id].done;
+      const lk = !canViewLesson(course.id, l.id);
+      return `<div class="slesson ${l.id === lessonId ? "cur" : ""}" data-act="open-lesson" data-course="${course.id}" data-lesson="${l.id}">
+        <span>${esc(l.title)}${l.trial ? ' <span class="tag tag-trial" style="font-size:10px;padding:0 5px">试</span>' : ""}</span>
+        <span class="st">${d ? '<span style="color:var(--moss)">✓</span>' : lk ? "🔒" : ""}</span>
+      </div>`;
+    }).join("")
+  ).join("");
+
+  let content;
+  if (locked) {
+    const ep = effectivePrice(course);
+    content = `<div class="empty" style="padding:56px 24px">
+      <span class="serif">🔒 本课节需要课程访问权</span>
+      你仍可以看到课节摘要：《${esc(course.title)}》· ${esc(chapter.name)} · ${esc(lesson.title)}（${lesson.type === "md" ? "图文" : lesson.type === "pdf" ? "讲义 PDF" : "视频"} · ${esc(lesson.meta)}）
+      <div style="margin-top:18px">
+        ${course.price.mode === "free"
+          ? '<button type="button" class="btn btn-primary" data-act="start-free" data-course="' + course.id + '">免费开始学习</button>'
+          : '<button type="button" class="btn btn-primary" data-act="buy" data-course="' + course.id + '">购买课程 ¥' + ep.paid + "</button>"}
+        <button type="button" class="btn btn-ghost" data-act="go-course" data-course="${course.id}">返回课程详情</button>
+      </div>
+    </div>`;
+  } else if (lesson.type === "md") {
+    content = `<div class="article">${MD_CONTENT[course.id + lessonId] || "<p>正文内容…</p>"}</div>
+      <div class="stage-foot">
+        <span class="muted small">${done ? "本节已完成" : "阅读后请标记完成"}</span>
+        <span class="spacer"></span>
+        ${prev ? '<a class="btn btn-ghost btn-sm" href="#/learn/' + course.id + "/" + prev.id + '">← 上一节</a>' : ""}
+        ${next ? '<a class="btn btn-ghost btn-sm" href="#/learn/' + course.id + "/" + next.id + '">下一节 →</a>' : ""}
+        <button type="button" class="btn ${done ? "btn-ghost" : "btn-primary"}" data-act="mark-done" data-course="${course.id}" data-lesson="${lesson.id}">${done ? "✓ 已完成" : "标记本节完成"}</button>
+      </div>`;
+  } else if (lesson.type === "pdf") {
+    const pages = PDF_PAGES[course.id + lessonId] || [];
+    const pos = (rec && rec.lessons[lessonId] && rec.lessons[lessonId].pos) || 0;
+    content = `<div class="pdf-frame" id="pdf-frame">
+        <div class="pdfno">${esc(pages[pos].no)}</div>
+        <h4>${esc(pages[pos].h)}</h4>
+        ${pages[pos].ps.map(p => "<p>" + esc(p) + "</p>").join("")}
+        ${pages[pos].ul.length ? "<ul>" + pages[pos].ul.map(u => "<li>" + esc(u) + "</li>").join("") + "</ul>" : ""}
+      </div>
+      <div class="pdf-pager">
+        <button type="button" class="btn btn-ghost btn-sm" data-act="pdf-prev" data-course="${course.id}" data-lesson="${lesson.id}" ${pos === 0 ? "disabled" : ""}>← 上一页</button>
+        <span>第 ${pos + 1} / ${pages.length} 页</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-act="pdf-next" data-course="${course.id}" data-lesson="${lesson.id}" data-max="${pages.length}" ${pos === pages.length - 1 ? "disabled" : ""}>下一页 →</button>
+        <span class="spacer" style="flex:1"></span>
+        <button type="button" class="btn ${done ? "btn-ghost" : "btn-primary"} btn-sm" data-act="mark-done" data-course="${course.id}" data-lesson="${lesson.id}">${done ? "✓ 已完成" : "标记本节完成"}</button>
+      </div>`;
+  } else {
+    const dur = lesson.meta === "12:00" ? 720 : lesson.meta === "15:00" ? 900 : lesson.meta === "18:00" ? 1080 : lesson.meta === "16:00" ? 960 : lesson.meta === "22:00" ? 1320 : 600;
+    const pos = (rec && rec.lessons[lessonId] && rec.lessons[lessonId].pos) || 0;
+    const ratio = Math.min(1, pos / dur);
+    content = `<div class="video-shell">
+        <div class="video-stage">
+          <span class="v-glyph">${esc(course.glyph)}</span>
+          <span class="v-title">${esc(course.title)}</span>
+          <button type="button" class="v-play" id="v-play" title="播放">▶</button>
+        </div>
+        <div class="video-ctrl">
+          <button type="button" id="v-toggle" title="播放/暂停">▶</button>
+          <div class="v-track" id="v-track"><i id="v-fill" style="width:${(ratio * 100).toFixed(1)}%"></i></div>
+          <span class="v-time" id="v-time">00:00 / ${lesson.meta}</span>
+        </div>
+      </div>
+      <p class="form-note" style="margin-top:10px">演示环境：播放以 60 倍速模拟；累计观看达 90% 将自动完成本节（FR-032）。${done ? "本节已完成。" : pos > 0 ? "已从上次位置 " + fmtSec(pos) + " 续播。" : ""}</p>
+      <div class="stage-foot">
+        <span class="muted small">${done ? "✓ 已完成" : "观看至 90% 自动完成"}</span>
+        <span class="spacer"></span>
+        ${prev ? '<a class="btn btn-ghost btn-sm" href="#/learn/' + course.id + "/" + prev.id + '">← 上一节</a>' : ""}
+        ${next ? '<a class="btn btn-ghost btn-sm" href="#/learn/' + course.id + "/" + next.id + '">下一节 →</a>' : ""}
+      </div>`;
+  }
+
+  /* 课节问答 */
+  const qs = S.questions.filter(q => q.courseId === course.id && q.lessonId === lessonId);
+  let qa = `<div class="panel qa-panel" style="padding:22px 26px">
+    <h3>课节问答</h3>
+    <p class="form-note" style="margin:0 0 4px">问题与本课节绑定，对已授权学员公开（FR-045）。</p>`;
+  if (hasAccess(course.id)) {
+    qa += `<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+      <input type="text" id="qa-title" placeholder="问题标题，一句话说清疑问" />
+      <textarea id="qa-body" placeholder="补充上下文：你试到哪一步、卡在哪里…（可追问，教师回答后会通知你）" style="min-height:64px"></textarea>
+      <div><button type="button" class="btn btn-primary btn-sm" data-act="ask" data-course="${course.id}" data-lesson="${lesson.id}">提交问题</button></div>
+    </div>`;
+  } else {
+    qa += '<p class="form-note" style="margin-top:12px">🔒 获得课程访问权后即可查看与提问。</p>';
+  }
+  qa += '<div class="qa-list">' + (qs.map(q => `
+    <div class="qa">
+      <div class="qa-head">
+        <span class="qa-title">${esc(q.title)}</span>
+        <span class="statuschip ${q.status === "answered" ? "st-answered" : q.status === "pending" ? "st-pending" : "st-closed"}">${q.status === "answered" ? "已回答" : q.status === "pending" ? "待回答" : "已关闭"}</span>
+        <span class="when small muted">${esc(q.who)} · ${esc(q.time)}</span>
+      </div>
+      <div class="qa-body">${esc(q.body)}</div>
+      ${q.thread.length ? '<div class="qa-thread">' + q.thread.map(a => `<div class="qa-a">
+          <span class="who ${a.isTeacher ? "" : "is-asker"}">${esc(a.who)}${a.isTeacher ? "（教师）" : ""}</span>
+          <span class="when">· ${esc(a.time)}</span>
+          <div class="txt">${esc(a.body)}</div>
+        </div>`).join("") + "</div>" : ""}
+    </div>`).join("") || '<p class="form-note">本课节还没有提问。</p>') + "</div></div>";
+
+  return `
+  <div class="learn-top">
+    <a href="#/course/${course.id}" class="small">← 返回课程</a>
+    <h2>《${esc(course.title)}》</h2>
+    <div class="pbar">
+      <div class="mini-progress" style="flex:1"><i style="width:${prog.pct}%"></i></div>
+      <span>${prog.done}/${prog.total} 节 · ${prog.pct}%</span>
+    </div>
+  </div>
+  <div class="learn-grid">
+    <div class="fade">
+      <div class="panel stage">
+        <div class="stage-head">
+          <span class="typechip t-${lesson.type}">${lesson.type === "md" ? "MD 图文" : lesson.type === "pdf" ? "PDF 讲义" : "视频"}</span>
+          <h3>${esc(lesson.title)}</h3>
+          ${lesson.trial ? '<span class="tag tag-trial">试看</span>' : ""}
+          ${done ? '<span class="l-done">✓ 已完成</span>' : ""}
+        </div>
+        <div class="stage-sub">第 ${ci + 1} 章「${esc(chapter.name)}」 · 第 ${li + 1} 节 · ${esc(lesson.meta)}</div>
+        ${content}
+      </div>
+      ${qa}
+    </div>
+    <aside class="panel sidecat">
+      <h4>课程目录</h4>
+      ${sidecat}
+    </aside>
+  </div>`;
+}
+function fmtSec(s) { const m = Math.floor(s / 60), ss = Math.floor(s % 60); return String(m).padStart(2, "0") + ":" + String(ss).padStart(2, "0"); }
+
+/* 视频模拟 */
+function bindVideo() {
+  const playBtn = $("#v-play"), toggle = $("#v-toggle");
+  if (!playBtn) return;
+  const courseId = S.route.courseId, lessonId = S.route.lessonId;
+  const course = courseById(courseId);
+  const lesson = findLesson(course, lessonId).lesson;
+  const dur = lesson.meta === "12:00" ? 720 : lesson.meta === "15:00" ? 900 : lesson.meta === "18:00" ? 1080 : lesson.meta === "16:00" ? 960 : lesson.meta === "22:00" ? 1320 : 600;
+  const rec = ensureProgress(courseId);
+  if (!rec.lessons[lessonId]) rec.lessons[lessonId] = {};
+  let t = rec.lessons[lessonId].pos || 0;
+  let playing = false;
+  const fill = $("#v-fill"), time = $("#v-time");
+  const paint = () => {
+    fill.style.width = (Math.min(1, t / dur) * 100).toFixed(1) + "%";
+    time.textContent = fmtSec(t) + " / " + lesson.meta;
+  };
+  paint();
+  const setPlay = on => {
+    playing = on;
+    playBtn.style.display = on ? "none" : "grid";
+    toggle.textContent = on ? "⏸" : "▶";
+  };
+  const complete = () => {
+    if (VT) { clearInterval(VT); VT = null; }
+    setPlay(false);
+    savePos(courseId, lessonId, dur);
+    if (!rec.lessons[lessonId].done) markLessonDone(courseId, lessonId, false);
+  };
+  playBtn.addEventListener("click", () => setPlay(true));
+  toggle.addEventListener("click", () => {
+    if (!playing && t >= dur) t = 0;
+    setPlay(!playing);
+  });
+  $("#v-track").addEventListener("click", e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    t = Math.round((e.clientX - r.left) / r.width * dur);
+    savePos(courseId, lessonId, t);
+    paint();
+  });
+  if (VT) { clearInterval(VT); VT = null; }
+  VT = setInterval(() => {
+    if (!playing) return;
+    t = Math.min(dur, t + 12); // 200ms 一跳，60 倍速
+    savePos(courseId, lessonId, t);
+    paint();
+    if (t / dur >= 0.9 && !rec.lessons[lessonId].done) { toast("观看已达 90%，本节自动完成"); }
+    if (t >= dur) complete();
+  }, 200);
+}
+
+/* ---------- 学习地图 ---------- */
+function vMaps() {
+  return `<div class="list-head"><h2>学习地图</h2><span class="cnt">${MAPS.length} 条已发布路径</span></div>
+  <div class="panel">${MAPS.map(m => {
+    const joined = S.joinedMaps.includes(m.id);
+    let doneCnt = 0, totalCnt = 0;
+    m.stages.forEach(s => s.steps.forEach(cid => { totalCnt++; if (isCourseCompleted(cid)) doneCnt++; }));
+    return `<div class="map-row" data-act="go-map" data-map="${m.id}">
+      <div class="cover" style="--hue:${m.hue};height:84px"><b style="font-size:30px">${esc(m.glyph)}</b><span class="cover-meta">${esc(m.coverMeta)}</span></div>
+      <div>
+        <h3>${esc(m.title)}</h3>
+        <p class="goal">${esc(m.goal)}</p>
+        <div class="meta small muted">${m.stages.length} 个阶段 · ${totalCnt} 门课程${joined ? " · 已加入" + (totalCnt ? " · 进度 " + Math.round(doneCnt / totalCnt * 100) + "%" : "") : ""}</div>
+      </div>
+      <div>${joined ? '<span class="btn btn-primary btn-sm">继续 →</span>' : '<span class="btn btn-ghost btn-sm">查看路径</span>'}</div>
+    </div>`;
+  }).join("")}</div>`;
+}
+function vMap() {
+  const map = MAPS.find(m => m.id === S.route.mapId);
+  if (!map) return '<div class="empty">地图不存在</div>';
+  const joined = S.joinedMaps.includes(map.id);
+  let doneCnt = 0, totalCnt = 0, nextStep = null;
+  const stagesHTML = map.stages.map((st, si) => {
+    const steps = st.steps.map(cid => {
+      const c = courseById(cid);
+      totalCnt++;
+      const completed = isCourseCompleted(cid);
+      if (completed) doneCnt++;
+      let state, act, cls = "step-row";
+      if (completed) { state = '<span class="tag tag-free">✓ 已完成</span>'; act = '<button type="button" class="btn btn-ghost btn-sm" data-act="go-course" data-course="' + cid + '">复习</button>'; cls += " done"; }
+      else if (hasAccess(cid)) { state = '<span class="tag tag-on">学习中</span>'; act = '<button type="button" class="btn btn-ghost btn-sm" data-act="go-course" data-course="' + cid + '">继续</button>'; }
+      else if (c.price.mode === "free") { state = '<span class="tag tag-free">免费</span>'; act = '<button type="button" class="btn btn-ghost btn-sm" data-act="go-course" data-course="' + cid + '">开始</button>'; }
+      else { state = '<span class="tag tag-lock">需购买 ¥' + effectivePrice(c).paid + "</span>"; act = '<button type=\"button\" class=\"btn btn-ghost btn-sm\" data-act=\"buy\" data-course="' + cid + '">购买</button>'; }
+      let nextChip = "";
+      if (!completed && !nextStep) { nextStep = { cid: cid, stage: st.name }; nextChip = '<span class="next-chip">建议下一步</span>'; cls += " next"; }
+      return `<div class="${cls}">
+        <div><span class="sn">STEP</span><span class="sc" data-act="go-course" data-course="${cid}">《${esc(c.title)}》</span> ${nextChip}</div>
+        <div>${state}</div><div>${act}</div>
+      </div>`;
+    }).join("");
+    return `<div class="stage-node">
+      <div class="stage-dot">${si + 1}</div>
+      <div><h4>${esc(st.name)}</h4><p class="sdesc">${esc(st.desc)}</p>${steps}</div>
+    </div>`;
+  }).join("");
+  const pct = totalCnt ? Math.round(doneCnt / totalCnt * 100) : 0;
+  return `
+  <div class="crumbs"><a href="#/maps">学习地图</a><span class="sep">/</span><span>${esc(map.title)}</span></div>
+  <div class="list-head" style="margin-top:12px"><h2>${esc(map.title)}</h2>
+    ${joined ? '<button type="button" class="btn btn-ghost btn-sm" disabled>已加入</button>' : '<button type="button" class="btn btn-primary btn-sm" data-act="join-map" data-map="' + map.id + '">开始这条路径</button>'}
+  </div>
+  <p class="muted" style="max-width:680px">${esc(map.goal)}</p>
+  <p class="small muted" style="margin-bottom:6px">适合：${esc(map.audience)}</p>
+  <div class="learn-top" style="border-bottom-width:1px;margin-bottom:20px">
+    <div class="pbar"><div class="mini-progress" style="flex:1"><i style="width:${pct}%"></i></div><span>${doneCnt}/${totalCnt} 门 · ${pct}%</span></div>
+  </div>
+  <div class="stage-line fade">${stagesHTML}</div>
+  ${!joined ? '<p class="form-note">加入后开始记录你的路径进度；收费课程仍需单独购买，开始路径不会自动授予访问权（FR-060）。</p>' : ""}`;
+}
+
+/* ---------- 我的学习 / 收藏 / 订单 / 消息 ---------- */
+function vMy() {
+  const ids = Object.keys(S.progress);
+  if (!ids.length) return '<div class="empty"><span class="serif">还没有开始任何课程</span>回到<a href="#/home">首页分类</a>，从一门免费的课开始吧</div>';
+  return '<div class="list-head"><h2>我的学习</h2><span class="cnt">' + ids.length + " 门进行中</span></div>" + ids.map(cid => {
+    const c = courseById(cid);
+    const rec = S.progress[cid];
+    const p = progressOf(cid);
+    const last = rec.lastLesson ? findLesson(c, rec.lastLesson) : null;
+    return `<div class="rec">
+      ${coverHTML(c, 92, 28)}
+      <div>
+        <h3 data-act="go-course" data-course="${cid}">《${esc(c.title)}》</h3>
+        <div class="mini-progress" style="max-width:300px"><i style="width:${p.pct}%"></i></div>
+        <div class="lmeta">${p.done}/${p.total} 节 · ${p.pct}%${last ? " · 上次学到「" + esc(last.lesson.title) + "」" : ""}${rec.lastAt ? " · " + fmtTime(rec.lastAt) : ""}</div>
+      </div>
+      <div>${last ? '<a class="btn btn-primary btn-sm" href="#/learn/' + cid + "/" + rec.lastLesson + '">继续学习</a>' : '<span class="tag tag-free">✓ 已完成</span>'}</div>
+    </div>`;
+  }).join("");
+}
+function vFav() {
+  if (!S.favorites.length) return '<div class="empty"><span class="serif">收藏夹还是空的</span>在课程卡片或详情页点 ♡ 收藏想稍后学的课</div>';
+  return '<div class="list-head"><h2>我的收藏</h2><span class="cnt">' + S.favorites.length + " 门</span></div>" + S.favorites.map(cid => {
+    const c = courseById(cid);
+    return `<div class="rec">
+      ${coverHTML(c, 92, 28)}
+      <div>
+        <h3 data-act="go-course" data-course="${cid}">《${esc(c.title)}》</h3>
+        <div class="lmeta">${esc(c.teacher)} · ${catPathName(c)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        ${priceHTML(c)}
+        <button type="button" class="btn-link" data-act="fav" data-course="${cid}">取消收藏</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function vOrders() {
+  if (!S.orders.length) return '<div class="empty"><span class="serif">还没有订单</span>购买收费课程后，这里会保留价格快照</div>';
+  return '<div class="list-head"><h2>我的订单</h2><span class="cnt">' + S.orders.length + " 笔</span></div>" + S.orders.map(o => {
+    const c = courseById(o.courseId);
+    return `<div class="panel order-row">
+      <div>
+        <div class="o-course" data-act="go-course" data-course="${o.courseId}">《${esc(c.title)}》</div>
+        <div class="o-snap">订单 ${o.id} · 标准价 ¥${o.snap.std}${o.snap.off != null ? " · 优惠价 ¥" + o.snap.off : ""} · 实付 ¥${o.snap.paid} · ${fmtTime(o.createdAt)}</div>
+      </div>
+      <div class="pay-state ${o.status === "success" ? "s-ok" : "s-paying"}">${o.status === "success" ? "✓ 支付成功 · 已开通" : "支付处理中…"}</div>
+    </div>`;
+  }).join("");
+}
+const MSG_TYPES = {
+  notice: { label: "公告", cls: "tag-sale" },
+  dm: { label: "站内信", cls: "tag-on" },
+  qa: { label: "问答", cls: "tag-trial" },
+  progress: { label: "进度", cls: "tag-free" },
+  auth: { label: "授权", cls: "tag-free" }
+};
+function vMsgs() {
+  const unread = unreadCount();
+  const bar = '<div class="list-head"><h2>消息中心</h2><span class="cnt">' + unread + " 条未读 · " + S.messages.length + " 条</span>" +
+    '<span class="spacer" style="flex:1"></span>' +
+    '<button type="button" class="btn btn-ghost btn-sm" data-act="mark-all-read"' + (unread ? "" : " disabled") + '>全部标记已读</button>' +
+    '<button type="button" class="btn btn-ghost btn-sm" data-act="run-cleanup">运行清理任务</button></div>' +
+    '<p class="muted small" style="margin:0 0 14px">公告与站内信来自站长发送，问答 / 进度 / 授权为系统自动通知；清理任务会删除创建超过 2 个月（60 天）的收件箱消息。</p>' +
+    '<div class="panel" style="flex-direction:row;display:flex;gap:12px;align-items:center;margin-bottom:14px;padding:12px 18px;background:var(--seal-soft);border-color:var(--seal)">' +
+      '<span class="serif" style="font-weight:900;font-size:14px">演示 · 模拟站长发送</span>' +
+      '<span class="small muted" style="flex:1">点击后约 3 秒内消息会实时推送到达（可先切到其他页面，观察导航角标变化）。</span>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-act="demo-send" data-kind="notice">发公告（全体）</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" data-act="demo-send" data-kind="dm">发站内信（仅我）</button>' +
+    "</div>";
+  if (!S.messages.length) return bar + '<div class="empty"><span class="serif">没有消息</span>公告、站内信与问答、进度、授权等系统通知会出现在这里</div>';
+  return bar + '<div class="panel">' + S.messages.map(m => {
+    const t = MSG_TYPES[m.type] || { label: "通知", cls: "tag-lock" };
+    return `<div class="msg-row" data-act="read-msg" data-mid="${m.id}" data-course="${m.courseId}" data-lesson="${m.lessonId || ""}">
+      <div class="msg-dot ${m.read ? "read" : ""}"></div>
+      <div><div class="mtitle">${m.read ? "" : '<span class="tag tag-sale" style="font-size:10px;margin-right:6px">未读</span>'}<span class="tag ${t.cls}" style="font-size:10px;margin-right:6px">${t.label}</span>${esc(m.title)}</div><div class="mbody">${esc(m.body)}</div></div>
+      <span class="when small muted">${esc(m.time)}</span>
+    </div>`;
+  }).join("") + "</div>";
+}
+
+/* ============================================================
+   路由与渲染
+   ============================================================ */
+function parseHash() {
+  const h = (location.hash || "#/home").replace(/^#\//, "").split("/").filter(Boolean);
+  const r = { name: "home", cat: null, courseId: null, lessonId: null, mapId: null, tab: "intro" };
+  if (!h.length) return r;
+  if (h[0] === "home") { r.name = "home"; r.cat = h[1] || null; }
+  else if (h[0] === "course") { r.name = "course"; r.courseId = h[1] || null; r.tab = h[2] || "intro"; }
+  else if (h[0] === "learn") { r.name = "learn"; r.courseId = h[1] || null; r.lessonId = h[2] || null; }
+  else if (h[0] === "maps") r.name = "maps";
+  else if (h[0] === "map") { r.name = "map"; r.mapId = h[1] || null; }
+  else if (h[0] === "my") r.name = "my";
+  else if (h[0] === "fav") r.name = "fav";
+  else if (h[0] === "orders") r.name = "orders";
+  else if (h[0] === "msgs") r.name = "msgs";
+  return r;
+}
+function render() {
+  if (VT) { clearInterval(VT); VT = null; }
+  S.route = parseHash();
+  const authViews = { my: "我的学习", fav: "收藏", orders: "我的订单", msgs: "消息" };
+  if (authViews[S.route.name] && !S.user) openLogin("「" + authViews[S.route.name] + "」需要学员登录后使用");
+  renderNav();
+  const app = $("#app");
+  const v = { home: vHome, course: vCourse, learn: vLearn, maps: vMaps, map: vMap, my: vMy, fav: vFav, orders: vOrders, msgs: vMsgs }[S.route.name] || vHome;
+  app.innerHTML = '<div class="fade">' + v() + "</div>";
+  if (S.route.name === "learn") bindVideo();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", () => { closeModal(); render(); });
+
+/* ============================================================
+   事件委托
+   ============================================================ */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  const stop = () => { e.preventDefault(); e.stopPropagation(); };
+  switch (act) {
+    case "nav": stop(); location.hash = el.dataset.route; break;
+    case "login": stop(); openLogin(); break;
+    case "close": stop(); closeModal(); break;
+    case "overlay": if (e.target === el) closeModal(); break;
+    case "refresh-cap": stop(); drawCaptcha(); break;
+    case "do-login": stop(); tryLogin(); break;
+    case "user-menu": stop(); toast("演示账号：" + S.user.nick + " · 退出请刷新页面（原型简化）"); break;
+    case "cat": stop(); {
+      const cat = el.dataset.cat;
+      location.hash = cat ? "#/home/" + cat : "#/home";
+      break;
+    }
+    case "go-course": stop(); location.hash = "#/course/" + el.dataset.course; break;
+    case "course-tab": stop(); location.hash = "#/course/" + S.route.courseId + "/" + el.dataset.tab; break;
+    case "open-lesson": stop(); {
+      const cid = el.dataset.course, lid = el.dataset.lesson;
+      location.hash = "#/learn/" + cid + "/" + lid;
+      break;
+    }
+    case "start-free": stop(); startFree(el.dataset.course); break;
+    case "buy": stop(); openBuy(el.dataset.course); break;
+    case "confirm-buy": stop(); buyCourse(el.dataset.course); break;
+    case "poster": stop(); openPoster(el.dataset.course); break;
+    case "copy-link": stop(); copyLink(el.dataset.url); break;
+    case "dl-poster": stop(); toast("海报已生成（演示）：请在本地右键保存弹层中的海报图"); break;
+    case "fav": stop(); toggleFav(el.dataset.course); break;
+    case "mark-done": stop(); markLessonDone(el.dataset.course, el.dataset.lesson, false); break;
+    case "pdf-prev": stop(); {
+      const cid = el.dataset.course, lid = el.dataset.lesson;
+      const rec = ensureProgress(cid);
+      const cur = (rec.lessons[lid] && rec.lessons[lid].pos) || 0;
+      savePos(cid, lid, Math.max(0, cur - 1));
+      render();
+      break;
+    }
+    case "pdf-next": stop(); {
+      const cid = el.dataset.course, lid = el.dataset.lesson;
+      const rec = ensureProgress(cid);
+      const cur = (rec.lessons[lid] && rec.lessons[lid].pos) || 0;
+      savePos(cid, lid, Math.min(parseInt(el.dataset.max, 10) - 1, cur + 1));
+      render();
+      break;
+    }
+    case "go-map": stop(); location.hash = "#/map/" + el.dataset.map; break;
+    case "join-map": stop(); {
+      if (!S.user) { openLogin("登录后即可加入学习地图"); break; }
+      S.joinedMaps.push(el.dataset.map);
+      toast("已加入路径，从建议的下一步开始吧");
+      render();
+      break;
+    }
+    case "reply-form": stop(); {
+      const rid = el.dataset.rid;
+      const box = el.parentElement;
+      if ($("#reply-box")) { $("#reply-box").remove(); break; }
+      const div = document.createElement("div");
+      div.id = "reply-box";
+      div.style.marginTop = "8px";
+      div.innerHTML = '<textarea id="reply-body" placeholder="回复 ' + esc((findReviewNode(rid) || {}).who || "") + '…" style="min-height:56px"></textarea>' +
+        '<div style="margin-top:6px"><button type="button" class="btn btn-primary btn-sm" data-act="submit-reply" data-rid="' + rid + '">回复</button></div>';
+      box.insertBefore(div, el.nextSibling);
+      $("#reply-body").focus();
+      break;
+    }
+    case "submit-reply": stop(); {
+      const rid = el.dataset.rid;
+      const body = $("#reply-body").value.trim();
+      if (!body) { toast("回复内容不能为空"); break; }
+      const node = findReviewNode(rid);
+      if (!node) break;
+      node.replies = node.replies || [];
+      node.replies.push({ id: "rp" + Date.now(), who: S.user.nick, body: body, time: "刚刚", replies: [] });
+      toast("回复成功");
+      render();
+      break;
+    }
+    case "toggle-node": stop(); {
+      const node = findReviewNode(el.dataset.rid);
+      if (node) { node.closed = !node.closed; render(); }
+      break;
+    }
+    case "ask": stop(); {
+      const cid = el.dataset.course, lid = el.dataset.lesson;
+      const title = $("#qa-title").value.trim();
+      const body = $("#qa-body").value.trim();
+      if (!title || !body) { toast("请填写问题标题和内容"); break; }
+      const q = { id: "q" + Date.now(), courseId: cid, lessonId: lid, title: title, status: "pending", who: S.user.nick, time: "刚刚", body: body, thread: [] };
+      S.questions.push(q);
+      toast("问题已提交 · 待回答（教师回答后将通知你）");
+      render();
+      /* 演示：模拟教师在 6 秒后回答并生成站内消息（用户故事 4 / 19） */
+      setTimeout(() => {
+        q.status = "answered";
+        q.thread.push({ who: courseById(cid).teacher, isTeacher: true, time: "刚刚", body: "好问题。这一处演示环境里简化了实现细节，核心思路是：先确认你复现了问题，再对照讲义第 2 页第 3 条检查清单逐项排查，通常卡点在清理时机那一环。有进展欢迎继续追问。" });
+        S.messages.unshift({ id: "m" + Date.now(), type: "qa", title: "你的问题有了新回答", body: "「" + title + "」已由 " + courseById(cid).teacher + " 回答。", courseId: cid, lessonId: lid, read: false, time: "刚刚", createdAt: Date.now() });
+        renderNav();
+        toast("教师已回答你的问题，可在「消息」中查看");
+        if (parseHash().name === "learn" && parseHash().courseId === cid && parseHash().lessonId === lid) render();
+      }, 6000);
+      break;
+    }
+    case "read-msg": stop(); {
+      const m = S.messages.find(x => x.id === el.dataset.mid);
+      if (m) m.read = true;
+      if (el.dataset.lesson) location.hash = "#/learn/" + el.dataset.course + "/" + el.dataset.lesson;
+      render();
+      break;
+    }
+    case "mark-all-read": stop(); {
+      const n = unreadCount();
+      S.messages.forEach(m => { m.read = true; });
+      render();
+      toast(n ? "已全部标记为已读（" + n + " 条）" : "当前没有未读消息");
+      break;
+    }
+    case "run-cleanup": stop(); {
+      const cutoff = Date.now() - 60 * 864e5;
+      const before = S.messages.length;
+      S.messages = S.messages.filter(m => (m.createdAt || 0) >= cutoff);
+      const removed = before - S.messages.length;
+      render();
+      toast(removed ? "清理任务完成 · 删除 " + removed + " 条超过 2 个月的消息，其余保留" : "清理任务完成 · 暂无超过 2 个月的消息");
+      break;
+    }
+    case "demo-send": stop(); {
+      const kind = el.dataset.kind;
+      toast(kind === "notice" ? "公告已提交，正在向全体在册学员投递…" : "站内信已提交，正在投递给你…");
+      const now = Date.now();
+      setTimeout(() => {
+        if (!S.user) return;
+        if (kind === "notice") {
+          S.messages.unshift({ id: "m-n" + now, type: "notice", title: "新公告：学习地图「前端筑基」已更新", body: "「前端筑基」地图新增两门课程与配套练习，已加入地图的学员会自动获得新课学习权限。", read: false, time: "刚刚", createdAt: now });
+        } else {
+          S.messages.unshift({ id: "m-d" + now, type: "dm", title: "站内信：感谢你的持续学习", body: "你近两周完成了多节课节，继续保持！如需课程建议，欢迎在课节问答中留言。", read: false, time: "刚刚", createdAt: now });
+        }
+        toast("新消息已通过实时推送到达（未读角标已更新）");
+        if (parseHash().name === "msgs") render(); else renderNav();
+      }, 3000);
+      break;
+    }
+    case "reset": stop(); {
+      S = freshState();
+      treeClosed = {};
+      location.hash = "#/home";
+      render();
+      toast("演示数据已重置");
+      break;
+    }
+  }
+});
+
+/* 星级输入（事件委托 mouseover 简化为点击） */
+document.addEventListener("click", e => {
+  const star = e.target.closest("#star-input span");
+  if (!star) return;
+  const box = $("#star-input");
+  const n = parseInt(star.dataset.star, 10);
+  $$("#star-input span").forEach(s => { s.classList.toggle("on", parseInt(s.dataset.star, 10) <= n); });
+  box.dataset.value = n;
+});
+document.addEventListener("click", e => {
+  const btn = e.target.closest('[data-act="save-review"]');
+  if (!btn) return;
+  e.preventDefault();
+  const courseId = btn.dataset.course;
+  const isEdit = btn.dataset.edit === "1";
+  const body = $("#rv-body").value.trim();
+  const stars = parseInt($("#star-input").dataset.value || "0", 10) || $$("#star-input span.on").length;
+  if (!stars || !body) { toast("请先选择星级并填写评价内容"); return; }
+  if (isEdit) {
+    const mine = S.reviews.find(r => r.courseId === courseId && r.who === S.user.nick);
+    mine.stars = stars; mine.body = body; mine.edited = true;
+    toast("评价已更新");
+  } else {
+    S.reviews.unshift({ id: "r" + Date.now(), courseId: courseId, who: S.user.nick, stars: stars, body: body, time: "刚刚", replies: [] });
+    toast("评价已发布 · 评分已重新计算");
+  }
+  render();
+});
+
+/* 夜读模式 */
+$("#btn-night").addEventListener("click", () => {
+  const html = document.documentElement;
+  const night = html.dataset.theme === "night";
+  if (night) { html.removeAttribute("data-theme"); $("#btn-night").textContent = "☾"; }
+  else { html.dataset.theme = "night"; $("#btn-night").textContent = "☀"; }
+});
+
+/* 启动 */
+if (!location.hash) location.hash = "#/home";
+render();
+</script>
+</body>
+</html>

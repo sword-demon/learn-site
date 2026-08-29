@@ -60,8 +60,8 @@ describe('MyLearningView', () => {
     const wrapper = mount(MyLearningView, { global: { stubs: { RouterLink: RouterLinkStub } } });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('还没有学习记录');
-    expect(wrapper.find('.course-row').exists()).toBe(false);
+    expect(wrapper.text()).toContain('还没有开始任何课程');
+    expect(wrapper.find('.rec').exists()).toBe(false);
   });
 
   it('shows the revoke reason and rejoins without losing the resume position', async () => {

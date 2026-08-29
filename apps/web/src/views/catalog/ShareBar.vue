@@ -8,10 +8,14 @@ import { createShareLink, createSharePoster } from '@/api/share';
 import { loginPathFor } from '@/router/guards';
 import SharePosterDialog from '@/components/SharePosterDialog.vue';
 
-const props = defineProps<{
-  courseId: number;
-  courseTitle: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    courseId: number;
+    courseTitle: string;
+    variant?: 'bar' | 'panel';
+  }>(),
+  { variant: 'bar' },
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -92,39 +96,78 @@ async function generatePoster(): Promise<void> {
 </script>
 
 <template>
-  <section class="share-bar" :aria-label="`${courseTitle}的收藏与分享`">
-    <span class="share-label">收藏与分享</span>
-    <div class="share-actions">
+  <section
+    class="share-bar"
+    :class="{ 'share-bar--panel': variant === 'panel' }"
+    :aria-label="`${courseTitle}的收藏与分享`"
+  >
+    <template v-if="variant === 'panel'">
+      <div class="row">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          style="flex: 1"
+          data-action="favorite"
+          :disabled="busyAction !== null || favorited"
+          @click="favorite"
+        >
+          {{ favorited ? '♥ 已收藏' : busyAction === 'favorite' ? '收藏中…' : '♡ 收藏' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          style="flex: 1"
+          data-action="generate-poster"
+          :disabled="busyAction !== null"
+          @click="generatePoster"
+        >
+          {{ busyAction === 'poster' ? '生成中…' : '⤴ 分享海报' }}
+        </button>
+      </div>
       <button
         type="button"
-        class="share-button"
-        data-action="favorite"
-        :disabled="busyAction !== null || favorited"
-        @click="favorite"
-      >
-        {{ favorited ? '已收藏' : busyAction === 'favorite' ? '收藏中…' : '收藏课程' }}
-      </button>
-      <button
-        type="button"
-        class="share-button"
+        class="btn-link"
         data-action="copy-link"
         :disabled="busyAction !== null"
         @click="copyLink"
       >
-        {{ busyAction === 'link' ? '复制中…' : copied ? '已复制' : '复制链接' }}
+        {{ busyAction === 'link' ? '复制中…' : copied ? '链接已复制' : '复制课程链接' }}
       </button>
-      <button
-        type="button"
-        class="share-button primary"
-        data-action="generate-poster"
-        :disabled="busyAction !== null"
-        @click="generatePoster"
-      >
-        {{ busyAction === 'poster' ? '生成中…' : '生成海报' }}
-      </button>
-    </div>
+    </template>
+    <template v-else>
+      <span class="share-label">收藏与分享</span>
+      <div class="share-actions">
+        <button
+          type="button"
+          class="share-button"
+          data-action="favorite"
+          :disabled="busyAction !== null || favorited"
+          @click="favorite"
+        >
+          {{ favorited ? '已收藏' : busyAction === 'favorite' ? '收藏中…' : '收藏课程' }}
+        </button>
+        <button
+          type="button"
+          class="share-button"
+          data-action="copy-link"
+          :disabled="busyAction !== null"
+          @click="copyLink"
+        >
+          {{ busyAction === 'link' ? '复制中…' : copied ? '已复制' : '复制链接' }}
+        </button>
+        <button
+          type="button"
+          class="share-button primary"
+          data-action="generate-poster"
+          :disabled="busyAction !== null"
+          @click="generatePoster"
+        >
+          {{ busyAction === 'poster' ? '生成中…' : '生成海报' }}
+        </button>
+      </div>
+    </template>
     <p v-if="message" class="share-message">{{ message }}</p>
-    <p v-if="stableLink" class="share-result">
+    <p v-if="stableLink && variant !== 'panel'" class="share-result">
       <a :href="stableLink">{{ stableLink }}</a>
     </p>
     <SharePosterDialog v-model="posterOpen" :poster="poster" />
@@ -140,15 +183,25 @@ async function generatePoster(): Promise<void> {
   padding: 18px 0;
   border-top: 1px solid var(--line);
 }
+
+.share-bar--panel {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 0;
+  border-top: 0;
+}
+
 .share-label {
   color: var(--muted);
   font-size: 0.78rem;
 }
+
 .share-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .share-button {
   min-height: 36px;
   padding: 7px 12px;
@@ -159,15 +212,18 @@ async function generatePoster(): Promise<void> {
   font: inherit;
   cursor: pointer;
 }
+
 .share-button.primary {
   border-color: var(--pine);
   background: var(--pine);
   color: white;
 }
+
 .share-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
+
 .share-message,
 .share-result {
   grid-column: 2;
@@ -177,16 +233,24 @@ async function generatePoster(): Promise<void> {
   font-size: 0.78rem;
   overflow-wrap: anywhere;
 }
+
+.share-bar--panel .share-message {
+  grid-column: 1;
+}
+
 .share-message {
   color: #9e3f2c;
 }
+
 .share-result a {
   color: var(--pine);
 }
+
 @media (max-width: 600px) {
-  .share-bar {
+  .share-bar:not(.share-bar--panel) {
     grid-template-columns: 1fr;
   }
+
   .share-message,
   .share-result {
     grid-column: 1;

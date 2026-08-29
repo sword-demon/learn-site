@@ -1,11 +1,17 @@
 <template>
   <div class="campus">
-    <header class="topnav">
-      <div class="topnav-inner">
+    <header class="masthead">
+      <div class="masthead-inner">
         <router-link to="/" class="brand">
-          <span class="latin">Linjian</span>
-          <strong class="display">林间课室</strong>
+          <div class="seal-mark" aria-hidden="true">
+            <span>拾</span><span>阶</span><span>学</span><span>社</span>
+          </div>
+          <div class="brand-txt">
+            <h1>拾阶学社</h1>
+            <p>拾级而上 · 日进一阶</p>
+          </div>
         </router-link>
+
         <button
           type="button"
           class="nav-toggle"
@@ -15,24 +21,47 @@
         >
           {{ menuOpen ? '收起' : '菜单' }}
         </button>
-        <nav id="learner-navigation" :class="{ open: menuOpen }" @click="menuOpen = false">
-          <router-link to="/" active-class="" exact-active-class="on">分类</router-link>
+
+        <nav
+          id="learner-navigation"
+          class="mainnav"
+          :class="{ open: menuOpen }"
+          @click="menuOpen = false"
+        >
+          <router-link to="/" active-class="on" exact-active-class="on">首页 · 分类</router-link>
           <router-link to="/maps" active-class="on">学习地图</router-link>
           <template v-if="session.loggedIn">
             <router-link to="/me/learning" active-class="on">我的学习</router-link>
             <router-link to="/me/favorites" active-class="on">收藏</router-link>
             <router-link to="/me/orders" active-class="on">我的订单</router-link>
-            <router-link to="/me/messages" active-class="on" class="messages-link">
+            <router-link to="/me/messages" active-class="on">
               消息
-              <span v-if="unreadCount > 0" class="badge">{{
+              <span v-if="unreadCount > 0" class="nav-badge">{{
                 unreadCount > 99 ? '99+' : unreadCount
               }}</span>
             </router-link>
-            <router-link to="/me/account" active-class="on">账户</router-link>
-            <button type="button" class="btn ghost" @click="onLogout">退出</button>
           </template>
-          <router-link v-else to="/login" class="btn ghost login-cta">登录</router-link>
         </nav>
+
+        <div class="masthead-tools">
+          <button
+            type="button"
+            class="btn-night"
+            :title="isNight ? '切换日间模式' : '夜读模式'"
+            :aria-pressed="isNight"
+            @click="toggleNight"
+          >
+            {{ isNight ? '☀' : '☾' }}
+          </button>
+          <template v-if="session.loggedIn">
+            <router-link to="/me/account" class="chip-user">
+              <span class="avatar">{{ userInitial }}</span>
+              {{ displayName }}
+            </router-link>
+            <button type="button" class="btn btn-ghost btn-sm" @click="onLogout">退出</button>
+          </template>
+          <router-link v-else to="/login" class="btn btn-primary btn-sm">登录 / 注册</router-link>
+        </div>
       </div>
     </header>
     <router-view />
@@ -40,38 +69,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLoginFamilyStore } from '@/api/login';
 import { usePushNotifications } from '@/composables/usePushNotifications';
+import { useTheme } from '@/composables/useTheme';
 
 const session = useLoginFamilyStore();
 const router = useRouter();
 const menuOpen = ref(false);
 const { unreadCount } = usePushNotifications();
+const { isNight, toggleNight } = useTheme();
+
+const displayName = computed(() => '学员');
+const userInitial = computed(() => '学');
 
 async function onLogout(): Promise<void> {
   await session.signOut();
   await router.push('/');
 }
 </script>
-
-<style scoped>
-.messages-link {
-  position: relative;
-}
-.badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  margin-left: 6px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font: 600 0.65rem var(--font-mono);
-  line-height: 1;
-}
-</style>
