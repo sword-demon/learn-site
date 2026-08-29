@@ -76,4 +76,13 @@ test.describe.serial('管理端核心旅程', () => {
     expect(forbidden.status()).toBe(403)
     expect((await forbidden.json()).error.code).toBe('FORBIDDEN')
   })
+
+  test('超级管理员可进入通知管理并打开发送对话框', async ({ page }) => {
+    await login(page, OWNER_ACCOUNT, OWNER_PASSWORD)
+    await page.getByText('通知管理', { exact: true }).click()
+    await expect(page).toHaveURL(/\/notifications$/)
+    await expect(page.getByRole('heading', { name: '通知管理', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '发送通知', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
 })

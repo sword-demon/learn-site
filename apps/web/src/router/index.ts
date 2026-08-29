@@ -73,11 +73,13 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
+      meta: { hideFooter: true },
       component: () => import('@/views/auth/LoginView.vue'),
     },
     {
       path: '/register',
       name: 'register',
+      meta: { hideFooter: true },
       component: () => import('@/views/auth/RegisterView.vue'),
     },
   ],

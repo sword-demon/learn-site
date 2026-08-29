@@ -48,7 +48,7 @@ describe('AdminLayout', () => {
     const menuItems = wrapper.findAll('.el-menu-item');
     const submenuTitles = wrapper.findAll('.el-sub-menu__title');
 
-    expect(menuItems).toHaveLength(14);
+    expect(menuItems).toHaveLength(15);
     expect(submenuTitles).toHaveLength(1);
     expect(menuItems.every((item) => item.find('svg').exists())).toBe(true);
     expect(submenuTitles.every((title) => title.find('svg').exists())).toBe(true);

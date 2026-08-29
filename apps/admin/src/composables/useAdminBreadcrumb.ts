@@ -94,7 +94,5 @@ export function useAdminBreadcrumb(
   route: RouteLocationNormalizedLoaded,
   menuEntries: ComputedRef<readonly AdminMenuEntry[]>,
 ): ComputedRef<BreadcrumbItem[]> {
-  return computed(() =>
-    resolveAdminBreadcrumb(route.path, route.meta, menuEntries.value),
-  );
+  return computed(() => resolveAdminBreadcrumb(route.path, route.meta, menuEntries.value));
 }

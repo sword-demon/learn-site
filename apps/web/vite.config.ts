@@ -33,6 +33,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    env: {
+      VITE_PUSH_URL: 'ws://push.test',
+      VITE_PUSH_APP_KEY: 'test-key',
+    },
     // E2E specs use Playwright's `test.describe`; vitest must skip them.
     exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
   },

@@ -25,6 +25,10 @@ test('学员通过验证码注册，完成免费学习和 Fake 支付订单旅�
   await expect(page).toHaveURL(/\/$/)
   await expect(page.getByRole('link', { name: '我的订单', exact: true })).toBeVisible()
 
+  await page.getByRole('link', { name: '消息', exact: true }).click()
+  await expect(page).toHaveURL(/\/me\/messages$/)
+  await expect(page.getByRole('heading', { name: '消息', exact: true })).toBeVisible()
+
   await page.getByRole('link', { name: FREE_COURSE, exact: true }).first().click()
   await expect(page.getByRole('heading', { name: FREE_COURSE, exact: true })).toBeVisible()
   await page.getByRole('button', { name: '开始学习', exact: true }).click()

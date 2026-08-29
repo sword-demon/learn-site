@@ -31,6 +31,10 @@ export function hasTokens(): boolean {
   return state.access !== null && state.refresh !== null;
 }
 
+export function getAccessToken(): string | null {
+  return state.access;
+}
+
 export function mustChangePassword(): boolean {
   return state.mustChangePassword;
 }

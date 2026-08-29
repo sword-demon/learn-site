@@ -96,6 +96,8 @@ services:
       CAPTCHA_TTL: ${CAPTCHA_TTL:-120}
       FAKE_PAYMENT: ${FAKE_PAYMENT:-1}
       FAKE_PAYMENT_DELAY_MS: ${FAKE_PAYMENT_DELAY_MS:-3000}
+      PUSH_APP_KEY: ${PUSH_APP_KEY:-4dbd37a2862226de7b7fc4ce60ddc1d0}
+      PUSH_APP_SECRET: ${PUSH_APP_SECRET:-6917dac4a4602e7d8abb533ac594cef2}
       SUPER_ADMIN_ACCOUNT: ${SUPER_ADMIN_ACCOUNT}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD}
     volumes:
@@ -114,6 +116,8 @@ services:
       start_period: 40s
     expose:
       - '8787'
+      - '3131'
+      - '3232'
 
   admin:
     build:

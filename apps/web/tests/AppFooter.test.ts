@@ -2,6 +2,7 @@
 
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia } from 'pinia';
+import { createRouter, createWebHistory } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HomePayload } from '@learn-site/contracts';
 
@@ -30,16 +31,26 @@ const homePayload: HomePayload = {
   },
 };
 
-function mountApp() {
-  return mount(App, {
-    global: {
-      plugins: [createPinia()],
-      stubs: {
-        RouterLink: RouterLinkStub,
-        RouterView: { template: '<main>当前页面</main>' },
-      },
-    },
+function mountApp(route = '/') {
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: [
+      { path: '/', component: { template: '<main>当前页面</main>' } },
+      { path: '/login', meta: { hideFooter: true }, component: { template: '<main>登录</main>' } },
+    ],
   });
+
+  return router.push(route).then(() =>
+    mount(App, {
+      global: {
+        plugins: [createPinia(), router],
+        stubs: {
+          RouterLink: RouterLinkStub,
+          RouterView: { template: '<main>当前页面</main>' },
+        },
+      },
+    }),
+  );
 }
 
 describe('App footer', () => {
@@ -48,8 +59,32 @@ describe('App footer', () => {
     learnerApi.fetchHome.mockResolvedValue(homePayload);
   });
 
+  it('hides the global footer on auth routes', async () => {
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [
+        { path: '/login', meta: { hideFooter: true }, component: { template: '<main>登录</main>' } },
+        { path: '/', component: { template: '<main>首页</main>' } },
+      ],
+    });
+    await router.push('/login');
+    await router.isReady();
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [createPinia(), router],
+        stubs: {
+          RouterView: { template: '<main>登录</main>' },
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('footer[aria-label="站点页脚"]').exists()).toBe(false);
+  });
+
   it('renders the global footer with real navigation and configured contact email', async () => {
-    const wrapper = mountApp();
+    const wrapper = await mountApp();
     await flushPromises();
 
     const footer = wrapper.get('footer[aria-label="站点页脚"]');
@@ -65,7 +100,7 @@ describe('App footer', () => {
   it('keeps brand and navigation available when site metadata cannot be loaded', async () => {
     learnerApi.fetchHome.mockRejectedValueOnce(new Error('network down'));
 
-    const wrapper = mountApp();
+    const wrapper = await mountApp();
     await flushPromises();
 
     const footer = wrapper.get('footer[aria-label="站点页脚"]');

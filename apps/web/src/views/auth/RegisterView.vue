@@ -62,7 +62,7 @@
         </el-form>
         <p class="switch">
           已经有学号？
-          <router-link to="/login">登录</router-link>
+          <router-link to="/login" class="switch-link">登录</router-link>
         </p>
       </section>
     </main>

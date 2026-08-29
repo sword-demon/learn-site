@@ -71,6 +71,7 @@ Route::group($learnerV1, function () {
 
     // Phase 21 / US18 — learner inbox (T104 surface)
     Route::get('/messages', [\App\controller\learner\NotificationController::class, 'index']);
+    Route::get('/messages/unread-count', [\App\controller\learner\NotificationController::class, 'unreadCount']);
     Route::post('/messages/{id}/read', [\App\controller\learner\NotificationController::class, 'read']);
 })->middleware([\App\middleware\LearnerAuth::class]);
 
@@ -228,6 +229,12 @@ Route::group($adminV1, function () {
     Route::get('/site', [\App\controller\admin\SiteController::class, 'show']);
     Route::patch('/site', [\App\controller\admin\SiteController::class, 'update']);
     Route::get('/moderation-logs', [\App\controller\admin\AuditController::class, 'index']);
+
+    // 003-admin-notifications — dispatch announcements and internal messages
+    Route::get('/notifications', [\App\controller\admin\NotificationController::class, 'index']);
+    Route::get('/notifications/{id}', [\App\controller\admin\NotificationController::class, 'show']);
+    Route::post('/notifications/announcements', [\App\controller\admin\NotificationController::class, 'storeAnnouncement']);
+    Route::post('/notifications/internal-messages', [\App\controller\admin\NotificationController::class, 'storeInternalMessage']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,

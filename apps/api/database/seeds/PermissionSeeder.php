@@ -43,6 +43,7 @@ final class PermissionSeeder extends AbstractSeed
         ['code' => 'org.grant', 'module' => 'org', 'description' => 'Apply user-level overrides'],
         ['code' => 'site.manage', 'module' => 'site', 'description' => 'Edit public site profile'],
         ['code' => 'audit.view', 'module' => 'site', 'description' => 'Read moderation logs'],
+        ['code' => 'notification.manage', 'module' => 'notification', 'description' => 'Send and review learner notifications'],
         ['code' => 'dashboard.view', 'module' => 'site', 'description' => 'Read admin dashboard'],
     ];
 

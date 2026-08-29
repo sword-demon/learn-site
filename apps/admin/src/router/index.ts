@@ -20,6 +20,7 @@ import LearnerListView from '@/views/students/LearnerListView.vue';
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
+import NotificationListView from '@/views/notifications/NotificationListView.vue';
 import ForbiddenView from '@/views/errors/ForbiddenView.vue';
 import { hasTokens, mustChangePassword, permissionCodes } from '@/api/http';
 import { firstVisiblePath } from '@/layouts/AdminMenu';
@@ -85,10 +86,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '新建课程',
           permission: 'course.manage',
-          breadcrumb: [
-            { title: '课程管理', path: '/courses' },
-            { title: '新建课程' },
-          ],
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '新建课程' }],
         },
       },
       {
@@ -99,10 +97,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '编辑课程',
           permission: 'course.manage',
-          breadcrumb: [
-            { title: '课程管理', path: '/courses' },
-            { title: '编辑课程' },
-          ],
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '编辑课程' }],
         },
       },
       {
@@ -113,10 +108,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '课程预览',
           permission: 'course.view',
-          breadcrumb: [
-            { title: '课程管理', path: '/courses' },
-            { title: '课程预览' },
-          ],
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程预览' }],
         },
       },
       {
@@ -196,11 +188,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '课程学员',
           permission: 'course_student.view',
-          breadcrumb: [
-            { title: '课程管理', path: '/courses' },
-            { title: '课程学员' },
-          ],
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程学员' }],
         },
+      },
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: NotificationListView,
+        meta: { title: '通知管理', permission: 'notification.manage' },
       },
       {
         path: 'site/profile',
@@ -253,7 +248,12 @@ router.beforeEach((to) => {
     },
   );
 
-  if (decision !== true && typeof decision === 'object' && 'name' in decision && decision.name === 'login') {
+  if (
+    decision !== true &&
+    typeof decision === 'object' &&
+    'name' in decision &&
+    decision.name === 'login'
+  ) {
     useTabsStore().reset();
   }
 

@@ -12,8 +12,10 @@
         "ext-redis": "*",
         "monolog/monolog": "^2.0",
         "robmorgan/phinx": "^0.16",
+        "webman/push": "^1.0",
         "webman/redis": "^2.1",
         "webman/think-orm": "^2.1",
+        "workerman/crontab": "^1.0",
         "workerman/webman-framework": "^2.2",
         "workerman/workerman": "^5.1"
     },

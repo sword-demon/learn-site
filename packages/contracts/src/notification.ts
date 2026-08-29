@@ -1,10 +1,19 @@
 import { z } from 'zod'
 
+export const LearnerNotificationKind = z.enum([
+  'question_update',
+  'progress_reset',
+  'entitlement_revoked',
+  'announcement',
+  'internal_message',
+])
+
 export const LearnerNotificationDTO = z.object({
   id: z.number().int(),
-  kind: z.enum(['question_update', 'progress_reset', 'entitlement_revoked']),
+  kind: LearnerNotificationKind,
   title: z.string(),
   body: z.string().nullable(),
+  dispatch_id: z.number().int().positive().nullable().optional(),
   resource_type: z.enum(['question', 'course']).nullable(),
   resource_id: z.number().int().positive().nullable(),
   resource_available: z.boolean(),
@@ -26,3 +35,8 @@ export const LearnerNotificationReadDTO = z.object({
   read: z.literal(true),
 })
 export type LearnerNotificationReadDTO = z.infer<typeof LearnerNotificationReadDTO>
+
+export const LearnerUnreadCountDTO = z.object({
+  count: z.number().int().nonnegative(),
+})
+export type LearnerUnreadCountDTO = z.infer<typeof LearnerUnreadCountDTO>

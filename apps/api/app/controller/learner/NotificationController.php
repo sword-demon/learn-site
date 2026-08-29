@@ -43,6 +43,7 @@ final class NotificationController
                 'kind' => (string) $r['kind'],
                 'title' => (string) $r['title'],
                 'body' => $r['body'] !== null ? (string) $r['body'] : null,
+                'dispatch_id' => $r['dispatch_id'] !== null ? (int) $r['dispatch_id'] : null,
                 'resource_type' => $r['resource_type'] !== null ? (string) $r['resource_type'] : null,
                 'resource_id' => $r['resource_id'] !== null ? (int) $r['resource_id'] : null,
                 'resource_available' => $this->resourceAvailable(
@@ -61,6 +62,24 @@ final class NotificationController
             ]);
         } catch (\Throwable $e) {
             Logger::error('notifications.failed', ['err' => $e->getMessage()]);
+            return ApiResponse::fail(ApiResponse::INTERNAL, 'INTERNAL');
+        }
+    }
+
+    public function unreadCount(Request $request): \support\Response
+    {
+        try {
+            $aid = (int) ($request->account_id ?? 0);
+            if ($aid <= 0) {
+                return ApiResponse::fail(ApiResponse::UNAUTHENTICATED, 'UNAUTHENTICATED');
+            }
+            $count = (int) Db::name('learner_notifications')
+                ->where('learner_id', $aid)
+                ->whereNull('read_at')
+                ->count();
+            return ApiResponse::ok(['count' => $count]);
+        } catch (\Throwable $e) {
+            Logger::error('notifications.unread_count_failed', ['err' => $e->getMessage()]);
             return ApiResponse::fail(ApiResponse::INTERNAL, 'INTERNAL');
         }
     }

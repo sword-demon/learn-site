@@ -82,6 +82,10 @@
 | POST | `/courses/{courseId}/students/{accountId}/revoke` | `course_student.revoke_free`；body `{reason}` 必填；仅免费 active 授权可撤销，付费来源返回 `403 FORBIDDEN / PAID_NOT_REVOCABLE` |
 | GET | `/orders` | `order.view` |
 | GET | `/learners` | `learner.view` | 学员账户列表：注册状态、公开资料、学习与购买摘要 |
+| POST | `/notifications/announcements` | `notification.manage` | body `{title, body}`；向全体在册学员广播公告 |
+| POST | `/notifications/internal-messages` | `notification.manage` | body `{title, body, learner_ids}`；向指定学员发送站内信 |
+| GET | `/notifications` | `notification.manage` | 发送记录列表；支持 `type`、`from`、`to` 筛选与分页 |
+| GET | `/notifications/{id}` | `notification.manage` | 发送记录详情 |
 | GET/PATCH | `/site` | `site.manage` |
 | GET | `/moderation-logs` | `audit.view` |
 

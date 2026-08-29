@@ -60,7 +60,9 @@
       <el-table-column label="操作" width="308" fixed="right" class-name="actions-column">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button class="action-btn" link type="primary" @click="openEdit(row)"> 编辑 </el-button>
+            <el-button class="action-btn" link type="primary" @click="openEdit(row)">
+              编辑
+            </el-button>
             <el-button
               v-if="canManageOverrides"
               class="action-btn"
@@ -91,7 +93,9 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            <el-button class="action-btn" link type="danger" @click="onDelete(row)"> 删除 </el-button>
+            <el-button class="action-btn" link type="danger" @click="onDelete(row)">
+              删除
+            </el-button>
           </div>
         </template>
       </el-table-column>

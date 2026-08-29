@@ -53,8 +53,9 @@
 | POST | `/courses/{id}/share-link` | 可选 | 稳定链接 |
 | POST | `/courses/{id}/posters` | 可选 | 生成海报；失败仍返回 share-link |
 | POST | `/learning-maps/{id}/start` | 学员 | 不授予收费课访问权 |
-| GET | `/messages` | 学员 | 站内消息 |
-| POST | `/messages/{id}/read` | 学员 | 标记已读 |
+| GET | `/messages` | 学员 | 站内消息（含系统通知、公告、站内信） |
+| GET | `/messages/unread-count` | 学员 | 未读消息数量 |
+| POST | `/messages/{id}/read` | 学员 | 标记已读（幂等） |
 
 未授权读非试看内容、问答全文：`403`，不泄露正文。
 

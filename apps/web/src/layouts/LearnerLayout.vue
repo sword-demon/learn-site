@@ -22,7 +22,12 @@
             <router-link to="/me/learning" active-class="on">我的学习</router-link>
             <router-link to="/me/favorites" active-class="on">收藏</router-link>
             <router-link to="/me/orders" active-class="on">我的订单</router-link>
-            <router-link to="/me/messages" active-class="on">消息</router-link>
+            <router-link to="/me/messages" active-class="on" class="messages-link">
+              消息
+              <span v-if="unreadCount > 0" class="badge">{{
+                unreadCount > 99 ? '99+' : unreadCount
+              }}</span>
+            </router-link>
             <router-link to="/me/account" active-class="on">账户</router-link>
             <button type="button" class="btn ghost" @click="onLogout">退出</button>
           </template>
@@ -38,13 +43,35 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLoginFamilyStore } from '@/api/login';
+import { usePushNotifications } from '@/composables/usePushNotifications';
 
 const session = useLoginFamilyStore();
 const router = useRouter();
 const menuOpen = ref(false);
+const { unreadCount } = usePushNotifications();
 
 async function onLogout(): Promise<void> {
   await session.signOut();
   await router.push('/');
 }
 </script>
+
+<style scoped>
+.messages-link {
+  position: relative;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 0.65rem var(--font-mono);
+  line-height: 1;
+}
+</style>

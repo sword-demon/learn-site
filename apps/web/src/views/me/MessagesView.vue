@@ -66,6 +66,8 @@ function kindLabel(kind: LearnerNotificationDTO['kind']): string {
     question_update: '问答',
     progress_reset: '学习进度',
     entitlement_revoked: '课程授权',
+    announcement: '公告',
+    internal_message: '站内信',
   }[kind];
 }
 

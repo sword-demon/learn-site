@@ -47,6 +47,7 @@ final class RoleController
         'learner.kick' => '强制学员下线',
         'site.manage' => '编辑站点资料',
         'audit.view' => '查看审计日志',
+        'notification.manage' => '通知管理',
         'org.department' => '管理部门',
         'org.post' => '管理岗位',
         'org.role' => '管理角色',

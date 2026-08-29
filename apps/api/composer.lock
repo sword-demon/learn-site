@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0db4845619fbf7d882e48941f3cee9e7",
+    "content-hash": "806c5634f21d2ca4db6c975995fec74d",
     "packages": [
         {
             "name": "cakephp/chronos",
@@ -3206,6 +3206,39 @@
             "time": "2026-04-26T05:33:54+00:00"
         },
         {
+            "name": "webman/push",
+            "version": "v1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/webman-php/push.git",
+                "reference": "b9e51d39a6ae232eab6b3f5c48a918857976add8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/webman-php/push/zipball/b9e51d39a6ae232eab6b3f5c48a918857976add8",
+                "reference": "b9e51d39a6ae232eab6b3f5c48a918857976add8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Webman\\Push\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "support": {
+                "issues": "https://github.com/webman-php/push/issues",
+                "source": "https://github.com/webman-php/push/tree/v1.1.1"
+            },
+            "time": "2025-05-15T14:32:34+00:00"
+        },
+        {
             "name": "webman/redis",
             "version": "v2.1.5",
             "source": {
@@ -3317,6 +3350,56 @@
                 "source": "https://github.com/workerman-php/coroutine/tree/v1.1.6"
             },
             "time": "2026-07-26T14:42:35+00:00"
+        },
+        {
+            "name": "workerman/crontab",
+            "version": "v1.0.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/crontab.git",
+                "reference": "74f51ca8204e8eb628e57bc0e640561d570da2cb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/crontab/zipball/74f51ca8204e8eb628e57bc0e640561d570da2cb",
+                "reference": "74f51ca8204e8eb628e57bc0e640561d570da2cb",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0",
+                "workerman/workerman": ">=4.0.20"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Workerman\\Crontab\\": "./src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "walkor",
+                    "email": "walkor@workerman.net",
+                    "homepage": "http://www.workerman.net",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A crontab written in PHP based on workerman",
+            "homepage": "http://www.workerman.net",
+            "keywords": [
+                "crontab"
+            ],
+            "support": {
+                "email": "walkor@workerman.net",
+                "forum": "http://wenda.workerman.net/",
+                "issues": "https://github.com/walkor/workerman/issues",
+                "source": "https://github.com/walkor/crontab",
+                "wiki": "http://doc.workerman.net/"
+            },
+            "time": "2025-01-15T07:20:50+00:00"
         },
         {
             "name": "workerman/webman-framework",

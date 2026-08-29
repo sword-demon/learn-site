@@ -35,6 +35,7 @@ const ENTRIES: readonly AdminMenuEntry[] = [
   { path: '/maps', label: '学习地图', permission: 'map.view' },
   { path: '/orders', label: '订单管理', permission: 'order.view' },
   { path: '/learners', label: '学员账号', permission: 'learner.view' },
+  { path: '/notifications', label: '通知管理', permission: 'notification.manage' },
   { path: '/site/profile', label: '站点资料', permission: 'site.manage' },
   { path: '/site/audit', label: '审计日志', permission: 'audit.view' },
   {

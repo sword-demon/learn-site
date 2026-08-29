@@ -162,7 +162,9 @@ onMounted(() => {
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button class="btn btn-primary" :disabled="loading" native-type="submit"> 查询 </el-button>
+        <el-button class="btn btn-primary" :disabled="loading" native-type="submit">
+          查询
+        </el-button>
       </el-form-item>
     </el-form>
 

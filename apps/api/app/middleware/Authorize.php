@@ -25,6 +25,7 @@ final class Authorize implements MiddlewareInterface
         '/api/admin/v1/learners' => 'learner.view',
         '/api/admin/v1/site' => 'site.manage',
         '/api/admin/v1/moderation-logs' => 'audit.view',
+        '/api/admin/v1/notifications' => 'notification.manage',
     ];
 
     public static function permissionFor(string $path, string $method): ?string

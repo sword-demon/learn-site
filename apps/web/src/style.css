@@ -545,16 +545,24 @@ select:focus-visible {
 }
 
 .switch {
+  position: relative;
+  z-index: 1;
   margin: 22px 0 0;
   color: var(--muted);
   font-size: 0.84rem;
   text-align: center;
 }
 
-.switch a {
+.switch a,
+.switch-link {
   color: var(--accent);
   font-weight: 700;
   text-decoration: none;
+}
+
+.switch a:hover,
+.switch-link:hover {
+  text-decoration: underline;
 }
 
 @keyframes page-in {

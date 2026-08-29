@@ -28,4 +28,7 @@ return [
             'publicPath' => public_path(),
         ],
     ],
+    'notification_cleanup' => [
+        'handler' => app\process\NotificationCleanup::class,
+    ],
 ];

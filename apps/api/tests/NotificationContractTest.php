@@ -7,6 +7,8 @@ namespace Tests;
 use App\controller\learner\NotificationController;
 use App\middleware\LearnerAuth;
 use App\service\MessageService;
+use App\service\NotificationDispatchService;
+use App\service\PushNotificationService;
 use PHPUnit\Framework\TestCase;
 use support\App;
 use support\Request;
@@ -140,6 +142,86 @@ final class NotificationContractTest extends TestCase
 
         self::assertContains(LearnerAuth::class, $routes['GET /api/learner/v1/messages'] ?? []);
         self::assertContains(LearnerAuth::class, $routes['POST /api/learner/v1/messages/{id}/read'] ?? []);
+        self::assertContains(LearnerAuth::class, $routes['GET /api/learner/v1/messages/unread-count'] ?? []);
+    }
+
+    public function testInboxIncludesAnnouncementAndInternalMessageKinds(): void
+    {
+        $ownerId = $this->insertLearner();
+        $dispatch = new NotificationDispatchService(new PushNotificationService());
+        $staffId = $this->insertStaff();
+        $dispatch->sendAnnouncement($staffId, '公告标题', '公告正文');
+        $dispatch->sendInternalMessage($staffId, '私信标题', '私信正文', [$ownerId]);
+
+        $listRequest = new Request(
+            "GET /api/learner/v1/messages?page=1&limit=20 HTTP/1.1\r\nHost: test\r\n\r\n",
+        );
+        /** @phpstan-ignore-next-line */
+        $listRequest->account_id = $ownerId;
+        $payload = json_decode((string) (new NotificationController())->index($listRequest)->rawBody(), true);
+
+        self::assertSame(2, $payload['data']['total'] ?? null);
+        self::assertContains('announcement', array_column($payload['data']['items'] ?? [], 'kind'));
+        self::assertContains('internal_message', array_column($payload['data']['items'] ?? [], 'kind'));
+        self::assertNotNull($payload['data']['items'][0]['dispatch_id'] ?? null);
+    }
+
+    public function testUnreadCountAndMarkReadAreIdempotent(): void
+    {
+        $ownerId = $this->insertLearner();
+        $service = new MessageService();
+        $messageId = $service->emit(
+            MessageService::KIND_QUESTION_UPDATE,
+            $ownerId,
+            '未读消息',
+            null,
+            [],
+            'question',
+            100,
+            'unread:test:' . bin2hex(random_bytes(6)),
+        );
+
+        $countRequest = new Request(
+            "GET /api/learner/v1/messages/unread-count HTTP/1.1\r\nHost: test\r\n\r\n",
+        );
+        /** @phpstan-ignore-next-line */
+        $countRequest->account_id = $ownerId;
+        $countPayload = json_decode(
+            (string) (new NotificationController())->unreadCount($countRequest)->rawBody(),
+            true,
+        );
+        self::assertSame(1, $countPayload['data']['count'] ?? null);
+
+        $readRequest = new Request(
+            "POST /api/learner/v1/messages/$messageId/read HTTP/1.1\r\nHost: test\r\n\r\n",
+        );
+        /** @phpstan-ignore-next-line */
+        $readRequest->account_id = $ownerId;
+        $firstRead = (new NotificationController())->read($readRequest, (string) $messageId);
+        $secondRead = (new NotificationController())->read($readRequest, (string) $messageId);
+        self::assertSame(200, $firstRead->getStatusCode());
+        self::assertSame(200, $secondRead->getStatusCode());
+
+        $afterCount = json_decode(
+            (string) (new NotificationController())->unreadCount($countRequest)->rawBody(),
+            true,
+        );
+        self::assertSame(0, $afterCount['data']['count'] ?? null);
+    }
+
+    private function insertStaff(): int
+    {
+        $now = date('Y-m-d H:i:s');
+        return (int) Db::name('accounts')->insertGetId([
+            'kind' => 'staff',
+            'login' => 'staff' . random_int(100000, 999999),
+            'password_hash' => 'not-used-by-test',
+            'must_change_password' => 0,
+            'status' => 'active',
+            'last_login_at' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 
     private function insertLearner(): int

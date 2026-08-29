@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\service;
 
 use support\think\Db;
+use App\service\PushNotificationService;
 
 /**
  * MessageService — learner inbox dispatcher (Phase 21 / US18, T104).
@@ -23,6 +24,12 @@ final class MessageService
     public const KIND_QUESTION_UPDATE = 'question_update';
     public const KIND_PROGRESS_RESET = 'progress_reset';
     public const KIND_ENTITLEMENT_REVOKED = 'entitlement_revoked';
+    public const KIND_ANNOUNCEMENT = 'announcement';
+    public const KIND_INTERNAL_MESSAGE = 'internal_message';
+
+    public function __construct(private readonly ?PushNotificationService $push = null)
+    {
+    }
 
     /**
      * Append an inbox row for the learner. The learner/key unique index
@@ -64,6 +71,8 @@ final class MessageService
         if ($id === null) {
             throw new \RuntimeException('NOTIFICATION_WRITE_FAILED');
         }
-        return (int) $id;
+        $notificationId = (int) $id;
+        $this->push?->notifyLearner($learnerId, $notificationId, $kind, $title);
+        return $notificationId;
     }
 }

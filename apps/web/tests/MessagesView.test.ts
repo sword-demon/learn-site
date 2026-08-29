@@ -42,16 +42,17 @@ describe('MessagesView', () => {
           created_at: '2026-08-28 09:30:00',
         },
         {
-          id: 3,
-          kind: 'entitlement_revoked',
-          title: '课程授权已撤销',
-          body: null,
-          resource_type: 'course',
-          resource_id: 5,
+          id: 4,
+          kind: 'announcement',
+          title: '系统维护通知',
+          body: '今晚维护',
+          dispatch_id: 12,
+          resource_type: null,
+          resource_id: null,
           resource_available: false,
           payload: null,
-          read: true,
-          created_at: '2026-08-28 09:00:00',
+          read: false,
+          created_at: '2026-08-28 08:00:00',
         },
       ],
       total: 3,
@@ -69,8 +70,8 @@ describe('MessagesView', () => {
 
     expect(wrapper.text()).toContain('问题有新回复')
     expect(wrapper.text()).toContain('学习进度已重置')
-    expect(wrapper.text()).toContain('课程授权')
-    expect(wrapper.text()).toContain('关联内容已不可用')
+    expect(wrapper.text()).toContain('公告')
+    expect(wrapper.text()).toContain('系统维护通知')
     await wrapper.get('button[data-read-id="1"]').trigger('click')
     await flushPromises()
     expect(notificationsApi.markNotificationRead).toHaveBeenCalledWith(1)
