@@ -19,6 +19,10 @@ const account = {
   must_change_password: false,
   last_login_at: null,
   created_at: '2026-08-27 10:00:00',
+  course_count: 3,
+  completed_course_count: 1,
+  successful_order_count: 2,
+  total_paid_amount: 198,
 }
 
 describe('learner API boundary (repro)', () => {
@@ -36,6 +40,7 @@ describe('learner API boundary (repro)', () => {
     await expect(listLearners({ page: 1, limit: 20 })).resolves.toEqual({
       items: [account], total: 1, page: 1, limit: 20,
     })
+    expect(mockHttp.get).toHaveBeenCalledWith('/learners', { params: { page: 1, limit: 20 } })
   })
 
   it('listLearners: reproduces reported union error on empty/odd response', async () => {

@@ -42,7 +42,7 @@
             :disabled="busy"
             @click="startFree"
           >
-            {{ busy ? '授权中…' : '免费加入课程' }}
+            {{ busy ? '授权中…' : canRejoin ? '再次加入课程' : '免费加入课程' }}
           </button>
           <template v-else>
             <button type="button" class="btn btn-primary" :disabled="busy" @click="buy">
@@ -61,7 +61,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { hasTokens } from '@/api/http';
-import { createCourseOrder, startCourse } from '@/api/learner';
+import { startCourse } from '@/api/learner';
 
 interface AccessGateProps {
   locked: boolean;
@@ -70,6 +70,8 @@ interface AccessGateProps {
   courseId: number;
   lessonId?: number;
   lessonTitle?: string;
+  canRejoin?: boolean;
+  revokedReason?: string | null;
 }
 
 const props = defineProps<AccessGateProps>();
@@ -86,6 +88,7 @@ const authed = computed(() => hasTokens());
 
 const headline = computed(() => {
   if (!authed.value) return '登录后即可继续学习';
+  if (props.canRejoin) return '课程访问权已被撤销';
   if (props.priceMode === 'free') return '尚未取得课程访问权';
   return '购买后即可学习完整课节';
 });
@@ -95,6 +98,10 @@ const detail = computed(() => {
     return '试看课节可直接打开；完整课节需登录学员账号。登录后将回到本页，或直接进入课节。';
   }
   if (props.priceMode === 'free') {
+    if (props.canRejoin) {
+      const reason = props.revokedReason ? `原因：${props.revokedReason}。` : '';
+      return `${reason}再次加入后可沿用原有学习进度。`;
+    }
     return '这是一门免费课程，点击「免费加入课程」即可获得课程访问权。';
   }
   return '完成支付后即可访问全部非试看课节。';
@@ -102,6 +109,7 @@ const detail = computed(() => {
 
 const actionLabel = computed(() => {
   if (!authed.value) return '登录后学习';
+  if (props.canRejoin) return '再次加入后学习';
   if (props.priceMode === 'free') return '加入后学习';
   return '购买后学习';
 });
@@ -121,9 +129,7 @@ function onDialogCancel(): void {
 
 function goLogin(): void {
   const redirect =
-    props.lessonId != null
-      ? `/learn/${props.courseId}/${props.lessonId}`
-      : route.fullPath;
+    props.lessonId != null ? `/learn/${props.courseId}/${props.lessonId}` : route.fullPath;
   closeDialog();
   router.push(`/login?redirect=${encodeURIComponent(redirect)}`);
 }
@@ -167,25 +173,9 @@ async function startFree(): Promise<void> {
   }
 }
 
-async function buy(): Promise<void> {
-  busy.value = true;
-  errorMessage.value = '';
-  try {
-    await createCourseOrder(props.courseId);
-    closeDialog();
-    router.push('/me/orders');
-  } catch (err: unknown) {
-    const code = (err as { code?: string }).code;
-    if (code === 'CONFLICT') {
-      emit('entitled');
-      closeDialog();
-      router.push(`/courses/${props.courseId}`);
-      return;
-    }
-    errorMessage.value = '下单失败，请稍后再试。';
-  } finally {
-    busy.value = false;
-  }
+function buy(): void {
+  closeDialog();
+  router.push(`/checkout/${props.courseId}`);
 }
 </script>
 

@@ -40,4 +40,26 @@ describe('home store', () => {
     expect(store.loading).toBe(false);
     expect(store.error).toBe(false);
   });
+
+  it('reads the latest saved public profile in a fresh visitor session', async () => {
+    const first = useHomeStore();
+    await first.load();
+
+    setActivePinia(createPinia());
+    learnerApi.fetchHome.mockResolvedValueOnce({
+      ...homePayload,
+      site_intro: {
+        ...homePayload.site_intro,
+        title: '林间课室',
+        subtitle: '持续学习，持续记录',
+        updated_at: '2026-08-28 11:00:00',
+      },
+    });
+    const refreshed = useHomeStore();
+    await refreshed.load();
+
+    expect(refreshed.intro?.title).toBe('林间课室');
+    expect(refreshed.intro?.updated_at).toBe('2026-08-28 11:00:00');
+    expect(learnerApi.fetchHome).toHaveBeenCalledTimes(2);
+  });
 });

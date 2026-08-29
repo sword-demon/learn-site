@@ -11,20 +11,20 @@
 
 export interface AdminMenuLeaf {
   /** el-menu item index; must match the vue-router path. */
-  path: string
-  label: string
+  path: string;
+  label: string;
   /** Permission code required to see the entry. `undefined` = always visible. */
-  permission?: string
+  permission?: string;
 }
 
 export interface AdminMenuGroup {
-  path: string
-  label: string
-  permission?: string
-  children: AdminMenuLeaf[]
+  path: string;
+  label: string;
+  permission?: string;
+  children: AdminMenuLeaf[];
 }
 
-export type AdminMenuEntry = AdminMenuLeaf | AdminMenuGroup
+export type AdminMenuEntry = AdminMenuLeaf | AdminMenuGroup;
 
 const ENTRIES: readonly AdminMenuEntry[] = [
   { path: '/', label: '工作台', permission: 'dashboard.view' },
@@ -48,36 +48,36 @@ const ENTRIES: readonly AdminMenuEntry[] = [
       { path: '/org/staff', label: '员工管理', permission: 'org.staff' },
     ],
   },
-] as const
+] as const;
 
 function isGroup(entry: AdminMenuEntry): entry is AdminMenuGroup {
-  return Array.isArray((entry as AdminMenuGroup).children)
+  return Array.isArray((entry as AdminMenuGroup).children);
 }
 
 function visible(codes: ReadonlySet<string>, code: string | undefined): boolean {
-  if (code === undefined) return true
-  return codes.has('*') || codes.has(code)
+  if (code === undefined) return true;
+  return codes.has('*') || codes.has(code);
 }
 
 export function filterMenu(permissionCodes: readonly string[]): AdminMenuEntry[] {
-  const codes = new Set(permissionCodes)
-  const out: AdminMenuEntry[] = []
+  const codes = new Set(permissionCodes);
+  const out: AdminMenuEntry[] = [];
   for (const entry of ENTRIES) {
     if (isGroup(entry)) {
       // Hide the group itself unless the caller can see at least one child.
       // The group label is redundant when empty — better to omit it.
-      const children = entry.children.filter((c) => visible(codes, c.permission))
-      if (children.length === 0) continue
+      const children = entry.children.filter((c) => visible(codes, c.permission));
+      if (children.length === 0) continue;
       // Keep the group's own `permission` for callers that want a single
       // gate; not used by AdminLayout.vue today but cheap to expose.
-      out.push({ ...entry, children })
-      continue
+      out.push({ ...entry, children });
+      continue;
     }
     if (visible(codes, entry.permission)) {
-      out.push(entry)
+      out.push(entry);
     }
   }
-  return out
+  return out;
 }
 
 /**
@@ -85,13 +85,13 @@ export function filterMenu(permissionCodes: readonly string[]): AdminMenuEntry[]
  * the `<el-menu>` loop in AdminLayout.vue so the template stays readable.
  */
 export function visibleEntries(permissionCodes: readonly string[]): AdminMenuEntry[] {
-  return filterMenu(permissionCodes)
+  return filterMenu(permissionCodes);
 }
 
 /** First stable module entry the caller can actually open after login. */
 export function firstVisiblePath(permissionCodes: readonly string[]): string | null {
-  const first = filterMenu(permissionCodes)[0]
-  if (first === undefined) return null
-  if (isGroup(first)) return first.children[0]?.path ?? null
-  return first.path
+  const first = filterMenu(permissionCodes)[0];
+  if (first === undefined) return null;
+  if (isGroup(first)) return first.children[0]?.path ?? null;
+  return first.path;
 }

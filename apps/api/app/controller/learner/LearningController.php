@@ -39,10 +39,10 @@ final class LearningController
      * Free courses grant immediately; paid courses return 409 with a
      * message pointing the learner to /courses/{id}/orders.
      */
-    public function start(Request $request): \support\Response
+    public function start(Request $request, string $id): \support\Response
     {
         $learnerId = $this->requireLearner($request);
-        $courseId = (int) ($request->route('id') ?? $request->route('courseId') ?? 0);
+        $courseId = (int) $id;
         if ($courseId <= 0) {
             return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'COURSE_INVALID');
         }
@@ -88,10 +88,10 @@ final class LearningController
      *   delivered to the learner via PublicLessonService).
      * Video: completion is auto-derived when position ≥ 90% of duration.
      */
-    public function reportProgress(Request $request): \support\Response
+    public function reportProgress(Request $request, string $id): \support\Response
     {
         $learnerId = $this->requireLearner($request);
-        $lessonId = (int) ($request->route('id') ?? $request->route('lessonId') ?? 0);
+        $lessonId = (int) $id;
         if ($lessonId <= 0) {
             return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'LESSON_INVALID');
         }
@@ -121,6 +121,43 @@ final class LearningController
     }
 
     /**
+     * POST /api/learner/v1/lessons/{id}/video-heartbeat
+     *
+     * The route is deliberately video-only. Clients cannot switch the
+     * content type through this seam; ProgressService still verifies the
+     * persisted lesson type and duration before writing anything.
+     */
+    public function videoHeartbeat(Request $request, string $id): \support\Response
+    {
+        $learnerId = $this->requireLearner($request);
+        $lessonId = (int) $id;
+        if ($lessonId <= 0) {
+            return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'LESSON_INVALID');
+        }
+
+        $body = self::readJson($request);
+        $position = (int) ($body['position_seconds'] ?? 0);
+        $duration = (int) ($body['duration_seconds'] ?? 0);
+        if ($position < 0 || $duration < 0) {
+            return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'PROGRESS_INVALID');
+        }
+
+        try {
+            $result = $this->progress->reportProgress(
+                $learnerId,
+                $lessonId,
+                'video',
+                $duration,
+                $position,
+                false,
+            );
+        } catch (BusinessException $e) {
+            return ApiResponse::fail($e->apiCode, $e->getMessage());
+        }
+        return ApiResponse::ok($result);
+    }
+
+    /**
      * GET /api/learner/v1/my/learning
      *
      * Returns one row per course the learner has either an active
@@ -131,52 +168,7 @@ final class LearningController
     public function myLearning(Request $request): \support\Response
     {
         $learnerId = $this->requireLearner($request);
-
-        // Pull from course_enrollments (the aggregate). Free starters
-        // also write here on first progress report; we still surface
-        // them even before any progress event by also union-ing
-        // active entitlements that have no enrollment row yet.
-        $rows = Db::name('course_enrollments')
-            ->where('learner_id', $learnerId)
-            ->order('updated_at', 'desc')
-            ->select()
-            ->toArray();
-
-        // Add entitlement-only courses (entitled but never started).
-        $extra = Db::name('course_entitlements')
-            ->where('learner_id', $learnerId)
-            ->where('status', 'active')
-            ->where('course_id', 'not in', function ($q) use ($learnerId) {
-                $q->name('course_enrollments')->where('learner_id', $learnerId)->field('course_id');
-            })
-            ->select()
-            ->toArray();
-
-        $items = [];
-        foreach ($rows as $r) {
-            $items[] = $this->shapeEnrollment($learnerId, $r);
-        }
-        foreach ($extra as $e) {
-            $items[] = [
-                'course_id'        => (int) $e['course_id'],
-                'progress_percent' => 0,
-                'last_lesson_id'   => null,
-                'last_position'    => 0,
-                'completed_at'     => null,
-                'updated_at'       => (string) $e['updated_at'],
-                'course'           => $this->courseSummary((int) $e['course_id']),
-            ];
-        }
-
-        // Stable sort by updated_at DESC now that the two streams are
-        // joined in memory. course_enrollments rows take priority over
-        // bare entitlements when they share an updated_at second — so
-        // an enrolled course keeps its place ahead of an unused grant.
-        usort($items, function ($a, $b) {
-            return strcmp((string) $b['updated_at'], (string) $a['updated_at']);
-        });
-
-        return ApiResponse::ok(['items' => $items]);
+        return ApiResponse::ok($this->progress->listLearning($learnerId));
     }
 
     private function requireLearner(Request $request): int
@@ -218,45 +210,6 @@ final class LearningController
             'title'        => (string) $lesson['title'],
             'content_type' => (string) $lesson['content_type'],
             'is_preview'   => (int) ($lesson['is_preview'] ?? 0) === 1,
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     * @return array<string, mixed>
-     */
-    private function shapeEnrollment(int $learnerId, array $row): array
-    {
-        $courseId = (int) $row['course_id'];
-        return [
-            'course_id'        => $courseId,
-            'progress_percent' => (int) ($row['progress_percent'] ?? 0),
-            'last_lesson_id'   => isset($row['last_lesson_id']) && $row['last_lesson_id'] !== null
-                ? (int) $row['last_lesson_id'] : null,
-            'last_position'    => (int) ($row['last_position'] ?? 0),
-            'completed_at'     => $row['completed_at'] ? (string) $row['completed_at'] : null,
-            'updated_at'       => (string) $row['updated_at'],
-            'course'           => $this->courseSummary($courseId),
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function courseSummary(int $courseId): array
-    {
-        $row = Db::name('courses')->where('id', $courseId)->find();
-        if (!$row) {
-            return [
-                'id'          => $courseId,
-                'title'       => '',
-                'cover_url'   => null,
-                'teacher_name'=> '',
-            ];
-        }
-        return [
-            'id'          => $courseId,
-            'title'       => (string) $row['title'],
-            'cover_url'   => $row['cover_url'] ?: null,
-            'teacher_name'=> (string) ($row['teacher_name'] ?? ''),
         ];
     }
 

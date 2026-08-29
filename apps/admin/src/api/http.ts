@@ -1,18 +1,22 @@
-import axios from 'axios'
-import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
-import { ApiErr, parseTokenEnvelope, type TokenPair } from '@learn-site/contracts'
+import axios from 'axios';
+import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { ApiErr, parseTokenEnvelope, type TokenPair } from '@learn-site/contracts';
+import { getActivePinia } from 'pinia';
+import { reactive } from 'vue';
+import { useTabsStore } from '@/stores/tabs';
 
-const API_BASE = '/api/admin/v1'
-const REFRESH_PATH = '/auth/refresh'
-const retried = new WeakSet<object>()
+const API_BASE = '/api/admin/v1';
+const REFRESH_PATH = '/auth/refresh';
+const retried = new WeakSet<object>();
 // 刷新页面后从这里恢复会话，避免只存在内存里导致退回登录页
-export const AUTH_STORAGE_KEY = 'learn-site.admin.auth'
+export const AUTH_STORAGE_KEY = 'learn-site.admin.auth';
 
 interface AuthState {
-  access: string | null
-  refresh: string | null
-  mustChangePassword: boolean
-  permissionCodes: string[]
+  access: string | null;
+  refresh: string | null;
+  mustChangePassword: boolean;
+  permissionCodes: string[];
+  staffAccount: string | null;
 }
 
 function emptyAuth(): AuthState {
@@ -22,20 +26,21 @@ function emptyAuth(): AuthState {
     refresh: null,
     mustChangePassword: false,
     permissionCodes: [],
-  }
+    staffAccount: null,
+  };
 }
 
 function readPersistedAuth(): AuthState | null {
   // 非浏览器环境（部分单测）没有 localStorage
-  if (typeof localStorage === 'undefined') return null
+  if (typeof localStorage === 'undefined') return null;
   try {
     // 读取上次登录写入的快照
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<AuthState>
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AuthState>;
     // 缺 token 视为无效快照，避免把损坏数据当成已登录
-    if (typeof parsed.access !== 'string' || parsed.access.length === 0) return null
-    if (typeof parsed.refresh !== 'string' || parsed.refresh.length === 0) return null
+    if (typeof parsed.access !== 'string' || parsed.access.length === 0) return null;
+    if (typeof parsed.refresh !== 'string' || parsed.refresh.length === 0) return null;
     return {
       access: parsed.access,
       refresh: parsed.refresh,
@@ -43,18 +48,19 @@ function readPersistedAuth(): AuthState | null {
       permissionCodes: Array.isArray(parsed.permissionCodes)
         ? parsed.permissionCodes.filter((code): code is string => typeof code === 'string')
         : [],
-    }
+      staffAccount: parsed.staffAccount ?? null,
+    };
   } catch {
-    return null
+    return null;
   }
 }
 
 function persistAuth(next: AuthState): void {
-  if (typeof localStorage === 'undefined') return
+  if (typeof localStorage === 'undefined') return;
   if (!next.access || !next.refresh) {
     // 登出或刷新失败时清掉持久化，避免幽灵会话
-    localStorage.removeItem(AUTH_STORAGE_KEY)
-    return
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return;
   }
   localStorage.setItem(
     AUTH_STORAGE_KEY,
@@ -63,111 +69,122 @@ function persistAuth(next: AuthState): void {
       refresh: next.refresh,
       mustChangePassword: next.mustChangePassword,
       permissionCodes: next.permissionCodes,
+      staffAccount: next.staffAccount,
     }),
-  )
+  );
 }
 
 // 模块加载即水合，路由守卫第一次执行时就能读到 hasTokens
-const state: AuthState = readPersistedAuth() ?? emptyAuth()
-let inflightRefresh: Promise<TokenPair | null> | null = null
+const state = reactive<AuthState>(readPersistedAuth() ?? emptyAuth());
+let inflightRefresh: Promise<TokenPair | null> | null = null;
 
 export function setTokens(
-  pair: TokenPair & { must_change_password?: boolean; permission_codes?: string[] },
+  pair: TokenPair & {
+    must_change_password?: boolean;
+    permission_codes?: string[];
+    account_id?: string;
+  },
 ): void {
-  state.access = pair.access_token
-  state.refresh = pair.refresh_token
-  state.mustChangePassword = pair.must_change_password === true
+  state.access = pair.access_token;
+  state.refresh = pair.refresh_token;
+  state.mustChangePassword = pair.must_change_password === true;
   // Server ships `['*']` for super admin and a flat list of codes otherwise.
   // Falls back to [] so the client never holds a stale snapshot from before
   // a permission change; callers can rely on `hasPermission` returning false.
-  state.permissionCodes = Array.isArray(pair.permission_codes) ? pair.permission_codes : []
-  persistAuth(state)
+  state.permissionCodes = Array.isArray(pair.permission_codes) ? pair.permission_codes : [];
+  // Use staff login as the display name for the current admin user.
+  state.staffAccount = pair.account_id ?? null;
+  persistAuth(state);
 }
 
 export function clearTokens(): void {
-  state.access = null
-  state.refresh = null
-  state.mustChangePassword = false
-  state.permissionCodes = []
-  persistAuth(state)
+  state.access = null;
+  state.refresh = null;
+  state.mustChangePassword = false;
+  state.permissionCodes = [];
+  state.staffAccount = null;
+  persistAuth(state);
+
+  const pinia = getActivePinia();
+  if (pinia) {
+    useTabsStore(pinia).reset();
+  }
 }
 
 export function hasTokens(): boolean {
-  return state.access !== null && state.refresh !== null
+  return state.access !== null && state.refresh !== null;
 }
 
 export function mustChangePassword(): boolean {
-  return state.mustChangePassword
+  return state.mustChangePassword;
 }
 
 export function permissionCodes(): string[] {
-  return state.permissionCodes
+  return state.permissionCodes;
 }
 
 export function hasPermission(code: string): boolean {
-  return state.permissionCodes.includes('*') || state.permissionCodes.includes(code)
+  return state.permissionCodes.includes('*') || state.permissionCodes.includes(code);
+}
+
+export function staffAccount(): string | null {
+  return state.staffAccount;
 }
 
 async function refreshOnce(): Promise<TokenPair | null> {
-  if (inflightRefresh) return inflightRefresh
-  if (!state.refresh) return null
+  if (inflightRefresh) return inflightRefresh;
+  if (!state.refresh) return null;
   inflightRefresh = (async () => {
     try {
-      const { data } = await raw.post(REFRESH_PATH, { refresh_token: state.refresh })
-      const pair = parseTokenEnvelope(data)
+      const { data } = await raw.post(REFRESH_PATH, { refresh_token: state.refresh });
+      const pair = parseTokenEnvelope(data);
       if (!pair) {
-        clearTokens()
-        return null
+        clearTokens();
+        return null;
       }
-      setTokens(pair)
-      return pair
+      setTokens(pair);
+      return pair;
     } catch {
-      clearTokens()
-      return null
+      clearTokens();
+      return null;
     } finally {
-      inflightRefresh = null
+      inflightRefresh = null;
     }
-  })()
-  return inflightRefresh
+  })();
+  return inflightRefresh;
 }
 
 const raw: AxiosInstance = axios.create({
   baseURL: API_BASE,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
-})
+});
 
 raw.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (state.access) {
-    config.headers.set('Authorization', `Bearer ${state.access}`)
+    config.headers.set('Authorization', `Bearer ${state.access}`);
   }
-  return config
-})
+  return config;
+});
 
 raw.interceptors.response.use(
   (r) => r,
   async (err: AxiosError) => {
-    const status = err.response?.status
-    const parsedErr = ApiErr.safeParse(err.response?.data)
-    const code = parsedErr.success ? parsedErr.data.error.code : undefined
-    const cfg = err.config
-    if (
-      status === 401
-      && code === 'TOKEN_EXPIRED'
-      && cfg
-      && !retried.has(cfg)
-      && state.refresh
-    ) {
-      retried.add(cfg)
-      const next = await refreshOnce()
+    const status = err.response?.status;
+    const parsedErr = ApiErr.safeParse(err.response?.data);
+    const code = parsedErr.success ? parsedErr.data.error.code : undefined;
+    const cfg = err.config;
+    if (status === 401 && code === 'TOKEN_EXPIRED' && cfg && !retried.has(cfg) && state.refresh) {
+      retried.add(cfg);
+      const next = await refreshOnce();
       if (next) {
-        cfg.headers.set('Authorization', `Bearer ${next.access_token}`)
-        return raw.request(cfg)
+        cfg.headers.set('Authorization', `Bearer ${next.access_token}`);
+        return raw.request(cfg);
       }
     }
-    return Promise.reject(err)
+    return Promise.reject(err);
   },
-)
+);
 
-export const http = raw
-export default http
+export const http = raw;
+export default http;

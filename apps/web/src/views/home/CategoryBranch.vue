@@ -4,7 +4,9 @@
       <summary class="trail-summary">
         <span class="marker" aria-hidden="true" />
         <router-link :to="`/categories/${node.id}`" class="trail-link">{{ node.name }}</router-link>
-        <span v-if="node.children.length" class="branch-count">{{ node.children.length }} 个子类</span>
+        <span v-if="node.children.length" class="branch-count"
+          >{{ node.children.length }} 个子类</span
+        >
       </summary>
       <ul v-if="node.children.length > 0" class="trail-children">
         <CategoryBranch

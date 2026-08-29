@@ -39,9 +39,16 @@ final class StaffService
     ) {
     }
 
-    /** @return list<array<string,mixed>> */
-    public function listAll(?string $statusFilter, int $actorId): array
-    {
+    /**
+     * @return array{items: list<array<string,mixed>>, total: int, page: int, limit: int}
+     */
+    public function list(
+        ?string $statusFilter,
+        ?string $search,
+        int $page,
+        ?int $limit,
+        int $actorId,
+    ): array {
         $q = Db::name('staff_users')
             ->alias('s')
             ->join('accounts a', 'a.id = s.account_id')
@@ -55,8 +62,32 @@ final class StaffService
         if ($statusFilter === 'active' || $statusFilter === 'disabled') {
             $q->where('a.status', $statusFilter);
         }
-        $rows = $q->order('s.account_id', 'desc')->select()->toArray();
-        return array_map(fn($r) => $this->shape($r), is_array($rows) ? $rows : []);
+        if ($search !== null && $search !== '') {
+            $q->where(function ($w) use ($search) {
+                $w->where('a.login', 'like', "%{$search}%")
+                    ->whereOr('s.display_name', 'like', "%{$search}%");
+            });
+        }
+        $total = (int) (clone $q)->count();
+        if ($limit !== null) {
+            $page = max(1, $page);
+            $limit = max(1, min(200, $limit));
+            $rows = $q->order('s.account_id', 'desc')->page($page, $limit)->select()->toArray();
+        } else {
+            $page = 1;
+            $limit = max(1, $total);
+            $rows = $q->order('s.account_id', 'desc')->select()->toArray();
+        }
+        $items = array_map(
+            fn($r) => $this->shape($r),
+            is_array($rows) ? $rows : [],
+        );
+        return [
+            'items' => $items,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+        ];
     }
 
     public function find(int $id): ?StaffUser

@@ -33,6 +33,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
     exit 2
 fi
 
+RESTORE_COMPOSE_FILE="$ROOT_DIR/compose.restore.yaml"
+if [[ ! -f "$RESTORE_COMPOSE_FILE" ]]; then
+    printf 'restore: compose overlay does not exist: %s\n' "$RESTORE_COMPOSE_FILE" >&2
+    exit 2
+fi
+
 RESTORE_PROJECT="${RESTORE_PROJECT:-learn-site-restore-$(date -u '+%Y%m%d%H%M%S')}"
 if [[ ! "$RESTORE_PROJECT" =~ ^learn-site-restore-[a-z0-9][a-z0-9_-]*$ ]]; then
     printf 'restore: RESTORE_PROJECT must be an isolated learn-site-restore-* project: %s\n' "$RESTORE_PROJECT" >&2
@@ -40,7 +46,8 @@ if [[ ! "$RESTORE_PROJECT" =~ ^learn-site-restore-[a-z0-9][a-z0-9_-]*$ ]]; then
 fi
 
 run_compose() {
-    "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" -p "$RESTORE_PROJECT" "$@"
+    "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" -p "$RESTORE_PROJECT" \
+        -f "$ROOT_DIR/compose.yaml" -f "$RESTORE_COMPOSE_FILE" "$@"
 }
 
 cleanup() {
@@ -71,8 +78,8 @@ fi
 
 RESTORE_LOG="$BACKUP_DIR/restore-$RESTORE_PROJECT.log"
 printf 'restore: project=%s backup=%s\n' "$RESTORE_PROJECT" "$BACKUP_DIR" | tee "$RESTORE_LOG"
-run_compose up -d --wait --wait-timeout 180 mysql redis api 2>&1 | tee -a "$RESTORE_LOG"
 RESTORE_STARTED=1
+run_compose up -d --wait --wait-timeout 180 mysql redis api 2>&1 | tee -a "$RESTORE_LOG"
 
 run_compose exec -T mysql sh -c \
     'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE"' \

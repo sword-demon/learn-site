@@ -31,4 +31,9 @@ class Course extends Model
 {
     protected string $table = 'courses';
     protected string $pk = 'id';
+
+    public function isDeletableStatus(): bool
+    {
+        return in_array((string) $this->status, ['draft', 'unpublished'], true);
+    }
 }

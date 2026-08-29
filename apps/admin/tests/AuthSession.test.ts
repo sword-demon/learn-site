@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { computed } from 'vue'
 
 import { AUTH_STORAGE_KEY } from '@/api/http'
 
@@ -61,5 +62,15 @@ describe('admin auth session persistence', () => {
 
     expect(hasTokens()).toBe(false)
     expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBeNull()
+  })
+
+  it('invalidates reactive permission consumers when tokens change', async () => {
+    const { clearTokens, permissionCodes, setTokens } = await import('@/api/http')
+    clearTokens()
+    const canViewCourses = computed(() => permissionCodes().includes('course.view'))
+
+    expect(canViewCourses.value).toBe(false)
+    setTokens(pair)
+    expect(canViewCourses.value).toBe(true)
   })
 })

@@ -33,9 +33,7 @@
           </p>
           <h2 class="display">
             <router-link :to="`/courses/${featuredCourse.id}`">
-              {{
-                featuredCourse.title
-              }}
+              {{ featuredCourse.title }}
             </router-link>
           </h2>
           <p>{{ featuredCourse.summary || '打开课程，开始今天的学习。' }}</p>

@@ -72,6 +72,12 @@ final class QuestionServiceIntegrationTest extends TestCase
         $this->assertCount(2, $firstAnswer['messages']);
         $firstAnsweredAt = $firstAnswer['question']['answered_at'];
         $this->assertNotSame('', $firstAnsweredAt);
+        $this->assertSame(1, Db::name('learner_notifications')
+            ->where('learner_id', $this->ownerLearnerId)
+            ->where('kind', 'question_update')
+            ->where('resource_type', 'question')
+            ->where('resource_id', $questionId)
+            ->count());
 
         $followup = $this->service->appendLearnerFollowup(
             $this->ownerLearnerId,
@@ -84,6 +90,11 @@ final class QuestionServiceIntegrationTest extends TestCase
         $secondAnswer = $this->service->adminAnswer($this->actorId, $questionId, 'Second answer.');
         $this->assertSame('answered', $secondAnswer['question']['status']);
         $this->assertSame($firstAnsweredAt, $secondAnswer['question']['answered_at']);
+        $this->assertSame(2, Db::name('learner_notifications')
+            ->where('learner_id', $this->ownerLearnerId)
+            ->where('kind', 'question_update')
+            ->where('resource_id', $questionId)
+            ->count());
         $this->assertSame(
             [
                 'Please explain the first answer.',
@@ -216,7 +227,9 @@ final class QuestionServiceIntegrationTest extends TestCase
 
     public function testQaContractRoutesAreRegistered(): void
     {
-        Route::load([app_path()]);
+        if (Route::getRoutes() === []) {
+            Route::load([app_path()]);
+        }
         $registered = [];
         foreach (Route::getRoutes() as $route) {
             foreach ($route->getMethods() as $method) {
@@ -236,6 +249,10 @@ final class QuestionServiceIntegrationTest extends TestCase
         ) {
             $this->assertContains($route, $registered);
         }
+
+        $this->assertNotContains('POST /api/learner/v1/questions/{id}/followup', $registered);
+        $this->assertNotContains('GET /api/admin/v1/qa', $registered);
+        $this->assertNotContains('GET /api/admin/v1/qa/{id}', $registered);
 
         $this->assertSame(
             'qa.answer',

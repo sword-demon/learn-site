@@ -1,21 +1,37 @@
-import { ApiResponse, AuditLogListDTO } from '@learn-site/contracts'
-import { http } from '@/api/http'
+import http from './http';
+import {
+  ApiOk,
+  ModerationLogListDTO,
+  type ModerationAction,
+  type ModerationObjectType,
+} from '@learn-site/contracts';
 
-export { AuditLogListDTO }
+const ModerationLogListEnvelope = ApiOk(ModerationLogListDTO);
 
-export interface AuditLogListParams {
-  action?: string
-  target_type?: string
-  actor_id?: number
-  page?: number
-  limit?: number
+export interface ModerationLogListParams {
+  object_type?: ModerationObjectType;
+  action?: ModerationAction;
+  staff_id?: number;
+  page?: number;
+  limit?: number;
 }
 
-export async function listAuditLogs(params: AuditLogListParams = {}): Promise<AuditLogListDTO> {
-  const { data } = await http.get('/audit', { params })
-  const parsed = ApiResponse(AuditLogListDTO).parse(data)
-  if (!parsed.ok) {
-    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code })
-  }
-  return parsed.data
+export interface ModeratedContentRef {
+  object_type: ModerationObjectType;
+  object_id: number;
+}
+
+export async function listModerationLogs(
+  params: ModerationLogListParams = {},
+): Promise<ModerationLogListDTO> {
+  const response = await http.get<unknown>('/moderation-logs', { params });
+  return ModerationLogListEnvelope.parse(response.data).data;
+}
+
+export async function restoreModeratedContent(target: ModeratedContentRef): Promise<void> {
+  const path =
+    target.object_type === 'review'
+      ? `/reviews/${target.object_id}/restore`
+      : `/review-replies/${target.object_id}/restore`;
+  await http.post(path);
 }

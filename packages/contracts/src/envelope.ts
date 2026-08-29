@@ -44,6 +44,10 @@ export const ErrorCode = z.enum([
   'VALIDATION_FAILED',
   'LOGIN_INVALID',
   'RATE_LIMITED',
+  'CONFLICT',
+  'LAST_SUPER_ADMIN',
+  'CATEGORY_IN_USE',
+  'PAYMENT_UNSETTLED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;

@@ -15,7 +15,6 @@ namespace support;
  */
 class Request
 {
-    public function route(?string $name = null, mixed $default = null): mixed {}
 }
 
 namespace Webman\Http;

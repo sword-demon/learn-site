@@ -23,6 +23,7 @@
             <router-link to="/me/favorites" active-class="on">收藏</router-link>
             <router-link to="/me/orders" active-class="on">我的订单</router-link>
             <router-link to="/me/messages" active-class="on">消息</router-link>
+            <router-link to="/me/account" active-class="on">账户</router-link>
             <button type="button" class="btn ghost" @click="onLogout">退出</button>
           </template>
           <router-link v-else to="/login" class="btn ghost login-cta">登录</router-link>

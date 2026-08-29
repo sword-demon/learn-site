@@ -41,11 +41,18 @@
             <file>tests/RoleControllerTest.php</file>
             <file>tests/CatalogContractTest.php</file>
             <file>tests/PaymentContractTest.php</file>
+            <file>tests/ProgressServiceTest.php</file>
+            <file>tests/LearnerProfileTest.php</file>
+            <file>tests/AssetStorageTest.php</file>
             <file>tests/OrderAdminTest.php</file>
             <file>tests/OrderReadOnlyRouteTest.php</file>
             <file>tests/PermissionOverrideServiceIntegrationTest.php</file>
             <file>tests/StaffOverrideApiTest.php</file>
             <file>tests/RbacScopeTest.php</file>
+            <file>tests/FavoriteShareTest.php</file>
+            <file>tests/CourseStudentTest.php</file>
+            <file>tests/NotificationContractTest.php</file>
+            <file>tests/CourseDeletionTest.php</file>
         </testsuite>
     </testsuites>
     <source>

@@ -37,18 +37,24 @@
         </div>
         <div class="amount">
           <span class="now">¥ {{ order.paid_amount.toFixed(2) }}</span>
-          <span v-if="order.sale_price_snapshot > 0" class="was">¥ {{ order.list_price_snapshot.toFixed(2) }}</span>
+          <span v-if="order.sale_price_snapshot > 0" class="was"
+            >¥ {{ order.list_price_snapshot.toFixed(2) }}</span
+          >
         </div>
         <div class="status">
           <span class="tag" :data-status="order.status">{{ statusLabel(order.status) }}</span>
-          <button
-            v-if="order.status === 'pending'"
-            type="button"
+          <router-link
+            v-if="
+              order.status === 'pending' ||
+              order.status === 'failed' ||
+              order.status === 'cancelled' ||
+              order.status === 'unknown'
+            "
+            :to="`/checkout/${order.course_id}`"
             class="text-button"
-            @click="simulate(order.order_id)"
           >
-            模拟支付
-          </button>
+            {{ order.status === 'pending' ? '继续支付' : '重新购买' }}
+          </router-link>
         </div>
       </li>
     </ul>
@@ -77,19 +83,6 @@ async function refresh(): Promise<void> {
   } finally {
     loading.value = false;
   }
-}
-
-async function simulate(orderId: number): Promise<void> {
-  try {
-    await fetch('/api/internal/v1/payments/fake/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Fake-Payment-Result': 'succeeded' },
-      body: JSON.stringify({ order_id: orderId }),
-    });
-  } catch {
-    // Refresh below surfaces the final order state.
-  }
-  await refresh();
 }
 
 function statusLabel(status: OrderStatus): string {

@@ -225,7 +225,7 @@ describe('MapEditorView', () => {
     expect(statusSelect?.props('modelValue')).toBe('all');
     expect(statusSelect?.props('teleported')).toBe(true);
     expect(statusSelect?.props('placement')).toBe('bottom-start');
-    expect(statusSelect?.props('clearable')).toBe(false);
+    expect(statusSelect?.props('clearable')).toBe(true);
     expect(statusSelect?.props('placeholder')).toBe('全部');
   });
 

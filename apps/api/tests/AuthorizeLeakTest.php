@@ -45,7 +45,7 @@ final class AuthorizeLeakTest extends TestCase
         yield 'map list' => ['/api/admin/v1/learning-maps', 'GET', 'map.view'];
         yield 'map update' => ['/api/admin/v1/learning-maps/9', 'PATCH', 'map.manage'];
         yield 'map publish' => ['/api/admin/v1/learning-maps/9/publish', 'POST', 'map.publish'];
-        yield 'audit list' => ['/api/admin/v1/audit', 'GET', 'audit.view'];
+        yield 'audit list' => ['/api/admin/v1/moderation-logs', 'GET', 'audit.view'];
     }
 
     public function testMiddlewareReturnsFixed403WithoutCallingHandler(): void

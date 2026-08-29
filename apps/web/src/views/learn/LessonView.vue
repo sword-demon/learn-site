@@ -19,32 +19,20 @@
         </nav>
       </header>
 
-      <section
-        v-if="delivery.kind === 'markdown'"
-        class="prose markdown-body"
-        v-html="delivery.html"
+      <MarkdownRenderer v-if="delivery.kind === 'markdown'" :html="delivery.html" />
+      <PdfViewer
+        v-else-if="delivery.kind === 'pdf'"
+        :url="mediaObjectUrl"
+        :status="delivery.status"
+        @open="openPdf"
       />
-
-      <section v-else-if="delivery.kind === 'pdf'" class="asset-block">
-        <p>这是一份 PDF 课节, 请点击下方按钮在新窗口打开.</p>
-        <button type="button" class="btn btn-primary" @click="openPdf">查看 PDF</button>
-        <p v-if="delivery.status !== 'ready'" class="notice">
-          资源尚未处理完成 ({{ delivery.status }}), 可能无法打开.
-        </p>
-      </section>
-
-      <section v-else-if="delivery.kind === 'video'" class="asset-block">
-        <video
-          ref="videoEl"
-          controls
-          preload="metadata"
-          :src="delivery.storage_path"
-          class="player"
-        />
-        <p v-if="delivery.status !== 'ready'" class="notice">
-          资源尚未处理完成 ({{ delivery.status }}), 可能无法播放.
-        </p>
-      </section>
+      <VideoPlayer
+        v-else-if="delivery.kind === 'video'"
+        :url="mediaObjectUrl"
+        :status="delivery.status"
+        @timeupdate="onVideoTimeUpdate"
+        @ended="onVideoEnded"
+      />
 
       <section
         v-if="delivery.kind === 'markdown' || delivery.kind === 'pdf'"
@@ -70,15 +58,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type {
   ChapterWithLessonSummariesDTO,
   LessonDeliveryDTO,
   PublicCourseDetailDTO,
 } from '@learn-site/contracts';
-import { fetchCourseDetail, fetchLesson, reportLessonProgress } from '@/api/learner';
+import { fetchCourseDetail, fetchLesson, fetchMediaObjectUrl } from '@/api/learner';
+import { useLearningProgress } from '@/composables/useLearningProgress';
 import QuestionPanel from '@/views/learn/QuestionPanel.vue';
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
+import PdfViewer from '@/components/PdfViewer.vue';
+import VideoPlayer from '@/components/VideoPlayer.vue';
 
 defineOptions({ name: 'LessonView' });
 
@@ -93,9 +85,11 @@ const courseChapters = ref<ChapterWithLessonSummariesDTO[]>([]);
 const completionPending = ref(false);
 const completed = ref(false);
 const completionError = ref('');
+const mediaObjectUrl = ref('');
 
 const courseId = computed(() => Number(route.params.courseId));
 const lessonId = computed(() => Number(route.params.lessonId));
+const learningProgress = useLearningProgress(lessonId);
 
 const prev = computed<Sibling | null>(() => findSibling(-1));
 const next = computed<Sibling | null>(() => findSibling(+1));
@@ -172,6 +166,9 @@ async function loadLesson(): Promise<void> {
   errorMessage.value = '';
   try {
     delivery.value = await fetchLesson(courseId.value, lessonId.value);
+    if (delivery.value.kind !== 'markdown' && delivery.value.status === 'ready') {
+      replaceMediaObjectUrl(await fetchMediaObjectUrl(delivery.value.media_url));
+    }
   } catch (err: unknown) {
     loadError.value = true;
     const code = (err as { code?: string }).code;
@@ -189,7 +186,6 @@ async function loadLesson(): Promise<void> {
   }
 }
 
-const videoEl = ref<HTMLVideoElement | null>(null);
 let videoTimer: number | null = null;
 let markdownOpened = false;
 
@@ -199,11 +195,7 @@ async function completeLesson(): Promise<void> {
   completionPending.value = true;
   completionError.value = '';
   try {
-    const progress = await reportLessonProgress(lessonId.value, {
-      content_type: delivery.value.kind,
-      position_seconds: 1,
-      completed: true,
-    });
+    const progress = await learningProgress.completeDocument(delivery.value.kind);
     completed.value = progress.completed;
   } catch {
     completionError.value = '完成状态提交失败, 请稍后重试.';
@@ -217,51 +209,44 @@ async function openPdf(): Promise<void> {
   // Open in a new tab and report the open event so the lesson can be
   // marked complete later. The server only marks md/pdf complete once
   // the lesson has been opened at least once (rule in ProgressService).
-  window.open(delivery.value.storage_path, '_blank', 'noopener,noreferrer');
+  if (!mediaObjectUrl.value) {
+    completionError.value = 'PDF 资源暂时不可用.';
+    return;
+  }
+  window.open(mediaObjectUrl.value, '_blank', 'noopener,noreferrer');
   try {
-    const progress = await reportLessonProgress(lessonId.value, {
-      content_type: 'pdf',
-      position_seconds: 1,
-    });
+    const progress = await learningProgress.reportDocumentOpen('pdf');
     completed.value = progress.completed;
   } catch {
     /* best-effort */
   }
 }
 
-function onVideoTimeUpdate(): void {
-  if (delivery.value?.kind !== 'video' || !videoEl.value) return;
-  const dur = Math.floor(videoEl.value.duration || 0);
-  const pos = Math.floor(videoEl.value.currentTime || 0);
+function onVideoTimeUpdate(event: Event): void {
+  const video = event.currentTarget as HTMLVideoElement | null;
+  if (delivery.value?.kind !== 'video' || !video) return;
   // Throttle: report every ~30 seconds while playing.
   if (videoTimer !== null) return;
   videoTimer = window.setTimeout(() => {
     videoTimer = null;
-    if (!videoEl.value || delivery.value?.kind !== 'video') return;
-    void reportLessonProgress(lessonId.value, {
-      content_type: 'video',
-      position_seconds: Math.floor(videoEl.value.currentTime || 0),
-      duration_seconds: Math.floor(videoEl.value.duration || 0),
-    }).catch(() => undefined);
+    if (!video || delivery.value?.kind !== 'video') return;
+    void learningProgress
+      .heartbeat(Math.floor(video.currentTime || 0), Math.floor(video.duration || 0))
+      .then((progress) => {
+        completed.value = progress.completed;
+      })
+      .catch(() => undefined);
   }, 30_000) as unknown as number;
-  // Suppress the unused-var lint while keeping the read-side vars in scope.
-  void dur;
-  void pos;
 }
-
-watch(videoEl, (el) => {
-  if (!el) return;
-  el.addEventListener('timeupdate', onVideoTimeUpdate);
-  el.addEventListener('ended', onVideoEnded);
-});
-
-function onVideoEnded(): void {
-  if (delivery.value?.kind !== 'video' || !videoEl.value) return;
-  void reportLessonProgress(lessonId.value, {
-    content_type: 'video',
-    position_seconds: Math.floor(videoEl.value.duration || 0),
-    duration_seconds: Math.floor(videoEl.value.duration || 0),
-  }).catch(() => undefined);
+function onVideoEnded(event: Event): void {
+  const video = event.currentTarget as HTMLVideoElement | null;
+  if (delivery.value?.kind !== 'video' || !video) return;
+  void learningProgress
+    .heartbeat(Math.floor(video.duration || 0), Math.floor(video.duration || 0))
+    .then((progress) => {
+      completed.value = progress.completed;
+    })
+    .catch(() => undefined);
 }
 
 onUnmounted(() => {
@@ -269,11 +254,15 @@ onUnmounted(() => {
     window.clearTimeout(videoTimer);
     videoTimer = null;
   }
-  if (videoEl.value) {
-    videoEl.value.removeEventListener('timeupdate', onVideoTimeUpdate);
-    videoEl.value.removeEventListener('ended', onVideoEnded);
-  }
+  replaceMediaObjectUrl('');
 });
+
+function replaceMediaObjectUrl(next: string): void {
+  if (mediaObjectUrl.value) {
+    URL.revokeObjectURL(mediaObjectUrl.value);
+  }
+  mediaObjectUrl.value = next;
+}
 
 onMounted(async () => {
   await Promise.all([loadCourseMeta(), loadLesson()]);
@@ -283,10 +272,7 @@ onMounted(async () => {
   if (delivery.value?.kind === 'markdown' && !markdownOpened) {
     markdownOpened = true;
     try {
-      const progress = await reportLessonProgress(lessonId.value, {
-        content_type: 'markdown',
-        position_seconds: 1,
-      });
+      const progress = await learningProgress.reportDocumentOpen('markdown');
       completed.value = progress.completed;
     } catch {
       /* best-effort */
@@ -333,7 +319,7 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.markdown-body,
+.rich-html,
 .asset-block {
   width: min(820px, 100%);
   margin: 0 auto;
@@ -341,48 +327,6 @@ onMounted(async () => {
   border-top: 3px solid var(--pine);
   border-bottom: 1px solid var(--line);
   background: rgba(255, 254, 250, 0.78);
-}
-
-.markdown-body {
-  color: #34443d;
-  line-height: 1.95;
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  color: var(--pine-deep);
-  font-family: var(--font-display);
-  line-height: 1.35;
-}
-
-.markdown-body :deep(pre) {
-  overflow-x: auto;
-  padding: 15px;
-  border: 1px solid #24362f;
-  border-radius: 5px;
-  background: #1d2a25;
-  color: #eff7ef;
-}
-
-.markdown-body :deep(code) {
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: var(--surface-muted);
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-}
-
-.markdown-body :deep(pre code) {
-  padding: 0;
-  background: transparent;
-}
-
-.markdown-body :deep(blockquote) {
-  margin: 20px 0;
-  padding: 4px 0 4px 17px;
-  border-left: 3px solid var(--accent);
-  color: var(--muted);
 }
 
 .asset-block {
@@ -422,7 +366,7 @@ onMounted(async () => {
     font-size: 2.2rem;
   }
 
-  .markdown-body,
+  .rich-html,
   .asset-block {
     padding: 22px 17px 26px;
   }

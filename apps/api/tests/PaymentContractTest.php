@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  *   succeeded: entitlement granted, order.status='paid'
  *   failed:    order.status='failed', no entitlement
  *   cancelled: order.status='cancelled', no entitlement
- *   timeout:   order.status='timeout', no entitlement
+ *   unknown:   order.status='unknown', no entitlement
  *
  * The key invariant: orders transition forward only via notify();
  * no controller may flip them, and only succeeded creates an
@@ -45,18 +45,18 @@ final class PaymentContractTest extends TestCase
         $this->assertFalse($order['entitlement_granted']);
     }
 
-    public function testTimeoutStateDoesNotGrantEntitlement(): void
+    public function testUnknownStateDoesNotGrantEntitlement(): void
     {
-        $order = $this->orderShape('timeout');
-        $this->assertSame('timeout', $order['status']);
+        $order = $this->orderShape('unknown');
+        $this->assertSame('unknown', $order['status']);
         $this->assertFalse($order['entitlement_granted']);
     }
 
     public function testStatusEnum(): void
     {
-        $allowed = ['pending', 'paid', 'failed', 'cancelled', 'timeout'];
-        foreach (['succeeded', 'failed', 'cancelled', 'timeout'] as $kind) {
-            $shape = $this->orderShape($kind === 'succeeded' ? 'paid' : $kind);
+        $allowed = ['pending', 'succeeded', 'failed', 'cancelled', 'unknown'];
+        foreach (['succeeded', 'failed', 'cancelled', 'unknown'] as $kind) {
+            $shape = $this->orderShape($kind);
             $this->assertContains($shape['status'], $allowed);
         }
     }

@@ -1,4 +1,4 @@
-<!-- Build timestamp: 20260827170030 -->
+<!-- Build timestamp: 20260829180000 -->
 <template>
   <el-container class="admin-shell">
     <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
@@ -54,15 +54,23 @@
           </template>
         </el-dropdown>
       </el-header>
+      <div class="nav-chrome">
+        <AdminTabBar />
+        <AdminBreadcrumb />
+      </div>
       <el-main class="main">
-        <router-view />
+        <router-view v-slot="{ Component: ViewComponent, route: viewRoute }">
+          <keep-alive :max="20">
+            <component :is="ViewComponent" :key="viewRoute.fullPath" />
+          </keep-alive>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -82,11 +90,16 @@ import {
   ShoppingCart,
   User,
 } from '@element-plus/icons-vue';
-import { http, clearTokens, permissionCodes } from '@/api/http';
+import { http, clearTokens, permissionCodes, staffAccount } from '@/api/http';
 import { visibleEntries, type AdminMenuEntry } from '@/layouts/AdminMenu';
+import AdminTabBar from '@/components/AdminTabBar.vue';
+import AdminBreadcrumb from '@/components/AdminBreadcrumb.vue';
+import { useTabsStore } from '@/stores/tabs';
+import { shouldTrackTab } from '@/router/tabSync';
 
 const route = useRoute();
 const router = useRouter();
+const tabsStore = useTabsStore();
 const collapsed = ref(false);
 
 const menuIcons: Record<string, Component> = {
@@ -114,9 +127,6 @@ function iconFor(path: string): Component {
 const entries = computed<AdminMenuEntry[]>(() => visibleEntries(permissionCodes()));
 
 const active = computed(() => {
-  // Pick the longest matching leaf path so /org/departments beats /org when
-  // both happen to be in the menu; falls back to '/' when nothing matches
-  // (e.g. while the router-guard redirect is in flight).
   const p = route.path;
   let best = '/';
   let bestLen = -1;
@@ -138,10 +148,17 @@ const active = computed(() => {
   return best;
 });
 
-const label = computed(() => {
-  if (typeof route.meta.title === 'string') return route.meta.title;
-  return '管理员';
-});
+const label = computed(() => staffAccount() ?? '管理员');
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (shouldTrackTab(route)) {
+      tabsStore.syncFromRoute(route);
+    }
+  },
+  { immediate: true },
+);
 
 async function onCommand(cmd: string): Promise<void> {
   if (cmd !== 'logout') return;
@@ -155,6 +172,7 @@ async function onCommand(cmd: string): Promise<void> {
   } catch {
     // ponytail: best-effort; token revoked on server next refresh.
   }
+  tabsStore.reset();
   clearTokens();
   ElMessage.success('已退出');
   await router.push('/login');
@@ -189,6 +207,9 @@ async function onCommand(cmd: string): Promise<void> {
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   padding: 0 16px;
+}
+.nav-chrome {
+  background: #ffffff;
 }
 .spacer {
   flex: 1 1 auto;

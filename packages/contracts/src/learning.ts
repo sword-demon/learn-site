@@ -26,6 +26,8 @@ export const MyLearningCourseSummaryDTO = z.object({
   title: z.string(),
   cover_url: z.string().nullable(),
   teacher_name: z.string(),
+  status: z.enum(['draft', 'published', 'unpublished']),
+  price_mode: z.enum(['free', 'paid']),
 });
 export type MyLearningCourseSummaryDTO = z.infer<typeof MyLearningCourseSummaryDTO>;
 
@@ -36,6 +38,11 @@ export const MyLearningItemDTO = z.object({
   last_position: z.number().int().nonnegative(),
   completed_at: z.string().nullable(),
   updated_at: z.string(),
+  entitlement_status: z.enum(['active', 'revoked']),
+  entitlement_source: z.enum(['free', 'purchase']),
+  revoked_at: z.string().nullable(),
+  revoked_reason: z.string().nullable(),
+  can_rejoin: z.boolean(),
   course: MyLearningCourseSummaryDTO,
 });
 export type MyLearningItemDTO = z.infer<typeof MyLearningItemDTO>;

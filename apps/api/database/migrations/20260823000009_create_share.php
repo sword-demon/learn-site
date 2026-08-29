@@ -23,6 +23,8 @@ final class CreateShare extends AbstractMigration
             ->addColumn('learner_id', 'biginteger', ['signed' => false])
             ->addColumn('course_id', 'biginteger', ['signed' => false])
             ->addColumn('created_at', 'datetime')
+            ->addForeignKey('learner_id', 'learners', 'account_id', ['delete' => 'CASCADE', 'update' => 'CASCADE'])
+            ->addForeignKey('course_id', 'courses', 'id', ['delete' => 'CASCADE', 'update' => 'CASCADE'])
             ->addIndex(['learner_id', 'course_id'], ['unique' => true])
             ->addIndex(['course_id'])
             ->create();

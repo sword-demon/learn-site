@@ -132,6 +132,29 @@ final class AuthTokenTest extends TestCase
         $this->assertSame(120, $this->redis->ttl('captcha:' . $cid));
     }
 
+    public function testExplicitE2eCaptchaAnswerOnlyAppliesInTesting(): void
+    {
+        $previousEnv = getenv('APP_ENV');
+        $previousAnswer = getenv('E2E_CAPTCHA_ANSWER');
+        try {
+            putenv('APP_ENV=testing');
+            putenv('E2E_CAPTCHA_ANSWER=E2-7');
+            $issued = $this->captcha->issue();
+            $this->assertNotNull($issued);
+            $this->assertTrue($this->captcha->consume($issued['captcha_id'], 'E2-7'));
+
+            putenv('APP_ENV=production');
+            $issued = $this->captcha->issue();
+            $this->assertNotNull($issued);
+            $this->assertFalse($this->captcha->consume($issued['captcha_id'], 'E2-7'));
+        } finally {
+            $previousEnv === false ? putenv('APP_ENV') : putenv('APP_ENV=' . $previousEnv);
+            $previousAnswer === false
+                ? putenv('E2E_CAPTCHA_ANSWER')
+                : putenv('E2E_CAPTCHA_ANSWER=' . $previousAnswer);
+        }
+    }
+
     public function testRefreshRotatesAndReuseRevokesFamily(): void
     {
         $pair = $this->tokens->issue('42', TokenService::KIND_LEARNER);

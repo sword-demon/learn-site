@@ -59,8 +59,9 @@ final class DashboardTest extends TestCase
 
     public function testDashboardDestinationsUseSeededQaPermissions(): void
     {
-        $this->assertSame('qa.view', Authorize::permissionFor('/api/admin/v1/qa', 'GET'));
-        $this->assertSame('qa.answer', Authorize::permissionFor('/api/admin/v1/qa/3/answer', 'POST'));
+        $this->assertSame('qa.view', Authorize::permissionFor('/api/admin/v1/questions', 'GET'));
+        $this->assertSame('qa.answer', Authorize::permissionFor('/api/admin/v1/questions/3/answer', 'POST'));
+        $this->assertNull(Authorize::permissionFor('/api/admin/v1/qa', 'GET'));
     }
 
     public function testEveryDashboardQueryAppliesCourseDataScope(): void

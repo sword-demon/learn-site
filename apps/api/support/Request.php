@@ -18,13 +18,6 @@ namespace support;
  * Class Request
  * @package support
  */
-/**
- * @method mixed route(?string $name = null, mixed $default = null)
- */
 class Request extends \Webman\Http\Request
 {
-    public function route(?string $name = null, mixed $default = null): mixed
-    {
-        return parent::route($name, $default);
-    }
 }

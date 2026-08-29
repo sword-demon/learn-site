@@ -38,8 +38,12 @@
           <p class="meta">
             <span v-if="course.price_mode === 'free'" class="tag free">免费</span>
             <template v-else>
-              <span class="price-now">¥ {{ formatPrice(course.sale_price || course.list_price) }}</span>
-              <span v-if="course.sale_price > 0" class="price-was">¥ {{ formatPrice(course.list_price) }}</span>
+              <span class="price-now"
+                >¥ {{ formatPrice(course.sale_price || course.list_price) }}</span
+              >
+              <span v-if="course.sale_price > 0" class="price-was"
+                >¥ {{ formatPrice(course.list_price) }}</span
+              >
             </template>
             <span v-if="course.preview_available" class="tag preview">支持试看</span>
             <span class="learners">{{ course.learner_count }} 位学员</span>

@@ -14,9 +14,8 @@ use support\think\Db;
  * Phase 5 (US1). Preview lessons are open to anyone; full lessons are
  * gated behind EntitlementService (active row in course_entitlements).
  * Markdown bodies are sanitised server-side (FR-009); PDF / video responses
- * carry the asset row directly so the browser can `<a>` / `<video>`
- * the storage path. Tokenised / signed delivery URLs are deferred to
- * Phase 9 (asset worker) — that path keeps the Phase 5 contract stable.
+ * expose only the authenticated media API URL. Internal storage paths
+ * never cross the learner API boundary.
  *
  * // ponytail: a missing asset row is treated as 404 (the lesson row
  * stays so the lesson list still renders the summary). Resource
@@ -34,8 +33,11 @@ final class PublicLessonService
     /** @return array<string, mixed> */
     public function deliver(int $courseId, int $lessonId, ?int $viewerAccountId): array
     {
-        $course = Course::where('id', '=', $courseId)->where('status', '=', 'published')->find();
-        if (!$course) {
+        $course = Course::where('id', '=', $courseId)->find();
+        $authorized = $viewerAccountId !== null
+            && $viewerAccountId > 0
+            && $this->viewerAuthorized($courseId, $viewerAccountId);
+        if (!$course || ((string) $course->status !== 'published' && !$authorized)) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
         }
         $lesson = Lesson::where('id', '=', $lessonId)->where('status', '=', 'enabled')->find();
@@ -48,11 +50,8 @@ final class PublicLessonService
         }
 
         $isPreview = (int) ($lesson->is_preview ?? 0) === 1;
-        if (!$isPreview) {
-            // ponytail: phase-6 entitlement check goes here.
-            if ($viewerAccountId === null || $viewerAccountId <= 0 || !$this->viewerAuthorized($courseId, $viewerAccountId)) {
-                throw new BusinessException('FORBIDDEN', 'LESSON_LOCKED');
-            }
+        if (!$isPreview && !$authorized) {
+            throw new BusinessException('FORBIDDEN', 'LESSON_LOCKED');
         }
 
         $type = (string) $lesson->content_type;
@@ -90,7 +89,7 @@ final class PublicLessonService
         return [
             'kind'         => $kind,
             'asset_id'     => (int) $asset['id'],
-            'storage_path' => (string) $asset['storage_path'],
+            'media_url'    => '/api/media/assets/' . (int) $asset['id'],
             'mime_type'    => (string) $asset['mime_type'],
             'size_bytes'   => (int) ($asset['size_bytes'] ?? 0),
             'status'       => (string) $asset['status'],

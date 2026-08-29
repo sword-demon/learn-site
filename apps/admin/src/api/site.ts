@@ -1,24 +1,23 @@
-import { ApiResponse, SiteIntro, SiteProfileUpdateInput, SiteProfileUpdatedDTO } from '@learn-site/contracts'
-import { http } from '@/api/http'
+import { ApiResponse, SiteIntro, SiteProfileUpdateInput } from '@learn-site/contracts';
+import { http } from '@/api/http';
 
-export { SiteIntro, SiteProfileUpdateInput, SiteProfileUpdatedDTO }
+export { SiteIntro, SiteProfileUpdateInput };
 
 export async function fetchSiteProfile(): Promise<SiteIntro> {
-  const { data } = await http.get('/site')
-  const parsed = ApiResponse(SiteIntro).parse(data)
+  const { data } = await http.get('/site');
+  const parsed = ApiResponse(SiteIntro).parse(data);
   if (!parsed.ok) {
-    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code })
+    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
   }
-  return parsed.data
+  return parsed.data;
 }
 
-export async function updateSiteProfile(
-  input: SiteProfileUpdateInput,
-): Promise<SiteProfileUpdatedDTO> {
-  const { data } = await http.put('/site', input)
-  const parsed = ApiResponse(SiteProfileUpdatedDTO).parse(data)
+export async function updateSiteProfile(input: SiteProfileUpdateInput): Promise<SiteIntro> {
+  const validInput = SiteProfileUpdateInput.parse(input);
+  const { data } = await http.patch('/site', validInput);
+  const parsed = ApiResponse(SiteIntro).parse(data);
   if (!parsed.ok) {
-    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code })
+    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
   }
-  return parsed.data
+  return parsed.data;
 }

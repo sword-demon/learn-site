@@ -27,10 +27,14 @@ use think\db\Query;
  */
 final class QuestionService
 {
+    private readonly MessageService $messages;
+
     public function __construct(
         private readonly EntitlementService $entitlements,
         private readonly DataScopeService $dataScopes,
+        ?MessageService $messages = null,
     ) {
+        $this->messages = $messages ?? new MessageService();
     }
 
     /** @return array<string, mixed> */
@@ -122,7 +126,7 @@ final class QuestionService
         if ($body === '' || mb_strlen($body) > 4000) {
             throw new BusinessException('VALIDATION_FAILED', 'MESSAGE_BODY_INVALID');
         }
-        return Db::transaction(function () use ($staffId, $questionId, $body) {
+        $result = Db::transaction(function () use ($staffId, $questionId, $body) {
             $q = $this->findQuestionOrThrow($questionId, true);
             $this->assertAdminAccessible($staffId, $q);
             if ($q['status'] === 'closed') {
@@ -137,7 +141,7 @@ final class QuestionService
                 $update['answered_at'] = $now;
                 $update['answered_by_staff_id'] = $staffId;
             }
-            Db::name('question_messages')->insert([
+            $messageId = (int) Db::name('question_messages')->insertGetId([
                 'question_id'       => $questionId,
                 'kind'              => 'admin',
                 'author_learner_id' => null,
@@ -146,25 +150,40 @@ final class QuestionService
                 'created_at'        => $now,
             ]);
             Db::name('questions')->where('id', $questionId)->update($update);
-            return $this->findThread($questionId, null);
+            return [
+                'thread' => $this->findThread($questionId, null),
+                'message_id' => $messageId,
+                'learner_id' => (int) $q['learner_id'],
+                'course_id' => (int) $q['course_id'],
+                'title' => (string) ($q['title'] ?? ''),
+            ];
         });
+        $this->emitQuestionUpdate(
+            (int) $result['learner_id'],
+            $questionId,
+            (int) $result['course_id'],
+            (string) $result['title'],
+            '管理员回复了你的问题。',
+            'question_message:' . (int) $result['message_id'],
+        );
+        return $result['thread'];
     }
 
     /** @return array<string, mixed> */
     public function adminClose(int $staffId, int $questionId): array
     {
-        return Db::transaction(function () use ($staffId, $questionId) {
+        $result = Db::transaction(function () use ($staffId, $questionId) {
             $q = $this->findQuestionOrThrow($questionId, true);
             $this->assertAdminAccessible($staffId, $q);
             if ($q['status'] === 'closed') {
-                return $this->findThread($questionId, null);
+                return ['thread' => $this->findThread($questionId, null), 'notify' => false];
             }
             $now = date('Y-m-d H:i:s');
             Db::name('questions')->where('id', $questionId)->update([
                 'status'     => 'closed',
                 'updated_at' => $now,
             ]);
-            Db::name('question_messages')->insert([
+            $messageId = (int) Db::name('question_messages')->insertGetId([
                 'question_id'       => $questionId,
                 'kind'              => 'system',
                 'author_learner_id' => null,
@@ -172,8 +191,26 @@ final class QuestionService
                 'body'              => 'closed',
                 'created_at'        => $now,
             ]);
-            return $this->findThread($questionId, null);
+            return [
+                'thread' => $this->findThread($questionId, null),
+                'notify' => true,
+                'message_id' => $messageId,
+                'learner_id' => (int) $q['learner_id'],
+                'course_id' => (int) $q['course_id'],
+                'title' => (string) ($q['title'] ?? ''),
+            ];
         });
+        if (($result['notify'] ?? false) === true) {
+            $this->emitQuestionUpdate(
+                (int) $result['learner_id'],
+                $questionId,
+                (int) $result['course_id'],
+                (string) $result['title'],
+                '你的问题已关闭。',
+                'question_message:' . (int) $result['message_id'],
+            );
+        }
+        return $result['thread'];
     }
 
     /**
@@ -443,5 +480,34 @@ final class QuestionService
             'body'              => (string) $m['body'],
             'created_at'        => (string) $m['created_at'],
         ];
+    }
+
+    private function emitQuestionUpdate(
+        int $learnerId,
+        int $questionId,
+        int $courseId,
+        string $questionTitle,
+        string $body,
+        string $idempotencyKey,
+    ): void {
+        try {
+            $title = $questionTitle !== '' ? '问题「' . $questionTitle . '」有新动态' : '你的问题有新动态';
+            $this->messages->emit(
+                MessageService::KIND_QUESTION_UPDATE,
+                $learnerId,
+                $title,
+                $body,
+                ['question_id' => $questionId, 'course_id' => $courseId],
+                'question',
+                $questionId,
+                $idempotencyKey,
+            );
+        } catch (\Throwable $exception) {
+            Logger::warning('question.notification_failed', [
+                'question_id' => $questionId,
+                'learner_id' => $learnerId,
+                'err' => $exception->getMessage(),
+            ]);
+        }
     }
 }

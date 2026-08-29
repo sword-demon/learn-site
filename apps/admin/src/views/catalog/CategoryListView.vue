@@ -3,15 +3,8 @@
     <header class="bar">
       <h2>分类管理</h2>
       <div class="actions">
-        <el-button
-          type="primary"
-          @click="openCreate(null)"
-        >
-          新增顶级分类
-        </el-button>
-        <el-button @click="reload">
-          刷新
-        </el-button>
+        <el-button type="primary" @click="openCreate(null)"> 新增顶级分类 </el-button>
+        <el-button @click="reload"> 刷新 </el-button>
       </div>
     </header>
 
@@ -23,64 +16,28 @@
       :closable="false"
     />
 
-    <el-table
-      v-loading="loading"
-      :data="flatRows"
-      stripe
-      row-key="id"
-      class="table"
-    >
-      <el-table-column
-        prop="name"
-        label="名称"
-        min-width="220"
-      >
+    <el-table v-loading="loading" :data="flatRows" stripe row-key="id" class="table">
+      <el-table-column prop="name" label="名称" min-width="220">
         <template #default="{ row }">
           <span :style="{ paddingLeft: `${(row.depth - 1) * 18}px` }">
             {{ '— '.repeat(row.depth - 1) }}{{ row.name }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column
-        prop="status"
-        label="状态"
-        width="120"
-      >
+      <el-table-column prop="status" label="状态" width="120">
         <template #default="{ row }">
-          <el-tag
-            :type="row.status === 'enabled' ? 'success' : 'info'"
-            effect="light"
-          >
+          <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" effect="light">
             {{ row.status === 'enabled' ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column
-        prop="sort"
-        label="排序"
-        width="100"
-      />
-      <el-table-column
-        label="操作"
-        width="320"
-        fixed="right"
-      >
+      <el-table-column prop="sort" label="排序" width="100" />
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
-          <el-button
-            link
-            type="primary"
-            :disabled="row.depth >= 3"
-            @click="openCreate(row.id)"
-          >
+          <el-button link type="primary" :disabled="row.depth >= 3" @click="openCreate(row.id)">
             新增子级
           </el-button>
-          <el-button
-            link
-            type="primary"
-            @click="openEdit(row)"
-          >
-            编辑
-          </el-button>
+          <el-button link type="primary" @click="openEdit(row)"> 编辑 </el-button>
           <el-button
             link
             :type="row.status === 'enabled' ? 'warning' : 'success'"
@@ -88,230 +45,206 @@
           >
             {{ row.status === 'enabled' ? '禁用' : '启用' }}
           </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="onDelete(row)"
-          >
-            删除
-          </el-button>
+          <el-button link type="danger" @click="onDelete(row)"> 删除 </el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="480px"
-    >
-      <el-form
-        :model="draft"
-        label-position="top"
-      >
-        <el-form-item
-          v-if="draft.parent_id !== null"
-          label="父级"
-        >
-          <el-input
-            :value="parentLabel"
-            disabled
-          />
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="480px">
+      <el-form :model="draft" label-position="top">
+        <el-form-item v-if="draft.parent_id !== null" label="父级">
+          <el-input :value="parentLabel" clearable disabled />
         </el-form-item>
-        <el-form-item
-          label="名称"
-          required
-        >
-          <el-input
-            v-model="draft.name"
-            maxlength="64"
-            placeholder="1–64 字"
-          />
+        <el-form-item label="名称" required>
+          <el-input v-model="draft.name" clearable maxlength="64" placeholder="1–64 字" />
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number
-            v-model="draft.sort"
-            :min="0"
-            :max="999"
-          />
+          <el-input-number v-model="draft.sort" :min="0" :max="999" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="saving"
-          @click="save"
-        >
-          保存
-        </el-button>
+        <el-button @click="dialogVisible = false"> 取消 </el-button>
+        <el-button type="primary" :loading="saving" @click="save"> 保存 </el-button>
       </template>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { CategoryDTO, CategoryStatus, CreateCategoryInput, UpdateCategoryInput } from '@learn-site/contracts'
-import { listCategoryTree, createCategory, updateCategory, setCategoryStatus, deleteCategory, type CategoryNode } from '@/api/catalog'
+import { computed, onMounted, reactive, ref } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import type {
+  CategoryDTO,
+  CategoryStatus,
+  CreateCategoryInput,
+  UpdateCategoryInput,
+} from '@learn-site/contracts';
+import {
+  listCategoryTree,
+  createCategory,
+  updateCategory,
+  setCategoryStatus,
+  deleteCategory,
+  type CategoryNode,
+} from '@/api/catalog';
 
 interface FlatRow extends CategoryDTO {
-  depth: number
+  depth: number;
 }
 
-const loading = ref(false)
-const saving = ref(false)
-const status = ref<'idle' | 'error'>('idle')
-const errorMessage = ref('')
-const tree = ref<CategoryNode[]>([])
-const dialogVisible = ref(false)
-const draft = reactive<{ id: number | null; parent_id: number | null; name: string; sort: number }>({
-  id: null,
-  parent_id: null,
-  name: '',
-  sort: 0,
-})
+const loading = ref(false);
+const saving = ref(false);
+const status = ref<'idle' | 'error'>('idle');
+const errorMessage = ref('');
+const tree = ref<CategoryNode[]>([]);
+const dialogVisible = ref(false);
+const draft = reactive<{ id: number | null; parent_id: number | null; name: string; sort: number }>(
+  {
+    id: null,
+    parent_id: null,
+    name: '',
+    sort: 0,
+  },
+);
 
 function flatten(nodes: CategoryNode[], depth: number, acc: FlatRow[]): FlatRow[] {
   for (const n of nodes) {
-    acc.push({ ...n, depth })
+    acc.push({ ...n, depth });
     if (n.children?.length) {
-      flatten(n.children, depth + 1, acc)
+      flatten(n.children, depth + 1, acc);
     }
   }
-  return acc
+  return acc;
 }
 
-const flatRows = computed<FlatRow[]>(() => flatten(tree.value, 1, []))
+const flatRows = computed<FlatRow[]>(() => flatten(tree.value, 1, []));
 
-const dialogTitle = computed(() => (draft.id === null ? '新增分类' : '编辑分类'))
+const dialogTitle = computed(() => (draft.id === null ? '新增分类' : '编辑分类'));
 
 const parentLabel = computed(() => {
-  if (draft.parent_id === null) return '顶级'
-  const row = flatRows.value.find((r) => r.id === draft.parent_id)
-  return row ? row.name : `#${draft.parent_id}`
-})
+  if (draft.parent_id === null) return '顶级';
+  const row = flatRows.value.find((r) => r.id === draft.parent_id);
+  return row ? row.name : `#${draft.parent_id}`;
+});
 
 function findDepth(nodes: CategoryNode[], id: number): number {
   for (const n of nodes) {
-    if (n.id === id) return n.depth
-    const inner = findDepth(n.children ?? [], id)
-    if (inner) return inner
+    if (n.id === id) return n.depth;
+    const inner = findDepth(n.children ?? [], id);
+    if (inner) return inner;
   }
-  return 0
+  return 0;
 }
 
 async function reload(): Promise<void> {
-  loading.value = true
-  status.value = 'idle'
-  errorMessage.value = ''
+  loading.value = true;
+  status.value = 'idle';
+  errorMessage.value = '';
   try {
-    tree.value = await listCategoryTree()
+    tree.value = await listCategoryTree();
   } catch (err: unknown) {
-    status.value = 'error'
-    errorMessage.value = readError(err, '加载分类失败')
+    status.value = 'error';
+    errorMessage.value = readError(err, '加载分类失败');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function openCreate(parentId: number | null): void {
-  draft.id = null
-  draft.parent_id = parentId
-  draft.name = ''
-  draft.sort = 0
-  dialogVisible.value = true
+  draft.id = null;
+  draft.parent_id = parentId;
+  draft.name = '';
+  draft.sort = 0;
+  dialogVisible.value = true;
 }
 
 function openEdit(row: CategoryDTO): void {
-  draft.id = row.id
-  draft.parent_id = row.parent_id
-  draft.name = row.name
-  draft.sort = row.sort
-  dialogVisible.value = true
+  draft.id = row.id;
+  draft.parent_id = row.parent_id;
+  draft.name = row.name;
+  draft.sort = row.sort;
+  dialogVisible.value = true;
 }
 
 async function save(): Promise<void> {
   if (!draft.name.trim()) {
-    ElMessage.warning('请输入分类名称')
-    return
+    ElMessage.warning('请输入分类名称');
+    return;
   }
-  saving.value = true
+  saving.value = true;
   try {
     if (draft.id === null) {
       const input: CreateCategoryInput = {
         parent_id: draft.parent_id ?? 0,
         name: draft.name.trim(),
         sort: draft.sort,
-      }
+      };
       if (input.parent_id > 0) {
-        const d = findDepth(tree.value, input.parent_id)
+        const d = findDepth(tree.value, input.parent_id);
         if (d >= 3) {
-          ElMessage.error('分类最多 3 层')
-          saving.value = false
-          return
+          ElMessage.error('分类最多 3 层');
+          saving.value = false;
+          return;
         }
       }
-      await createCategory(input)
+      await createCategory(input);
     } else {
       const input: UpdateCategoryInput = {
         name: draft.name.trim(),
         sort: draft.sort,
-      }
-      await updateCategory(draft.id, input)
+      };
+      await updateCategory(draft.id, input);
     }
-    dialogVisible.value = false
-    ElMessage.success('已保存')
-    await reload()
+    dialogVisible.value = false;
+    ElMessage.success('已保存');
+    await reload();
   } catch (err: unknown) {
-    ElMessage.error(readError(err, '保存失败'))
+    ElMessage.error(readError(err, '保存失败'));
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function toggleStatus(row: CategoryDTO): Promise<void> {
-  const next: CategoryStatus = row.status === 'enabled' ? 'disabled' : 'enabled'
+  const next: CategoryStatus = row.status === 'enabled' ? 'disabled' : 'enabled';
   try {
-    await setCategoryStatus(row.id, { status: next })
-    ElMessage.success(`已${next === 'enabled' ? '启用' : '禁用'}`)
-    await reload()
+    await setCategoryStatus(row.id, { status: next });
+    ElMessage.success(`已${next === 'enabled' ? '启用' : '禁用'}`);
+    await reload();
   } catch (err: unknown) {
-    ElMessage.error(readError(err, '状态切换失败'))
+    ElMessage.error(readError(err, '状态切换失败'));
   }
 }
 
 async function onDelete(row: CategoryDTO): Promise<void> {
   try {
-    await ElMessageBox.confirm(`确定删除分类「${row.name}」吗？`, '确认', { type: 'warning' })
+    await ElMessageBox.confirm(`确定删除分类「${row.name}」吗？`, '确认', { type: 'warning' });
   } catch {
-    return
+    return;
   }
   try {
-    await deleteCategory(row.id)
-    ElMessage.success('已删除')
-    await reload()
+    await deleteCategory(row.id);
+    ElMessage.success('已删除');
+    await reload();
   } catch (err: unknown) {
-    ElMessage.error(readError(err, '删除失败'))
+    ElMessage.error(readError(err, '删除失败'));
   }
 }
 
 function readError(err: unknown, fallback: string): string {
   const code = (err as { response?: { data?: { error?: { code?: string; message?: string } } } })
-    ?.response?.data?.error?.code
-  const message = (err as { response?: { data?: { error?: { message?: string } } } })
-    ?.response?.data?.error?.message
-  if (code === 'CATEGORY_IN_USE') return '该分类仍有课程引用，无法变更'
-  if (code === 'CONFLICT') return message ?? '分类冲突'
-  if (code === 'VALIDATION_FAILED') return message ?? '校验失败'
-  return fallback
+    ?.response?.data?.error?.code;
+  const message = (err as { response?: { data?: { error?: { message?: string } } } })?.response
+    ?.data?.error?.message;
+  if (code === 'CATEGORY_IN_USE') return '该分类仍有课程引用，无法变更';
+  if (code === 'CONFLICT') return message ?? '分类冲突';
+  if (code === 'VALIDATION_FAILED') return message ?? '校验失败';
+  return fallback;
 }
 
 onMounted(() => {
-  void reload()
-})
+  void reload();
+});
 </script>
 
 <style scoped>

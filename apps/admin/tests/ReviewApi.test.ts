@@ -14,14 +14,15 @@ describe('admin review API boundary', () => {
   });
 
   it('loads course filters from the review permission boundary', async () => {
+    const options = { courses: [{ id: 12, title: 'TypeScript 深入实践' }] };
     mockHttp.get.mockResolvedValueOnce({
-      data: { courses: [{ id: 12, title: 'TypeScript 深入实践' }] },
+      data: { ok: true, data: options },
     });
     const fetchOptions = Reflect.get(reviewsApi, 'fetchModerationFilterOptions') as
       (() => Promise<unknown>) | undefined;
 
     expect(fetchOptions).toBeTypeOf('function');
-    await fetchOptions?.();
+    await expect(fetchOptions?.()).resolves.toEqual(options);
 
     expect(mockHttp.get).toHaveBeenCalledWith('/reviews/filter-options');
   });
@@ -46,7 +47,7 @@ describe('admin review API boundary', () => {
       },
       replies: [],
     };
-    mockHttp.post.mockResolvedValue({ data: thread });
+    mockHttp.post.mockResolvedValue({ data: { ok: true, data: thread } });
     const hideReply = Reflect.get(reviewsApi, 'hideReviewReply') as
       ((id: number, input: { reason: string }) => Promise<unknown>) | undefined;
     const restoreReply = Reflect.get(reviewsApi, 'restoreReviewReply') as

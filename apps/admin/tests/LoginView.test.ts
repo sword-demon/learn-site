@@ -104,4 +104,22 @@ describe('LoginView', () => {
       query: { next: '/courses' },
     })
   })
+
+  it('rejects a malformed token envelope instead of creating a broken session', async () => {
+    httpApi.post.mockResolvedValueOnce({
+      data: { ok: true, data: { access_token: 'incomplete' } },
+    })
+
+    const wrapper = mount(LoginView)
+    await flushPromises()
+    await wrapper.get('input[placeholder="3–64 位管理员账号"]').setValue('admin')
+    await wrapper.get('input[placeholder="8–72 位"]').setValue('change-me-now')
+    await wrapper.get('input[placeholder="图中字符"]').setValue('x4rv')
+    await wrapper.get('button[type="submit"]').trigger('click')
+    await flushPromises()
+
+    expect(httpApi.setTokens).not.toHaveBeenCalled()
+    expect(routerApi.push).not.toHaveBeenCalled()
+    expect(messageApi.error).toHaveBeenCalledWith('登录失败，请稍后重试')
+  })
 })

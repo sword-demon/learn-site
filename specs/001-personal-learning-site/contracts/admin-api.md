@@ -7,14 +7,13 @@
 | 方法 | 路径 | 权限点 | 说明 |
 |---|---|---|---|
 | GET | `/auth/captcha` | 无 | 返回验证码图片与 `captcha_id`，TTL 120 秒 |
-| POST | `/auth/login` | 无 | `{account, password, captcha_id, captcha}`，返回 access_token (15 分钟) 与 refresh_token (7 天)；账号不得为 11 位手机号；`must_change_password` 时只允许改密接口 |
+| POST | `/auth/login` | 无 | `{account, password, captcha_id, captcha_answer}`，返回 access_token (15 分钟) 与 refresh_token (7 天)；账号不得为 11 位手机号；`must_change_password` 时只允许改密接口 |
 | POST | `/auth/refresh` | 刷新令牌 | 轮换刷新令牌，不要求验证码；重用已失效刷新令牌则吊销整族 |
 | POST | `/auth/logout` | 登录 | 作废当前令牌族 |
 | POST | `/auth/password/first` | 登录 | 首次改密 |
 | POST | `/staff/{id}/kick` | `org.staff` | body `{ family_id? }`；省略则作废该账户全部登录族，传入则只作废该族 |
 | POST | `/learners/{id}/kick` | `learner.kick` | 同上，针对学员账户 |
 | POST | `/learners/{id}/password` | `learner.reset_password` | 管理员重置学员密码；不得仅凭 `learner.view` |
-| GET | `/me` | 登录 | 有效权限点列表、数据范围摘要 |
 | GET | `/dashboard` | `dashboard.view` | 权限范围内待办 |
 
 `GET /dashboard` 返回五类工作台数据：待回答问题、待处理评价、异常学习地图、未发布课程和最近
@@ -55,10 +54,16 @@
 | POST | `/courses/{id}/publish` 等 | `course.publish` |
 | DELETE | `/courses/{id}` | `course.delete` |
 | CRUD | `/courses/{id}/chapters|lessons` | `course.manage` |
-| POST | `/assets` | `course.manage` |
+| POST | `/assets` | `asset.upload` |
 | CRUD | `/learning-maps` | `map.view` / `map.manage` / `map.publish` |
 
 课程、地图写操作必须把 `department_id` 限制在操作者数据范围内。
+
+`DELETE /courses/{id}` 成功返回 `{deleted:true}`。课程必须为 `draft` 或 `unpublished`，且没有订单、
+授权历史、课程/课节学习记录或学习地图引用；对应冲突消息键分别为
+`COURSE_DELETE_REQUIRES_UNPUBLISHED`、`COURSE_HAS_ORDERS`、`COURSE_HAS_ENTITLEMENTS`、
+`COURSE_HAS_LEARNING_RECORDS` 和 `COURSE_IN_LEARNING_MAP`。删除课程级联删除章节和课节，但保留
+脱离课节后的媒体资产记录与文件，避免误删可能复用的资产。
 
 ## 运营
 
@@ -73,8 +78,8 @@
 | POST | `/reviews/{id}/hide|restore` | `review.moderate` |
 | POST | `/review-replies/{id}/hide|restore` | `review.moderate` |
 | GET | `/courses/{id}/students` | `course_student.view` |
-| POST | `/enrollments/{id}/reset` | `course_student.reset` |
-| POST | `/entitlements/{id}/revoke` | `course_student.revoke_free`；付费来源 `403` |
+| POST | `/courses/{courseId}/students/{accountId}/progress/reset` | `course_student.reset` |
+| POST | `/courses/{courseId}/students/{accountId}/revoke` | `course_student.revoke_free`；body `{reason}` 必填；仅免费 active 授权可撤销，付费来源返回 `403 FORBIDDEN / PAID_NOT_REVOCABLE` |
 | GET | `/orders` | `order.view` |
 | GET | `/learners` | `learner.view` | 学员账户列表：注册状态、公开资料、学习与购买摘要 |
 | GET/PATCH | `/site` | `site.manage` |

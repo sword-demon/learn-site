@@ -3,15 +3,8 @@
     <header class="bar">
       <h2>角色管理</h2>
       <div class="actions">
-        <el-button
-          type="primary"
-          @click="openCreate"
-        >
-          新增角色
-        </el-button>
-        <el-button @click="reload">
-          刷新
-        </el-button>
+        <el-button type="primary" @click="openCreate"> 新增角色 </el-button>
+        <el-button @click="reload"> 刷新 </el-button>
       </div>
     </header>
 
@@ -23,70 +16,31 @@
       :closable="false"
     />
 
-    <el-table
-      v-loading="loading"
-      :data="rows"
-      stripe
-      row-key="id"
-      class="table"
-    >
-      <el-table-column
-        prop="name"
-        label="名称"
-        min-width="160"
-      />
-      <el-table-column
-        prop="code"
-        label="代码"
-        min-width="160"
-      />
-      <el-table-column
-        prop="data_scope"
-        label="数据范围"
-        width="160"
-      >
+    <el-table v-loading="loading" :data="rows" stripe row-key="id" class="table">
+      <el-table-column prop="name" label="名称" min-width="160" />
+      <el-table-column prop="code" label="代码" min-width="160" />
+      <el-table-column prop="data_scope" label="数据范围" width="160">
         <template #default="{ row }">
           <el-tag effect="light">
             {{ scopeLabel(row.data_scope) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column
-        prop="permission_ids"
-        label="权限数"
-        width="100"
-      >
+      <el-table-column prop="permission_ids" label="权限数" width="100">
         <template #default="{ row }">
           {{ row.permission_ids.length }}
         </template>
       </el-table-column>
-      <el-table-column
-        prop="status"
-        label="状态"
-        width="100"
-      >
+      <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
-          <el-tag
-            :type="row.status === 'enabled' ? 'success' : 'info'"
-            effect="light"
-          >
+          <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" effect="light">
             {{ row.status === 'enabled' ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column
-        label="操作"
-        width="260"
-        fixed="right"
-      >
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
-          <el-button
-            link
-            type="primary"
-            @click="openEdit(row)"
-          >
-            编辑
-          </el-button>
+          <el-button link type="primary" @click="openEdit(row)"> 编辑 </el-button>
           <el-button
             link
             :type="row.status === 'enabled' ? 'warning' : 'success'"
@@ -94,54 +48,21 @@
           >
             {{ row.status === 'enabled' ? '禁用' : '启用' }}
           </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="onDelete(row)"
-          >
-            删除
-          </el-button>
+          <el-button link type="danger" @click="onDelete(row)"> 删除 </el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="720px"
-    >
-      <el-form
-        :model="draft"
-        label-position="top"
-      >
-        <el-form-item
-          label="名称"
-          required
-        >
-          <el-input
-            v-model="draft.name"
-            maxlength="64"
-            placeholder="1–64 字"
-          />
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px">
+      <el-form :model="draft" label-position="top">
+        <el-form-item label="名称" required>
+          <el-input v-model="draft.name" clearable maxlength="64" placeholder="1–64 字" />
         </el-form-item>
-        <el-form-item
-          v-if="draft.id === null"
-          label="代码"
-          required
-        >
-          <el-input
-            v-model="draft.code"
-            placeholder="小写字母开头，仅 a-z 0-9 _ . -"
-          />
+        <el-form-item v-if="draft.id === null" label="代码" required>
+          <el-input v-model="draft.code" clearable placeholder="小写字母开头，仅 a-z 0-9 _ . -" />
         </el-form-item>
-        <el-form-item
-          label="数据范围"
-          required
-        >
-          <el-select
-            v-model="draft.data_scope"
-            style="width: 100%"
-          >
+        <el-form-item label="数据范围" required>
+          <el-select v-model="draft.data_scope" clearable style="width: 100%">
             <el-option
               v-for="opt in scopeOptions"
               :key="opt.value"
@@ -150,23 +71,16 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item
-          v-if="draft.data_scope === 'specified_depts'"
-          label="指定部门"
-        >
+        <el-form-item v-if="draft.data_scope === 'specified_depts'" label="指定部门">
           <el-select
             v-model="draft.scope_department_ids"
+            clearable
             multiple
             collapse-tags
             placeholder="选择部门"
             style="width: 100%"
           >
-            <el-option
-              v-for="d in departments"
-              :key="d.id"
-              :label="d.name"
-              :value="d.id"
-            />
+            <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="权限">
@@ -246,24 +160,16 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="saving"
-          @click="save"
-        >
-          保存
-        </el-button>
+        <el-button @click="dialogVisible = false"> 取消 </el-button>
+        <el-button type="primary" :loading="saving" @click="save"> 保存 </el-button>
       </template>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import type {
   CreateRoleInput,
   DataScope,
@@ -272,7 +178,7 @@ import type {
   RoleDTO,
   RoleStatus,
   UpdateRoleInput,
-} from '@learn-site/contracts'
+} from '@learn-site/contracts';
 import {
   createRole,
   deleteRole,
@@ -281,7 +187,7 @@ import {
   listRoles,
   setRoleStatus,
   updateRole,
-} from '@/api/org'
+} from '@/api/org';
 
 const scopeOptions: { value: DataScope; label: string }[] = [
   { value: 'all', label: '全部' },
@@ -289,23 +195,23 @@ const scopeOptions: { value: DataScope; label: string }[] = [
   { value: 'specified_depts', label: '指定部门' },
   { value: 'dept', label: '本部门' },
   { value: 'self', label: '仅本人' },
-]
+];
 
-const loading = ref(false)
-const saving = ref(false)
-const status = ref<'idle' | 'error'>('idle')
-const errorMessage = ref('')
-const rows = ref<RoleDTO[]>([])
-const permissions = ref<PermissionDTO[]>([])
-const departments = ref<DepartmentDTO[]>([])
-const dialogVisible = ref(false)
+const loading = ref(false);
+const saving = ref(false);
+const status = ref<'idle' | 'error'>('idle');
+const errorMessage = ref('');
+const rows = ref<RoleDTO[]>([]);
+const permissions = ref<PermissionDTO[]>([]);
+const departments = ref<DepartmentDTO[]>([]);
+const dialogVisible = ref(false);
 const draft = reactive<{
-  id: number | null
-  name: string
-  code: string
-  data_scope: DataScope
-  permission_ids: number[]
-  scope_department_ids: number[]
+  id: number | null;
+  name: string;
+  code: string;
+  data_scope: DataScope;
+  permission_ids: number[];
+  scope_department_ids: number[];
 }>({
   id: null,
   name: '',
@@ -313,22 +219,22 @@ const draft = reactive<{
   data_scope: 'self',
   permission_ids: [],
   scope_department_ids: [],
-})
+});
 
-const dialogTitle = computed(() => (draft.id === null ? '新增角色' : '编辑角色'))
+const dialogTitle = computed(() => (draft.id === null ? '新增角色' : '编辑角色'));
 
 interface PermissionTreeNode {
-  key: string
-  label: string
-  items: PermissionDTO[]
-  children: PermissionTreeNode[]
+  key: string;
+  label: string;
+  items: PermissionDTO[];
+  children: PermissionTreeNode[];
 }
 
 interface PermissionTreeConfig {
-  key: string
-  label: string
-  codes?: readonly string[]
-  children?: readonly PermissionTreeConfig[]
+  key: string;
+  label: string;
+  codes?: readonly string[];
+  children?: readonly PermissionTreeConfig[];
 }
 
 // Keep this order and nesting aligned with AdminMenu.ts. Permissions that
@@ -352,7 +258,11 @@ const permissionTreeConfig: readonly PermissionTreeConfig[] = [
   { key: 'reviews', label: '评价管理', codes: ['review.view', 'review.moderate'] },
   { key: 'maps', label: '学习地图', codes: ['map.view', 'map.manage', 'map.publish'] },
   { key: 'orders', label: '订单管理', codes: ['order.view'] },
-  { key: 'learners', label: '学员账号', codes: ['learner.view', 'learner.reset_password', 'learner.kick'] },
+  {
+    key: 'learners',
+    label: '学员账号',
+    codes: ['learner.view', 'learner.reset_password', 'learner.kick'],
+  },
   { key: 'site-profile', label: '站点资料', codes: ['site.manage'] },
   { key: 'audit', label: '审计日志', codes: ['audit.view'] },
   {
@@ -366,125 +276,122 @@ const permissionTreeConfig: readonly PermissionTreeConfig[] = [
       { key: 'grants', label: '用户级权限覆盖', codes: ['org.grant'] },
     ],
   },
-]
+];
 
 const permissionTree = computed<PermissionTreeNode[]>(() => {
-  const byCode = new Map(permissions.value.map((permission) => [permission.code, permission]))
-  const usedCodes = new Set<string>()
+  const byCode = new Map(permissions.value.map((permission) => [permission.code, permission]));
+  const usedCodes = new Set<string>();
 
   function buildNode(config: PermissionTreeConfig): PermissionTreeNode {
     const items = (config.codes ?? []).flatMap((code) => {
-      const permission = byCode.get(code)
-      if (!permission) return []
-      usedCodes.add(code)
-      return [permission]
-    })
+      const permission = byCode.get(code);
+      if (!permission) return [];
+      usedCodes.add(code);
+      return [permission];
+    });
     const children = (config.children ?? [])
       .map(buildNode)
-      .filter((node) => node.items.length > 0 || node.children.length > 0)
-    return { key: config.key, label: config.label, items, children }
+      .filter((node) => node.items.length > 0 || node.children.length > 0);
+    return { key: config.key, label: config.label, items, children };
   }
 
   const tree = permissionTreeConfig
     .map(buildNode)
-    .filter((node) => node.items.length > 0 || node.children.length > 0)
-  const extras = permissions.value.filter((permission) => !usedCodes.has(permission.code))
+    .filter((node) => node.items.length > 0 || node.children.length > 0);
+  const extras = permissions.value.filter((permission) => !usedCodes.has(permission.code));
   if (extras.length > 0) {
-    tree.push({ key: 'other', label: '其他权限', items: extras, children: [] })
+    tree.push({ key: 'other', label: '其他权限', items: extras, children: [] });
   }
-  return tree
-})
+  return tree;
+});
 
 function permissionIdsForNode(node: PermissionTreeNode): number[] {
   return [
     ...node.items.map((permission) => permission.id),
     ...node.children.flatMap(permissionIdsForNode),
-  ]
+  ];
 }
 
 function selectedPermissionCount(node: PermissionTreeNode): number {
-  const selected = new Set(draft.permission_ids)
-  return permissionIdsForNode(node).filter((id) => selected.has(id)).length
+  const selected = new Set(draft.permission_ids);
+  return permissionIdsForNode(node).filter((id) => selected.has(id)).length;
 }
 
 function isPermissionNodeChecked(node: PermissionTreeNode): boolean {
-  const ids = permissionIdsForNode(node)
-  return ids.length > 0 && selectedPermissionCount(node) === ids.length
+  const ids = permissionIdsForNode(node);
+  return ids.length > 0 && selectedPermissionCount(node) === ids.length;
 }
 
 function isPermissionNodeIndeterminate(node: PermissionTreeNode): boolean {
-  const selected = selectedPermissionCount(node)
-  return selected > 0 && selected < permissionIdsForNode(node).length
+  const selected = selectedPermissionCount(node);
+  return selected > 0 && selected < permissionIdsForNode(node).length;
 }
 
-function togglePermissionNode(
-  node: PermissionTreeNode,
-  value: boolean | string | number,
-): void {
-  const selected = new Set(draft.permission_ids)
+function togglePermissionNode(node: PermissionTreeNode, value: boolean | string | number): void {
+  const selected = new Set(draft.permission_ids);
   for (const id of permissionIdsForNode(node)) {
-    if (value) selected.add(id)
-    else selected.delete(id)
+    if (value) selected.add(id);
+    else selected.delete(id);
   }
-  draft.permission_ids = Array.from(selected)
+  draft.permission_ids = Array.from(selected);
 }
 
 function scopeLabel(scope: DataScope): string {
-  return scopeOptions.find((o) => o.value === scope)?.label ?? scope
+  return scopeOptions.find((o) => o.value === scope)?.label ?? scope;
 }
 
 async function reload(): Promise<void> {
-  loading.value = true
-  status.value = 'idle'
-  errorMessage.value = ''
+  loading.value = true;
+  status.value = 'idle';
+  errorMessage.value = '';
   try {
-    const out = await listRoles()
-    rows.value = out.items
+    const out = await listRoles();
+    rows.value = out.items;
   } catch (err: unknown) {
-    status.value = 'error'
-    errorMessage.value = readError(err, '加载角色失败')
+    status.value = 'error';
+    errorMessage.value = readError(err, '加载角色失败');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function loadSupportData(): Promise<void> {
   try {
-    const [p, d] = await Promise.all([listPermissions(), listDepartments()])
-    permissions.value = p.items
-    departments.value = d.items.filter((x) => x.status === 'enabled')
+    const [p, d] = await Promise.all([listPermissions(), listDepartments()]);
+    permissions.value = p.items;
+    departments.value = d.items.filter((x) => x.status === 'enabled');
   } catch {
-    permissions.value = []
-    departments.value = []
+    permissions.value = [];
+    departments.value = [];
   }
 }
 
 function openCreate(): void {
-  draft.id = null
-  draft.name = ''
-  draft.code = ''
-  draft.data_scope = 'self'
-  draft.permission_ids = []
-  draft.scope_department_ids = []
-  dialogVisible.value = true
+  draft.id = null;
+  draft.name = '';
+  draft.code = '';
+  draft.data_scope = 'self';
+  draft.permission_ids = [];
+  draft.scope_department_ids = [];
+  dialogVisible.value = true;
 }
 
 function openEdit(row: RoleDTO): void {
-  draft.id = row.id
-  draft.name = row.name
-  draft.code = row.code
-  draft.data_scope = row.data_scope
-  draft.permission_ids = [...row.permission_ids]
-  draft.scope_department_ids = [...row.scope_department_ids]
-  dialogVisible.value = true
+  draft.id = row.id;
+  draft.name = row.name;
+  draft.code = row.code;
+  draft.data_scope = row.data_scope;
+  draft.permission_ids = [...row.permission_ids];
+  draft.scope_department_ids = [...row.scope_department_ids];
+  dialogVisible.value = true;
 }
 
 async function save(): Promise<void> {
   if (!draft.name.trim()) {
-    ElMessage.warning('请输入角色名称')
-    return
+    ElMessage.warning('请输入角色名称');
+    return;
   }
-  saving.value = true
+  saving.value = true;
   try {
     if (draft.id === null) {
       const input: CreateRoleInput = {
@@ -493,41 +400,37 @@ async function save(): Promise<void> {
         data_scope: draft.data_scope,
         permission_ids: draft.permission_ids,
         scope_department_ids:
-          draft.data_scope === 'specified_depts'
-            ? draft.scope_department_ids
-            : [],
-      }
-      await createRole(input)
+          draft.data_scope === 'specified_depts' ? draft.scope_department_ids : [],
+      };
+      await createRole(input);
     } else {
       const input: UpdateRoleInput = {
         name: draft.name.trim(),
         data_scope: draft.data_scope,
         permission_ids: draft.permission_ids,
         scope_department_ids:
-          draft.data_scope === 'specified_depts'
-            ? draft.scope_department_ids
-            : [],
-      }
-      await updateRole(draft.id, input)
+          draft.data_scope === 'specified_depts' ? draft.scope_department_ids : [],
+      };
+      await updateRole(draft.id, input);
     }
-    dialogVisible.value = false
-    ElMessage.success('已保存')
-    await reload()
+    dialogVisible.value = false;
+    ElMessage.success('已保存');
+    await reload();
   } catch (err: unknown) {
-    ElMessage.error(readError(err, '保存失败'))
+    ElMessage.error(readError(err, '保存失败'));
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function toggleStatus(row: RoleDTO): Promise<void> {
-  const next: RoleStatus = row.status === 'enabled' ? 'disabled' : 'enabled'
+  const next: RoleStatus = row.status === 'enabled' ? 'disabled' : 'enabled';
   try {
-    await setRoleStatus(row.id, next)
-    ElMessage.success(`已${next === 'enabled' ? '启用' : '禁用'}`)
-    await reload()
+    await setRoleStatus(row.id, next);
+    ElMessage.success(`已${next === 'enabled' ? '启用' : '禁用'}`);
+    await reload();
   } catch (err: unknown) {
-    ElMessage.error(readError(err, '状态切换失败'))
+    ElMessage.error(readError(err, '状态切换失败'));
   }
 }
 
@@ -535,37 +438,37 @@ async function onDelete(row: RoleDTO): Promise<void> {
   try {
     await ElMessageBox.confirm(`确定删除角色「${row.name}」吗？`, '确认', {
       type: 'warning',
-    })
+    });
   } catch {
-    return
+    return;
   }
   try {
-    await deleteRole(row.id)
-    ElMessage.success('已删除')
-    await reload()
+    await deleteRole(row.id);
+    ElMessage.success('已删除');
+    await reload();
   } catch (err: unknown) {
-    ElMessage.error(readError(err, '删除失败'))
+    ElMessage.error(readError(err, '删除失败'));
   }
 }
 
 function readError(err: unknown, fallback: string): string {
   const code = (err as { response?: { data?: { error?: { code?: string; message?: string } } } })
-    ?.response?.data?.error?.code
-  const message = (err as { response?: { data?: { error?: { message?: string } } } })
-    ?.response?.data?.error?.message
-  if (code === 'ROLE_CODE_INVALID') return '代码格式错误，需小写字母开头、仅含 a-z 0-9 _ . -'
-  if (code === 'ROLE_CODE_TAKEN') return '角色代码已存在'
-  if (code === 'ROLE_SCOPE_INVALID') return '数据范围无效'
-  if (code === 'ROLE_IN_USE') return '该角色仍有员工，无法删除'
-  if (code === 'CONFLICT') return message ?? '角色冲突'
-  if (code === 'VALIDATION_FAILED') return message ?? '校验失败'
-  return fallback
+    ?.response?.data?.error?.code;
+  const message = (err as { response?: { data?: { error?: { message?: string } } } })?.response
+    ?.data?.error?.message;
+  if (code === 'ROLE_CODE_INVALID') return '代码格式错误，需小写字母开头、仅含 a-z 0-9 _ . -';
+  if (code === 'ROLE_CODE_TAKEN') return '角色代码已存在';
+  if (code === 'ROLE_SCOPE_INVALID') return '数据范围无效';
+  if (code === 'ROLE_IN_USE') return '该角色仍有员工，无法删除';
+  if (code === 'CONFLICT') return message ?? '角色冲突';
+  if (code === 'VALIDATION_FAILED') return message ?? '校验失败';
+  return fallback;
 }
 
 onMounted(() => {
-  void loadSupportData()
-  void reload()
-})
+  void loadSupportData();
+  void reload();
+});
 </script>
 
 <style scoped>
@@ -645,6 +548,8 @@ onMounted(() => {
   margin-left: 8px;
 }
 @media (max-width: 720px) {
-  .permission-leaves { grid-template-columns: minmax(0, 1fr); }
+  .permission-leaves {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

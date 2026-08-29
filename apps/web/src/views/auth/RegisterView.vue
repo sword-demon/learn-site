@@ -34,12 +34,18 @@
               type="password"
               autocomplete="new-password"
               show-password
+              placeholder="8–72 位"
             />
           </label>
           <label class="field">
             图形验证码
             <div class="captcha-row">
-              <el-input v-model="form.captcha_answer" maxlength="8" autocomplete="off" />
+              <el-input
+                v-model="form.captcha_answer"
+                maxlength="8"
+                autocomplete="off"
+                placeholder="图中字符"
+              />
               <button
                 type="button"
                 class="captcha-btn"

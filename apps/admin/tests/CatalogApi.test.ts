@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockHttp = vi.hoisted(() => ({
+  delete: vi.fn(),
   get: vi.fn(),
   post: vi.fn(),
 }))
 
 vi.mock('@/api/http', () => ({ default: mockHttp }))
 
-import { listCategoryTree, uploadCourseCover } from '@/api/catalog'
+import { deleteCourse, listCategoriesFlat, listCategoryTree, uploadCourseCover } from '@/api/catalog'
 
 const root = {
   id: 1,
@@ -57,6 +58,18 @@ describe('catalog API boundary', () => {
     }])
   })
 
+  it('unwraps the standard API envelope for the flat category list', async () => {
+    const list = { items: [root], total: 1, page: 1, limit: 20 }
+    mockHttp.get.mockResolvedValueOnce({
+      data: { ok: true, data: list },
+    })
+
+    await expect(listCategoriesFlat({ page: 1, limit: 20 })).resolves.toEqual(list)
+    expect(mockHttp.get).toHaveBeenCalledWith('/categories/flat', {
+      params: { page: 1, limit: 20 },
+    })
+  })
+
   it('uploads a course cover and unwraps the standard API envelope', async () => {
     const file = new File(['image'], 'cover.webp', { type: 'image/webp' })
     mockHttp.post.mockResolvedValueOnce({
@@ -82,5 +95,14 @@ describe('catalog API boundary', () => {
     const body = call![1]
     expect(path).toBe('/course-covers')
     expect(body.get('file')).toBe(file)
+  })
+
+  it('validates and returns the course deletion result', async () => {
+    mockHttp.delete.mockResolvedValueOnce({
+      data: { ok: true, data: { deleted: true } },
+    })
+
+    await expect(deleteCourse(12)).resolves.toEqual({ deleted: true })
+    expect(mockHttp.delete).toHaveBeenCalledWith('/courses/12')
   })
 })

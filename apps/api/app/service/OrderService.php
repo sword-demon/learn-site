@@ -66,6 +66,28 @@ final class OrderService
             throw new BusinessException('VALIDATION_FAILED', 'COURSE_PRICE_INVALID');
         }
 
+        // A pending order already represents a confirmed price. Reuse its
+        // immutable snapshot even when the course's sale window has since
+        // closed; only a brand-new confirmation must revalidate the window.
+        $existingPending = Db::name('orders')
+            ->where('learner_id', $learnerId)
+            ->where('course_id', $courseId)
+            ->where('status', 'pending')
+            ->find();
+        if ($existingPending) {
+            $orderId = (int) $existingPending['id'];
+            $amount = (float) $existingPending['paid_amount'];
+            $paymentEnvelope = $this->payment->createCharge($orderId, $amount, 'CNY');
+            if ($this->payment instanceof FakePaymentAdapter) {
+                $this->payment->scheduleSuccess($orderId);
+            }
+            return [
+                'order_id' => $orderId,
+                'status'   => 'pending',
+                'payment'  => $paymentEnvelope,
+            ];
+        }
+
         // Sale window check: if a sale price is declared it must be in
         // an open window to count as the snapshot.
         $now = time();
@@ -74,6 +96,13 @@ final class OrderService
         $saleOpen  = (float) ($course['sale_price'] ?? 0) > 0
             && $saleStart !== null && $saleEnd !== null
             && $now >= $saleStart && $now < $saleEnd;
+
+        if ((float) ($course['sale_price'] ?? 0) > 0 && !$saleOpen) {
+            // A published course may outlive its limited-time offer. Do not
+            // silently charge the list price from a stale confirmation page;
+            // make the client refresh the current price instead.
+            throw new BusinessException('VALIDATION_FAILED', 'SALE_WINDOW_EXPIRED');
+        }
 
         $listPrice = (float) $course['list_price'];
         $salePrice = $saleOpen ? (float) $course['sale_price'] : 0.0;
@@ -120,7 +149,8 @@ final class OrderService
             'paid_amount'=> $paidAmount,
         ]);
 
-        $paymentEnvelope = $this->payment->createCharge($orderId, $paidAmount, 'CNY');
+        $effectiveAmount = is_array($row) ? (float) $row['paid_amount'] : $paidAmount;
+        $paymentEnvelope = $this->payment->createCharge($orderId, $effectiveAmount, 'CNY');
         if ($this->payment instanceof FakePaymentAdapter) {
             $this->payment->scheduleSuccess($orderId);
         }

@@ -33,7 +33,8 @@ import {
   LearnerMapDetailDTO,
   FavoriteListDTO,
   FavoriteToggleDTO,
-  ShareCreateDTO,
+  LearnerProfileDTO,
+  LearnerProfileUpdateInput,
 } from '@learn-site/contracts';
 import { http } from '@/api/http';
 
@@ -103,6 +104,35 @@ export async function fetchHome(): Promise<HomePayload> {
   }
 }
 
+export async function fetchLearnerProfile(): Promise<LearnerProfileDTO> {
+  try {
+    const { data } = await http.get('/me');
+    const parsed = ApiResponse(LearnerProfileDTO).parse(data);
+    if (!parsed.ok) {
+      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+    }
+    return parsed.data;
+  } catch (err) {
+    throwApi(err);
+  }
+}
+
+export async function updateLearnerProfile(
+  input: LearnerProfileUpdateInput,
+): Promise<LearnerProfileDTO> {
+  const body = LearnerProfileUpdateInput.parse(input);
+  try {
+    const { data } = await http.patch('/me', body);
+    const parsed = ApiResponse(LearnerProfileDTO).parse(data);
+    if (!parsed.ok) {
+      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+    }
+    return parsed.data;
+  } catch (err) {
+    throwApi(err);
+  }
+}
+
 export async function fetchCategoryCourses(
   categoryId: number,
   page = 1,
@@ -149,6 +179,14 @@ export async function fetchLesson(courseId: number, lessonId: number): Promise<L
   } catch (err) {
     throwApi(err);
   }
+}
+
+export async function fetchMediaObjectUrl(mediaUrl: string): Promise<string> {
+  const { data } = await http.get<Blob>(mediaUrl, {
+    baseURL: '',
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(data);
 }
 
 export async function startCourse(courseId: number): Promise<StartCourseResponseDTO> {
@@ -232,6 +270,27 @@ export async function reportLessonProgress(
   }
 }
 
+/** Persist a video heartbeat through the video-only learner contract. */
+export async function reportVideoHeartbeat(
+  lessonId: number,
+  positionSeconds: number,
+  durationSeconds: number,
+): Promise<LessonProgressDTO> {
+  try {
+    const { data } = await http.post(`/lessons/${lessonId}/video-heartbeat`, {
+      position_seconds: Math.max(0, Math.floor(positionSeconds)),
+      duration_seconds: Math.max(0, Math.floor(durationSeconds)),
+    });
+    const parsed = ApiResponse(LessonProgressDTO).parse(data);
+    if (!parsed.ok) {
+      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+    }
+    return parsed.data;
+  } catch (err) {
+    throwApi(err);
+  }
+}
+
 // Phase 11 / US4 — lesson Q&A
 export async function fetchLessonQuestions(
   lessonId: number,
@@ -282,7 +341,7 @@ export async function fetchQuestion(id: number): Promise<QuestionThreadDTO> {
 export async function postFollowup(id: number, input: FollowupInput): Promise<QuestionThreadDTO> {
   const body = FollowupInput.parse(input);
   try {
-    const { data } = await http.post(`/questions/${id}/followup`, body);
+    const { data } = await http.post(`/questions/${id}/messages`, body);
     const parsed = ApiResponse(QuestionThreadDTO).parse(data);
     if (!parsed.ok) {
       throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
@@ -458,19 +517,6 @@ export async function removeFavorite(courseId: number): Promise<FavoriteToggleDT
   try {
     const { data } = await http.delete(`/courses/${courseId}/favorite`);
     const parsed = ApiResponse(FavoriteToggleDTO).parse(data);
-    if (!parsed.ok) {
-      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
-    }
-    return parsed.data;
-  } catch (err) {
-    throwApi(err);
-  }
-}
-
-export async function createShare(courseId: number): Promise<ShareCreateDTO> {
-  try {
-    const { data } = await http.post(`/courses/${courseId}/share`);
-    const parsed = ApiResponse(ShareCreateDTO).parse(data);
     if (!parsed.ok) {
       throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
     }

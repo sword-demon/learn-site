@@ -20,12 +20,10 @@ final class Authorize implements MiddlewareInterface
         '/api/admin/v1/staff' => 'org.staff',
         '/api/admin/v1/categories' => 'category.manage',
         '/api/admin/v1/questions' => 'qa.view',
-        '/api/admin/v1/qa' => 'qa.view',
         '/api/admin/v1/reviews' => 'review.view',
         '/api/admin/v1/orders' => 'order.view',
         '/api/admin/v1/learners' => 'learner.view',
         '/api/admin/v1/site' => 'site.manage',
-        '/api/admin/v1/audit' => 'audit.view',
         '/api/admin/v1/moderation-logs' => 'audit.view',
     ];
 
@@ -44,11 +42,11 @@ final class Authorize implements MiddlewareInterface
         if (preg_match('#^/api/admin/v1/staff/(\d+)/kick$#', $path) && $method === 'POST') {
             return 'org.staff';
         }
-        if (preg_match('#^/api/admin/v1/entitlements/(\d+)/revoke$#', $path)) {
-            return 'course_student.revoke_free';
-        }
         if (preg_match('#^/api/admin/v1/courses/(\d+)/students/(\d+)/revoke$#', $path)) {
             return 'course_student.revoke_free';
+        }
+        if (preg_match('#^/api/admin/v1/courses/(\d+)/students/(\d+)/progress/reset$#', $path)) {
+            return 'course_student.reset';
         }
         if (preg_match('#^/api/admin/v1/courses/(\d+)/(?:publish|unpublish)$#', $path)) {
             return 'course.publish';
@@ -60,9 +58,6 @@ final class Authorize implements MiddlewareInterface
             return $method === 'GET' ? 'course.view' : 'course.manage';
         }
         if (preg_match('#^/api/admin/v1/questions/(\d+)/(answer|close)#', $path)) {
-            return 'qa.answer';
-        }
-        if (preg_match('#^/api/admin/v1/qa/(\d+)/(answer|close)#', $path)) {
             return 'qa.answer';
         }
         if (preg_match('#^/api/admin/v1/reviews/(\d+)/(hide|restore)$#', $path)) {

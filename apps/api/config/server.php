@@ -17,7 +17,7 @@ return [
     'stop_timeout' => 2,
     'pid_file' => runtime_path() . '/webman.pid',
     'status_file' => runtime_path() . '/webman.status',
-    'stdout_file' => '/dev/stdout',
-    'log_file' => '/dev/stderr',
+    'stdout_file' => 'php://stdout',
+    'log_file' => '/dev/null',
     'max_package_size' => 10 * 1024 * 1024
 ];

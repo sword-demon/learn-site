@@ -215,26 +215,55 @@ onMounted(loadCourses);
 
 <template>
   <section class="reviews-page">
-    <header class="head">
-      <h1 class="display">评价管理</h1>
-      <div class="filter-row">
-        <label class="filter">
-          课程
-          <select v-model.number="courseId" :disabled="coursesLoading">
-            <option v-if="!courses.length" :value="null">暂无可审核课程</option>
-            <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.title }}</option>
-          </select>
-        </label>
-        <label class="filter">
-          状态
-          <select v-model="visibility">
-            <option v-for="opt in visibilityOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
-        </label>
+    <header class="page-head">
+      <div class="title-block">
+        <span class="section-kicker">运营工作台 / 评价</span>
+        <h1 class="display">评价管理</h1>
+        <p class="subtitle">按课程查看学员评价，处理隐藏、恢复与管理员回复。</p>
+      </div>
+      <div class="head-metric">
+        <span class="metric-label">当前列表</span>
+        <strong>{{ total }}</strong>
+        <span>条评价</span>
       </div>
     </header>
+
+    <el-card class="filter-panel" shadow="never">
+      <el-form inline class="filter-form" @submit.prevent>
+        <el-form-item label="课程">
+          <el-select
+            v-model="courseId"
+            class="filter-control filter-control--course"
+            clearable
+            filterable
+            :disabled="coursesLoading"
+            no-data-text="暂无可审核课程"
+            placeholder="选择课程"
+            placement="bottom-start"
+            data-field="course_id"
+          >
+            <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="visibility"
+            class="filter-control filter-control--status"
+            clearable
+            placeholder="全部"
+            placement="bottom-start"
+            data-field="visibility"
+          >
+            <el-option
+              v-for="opt in visibilityOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
     <div class="layout">
       <aside class="list-pane">
@@ -247,7 +276,7 @@ onMounted(loadCourses);
             class="review-item"
             :class="{ active: active && active.review.id === r.review.id }"
           >
-            <button type="button" class="review-button" @click="openReview(r.review.id)">
+            <el-button class="review-button" @click="openReview(r.review.id)">
               <span class="rating">{{ ratingStars(r.review.rating) }}</span>
               <span class="author">{{ r.review.author_name }}</span>
               <span class="body">{{ r.review.body }}</span>
@@ -257,16 +286,14 @@ onMounted(loadCourses);
                 </span>
                 <time>{{ formattedAt(r.review.created_at) }}</time>
               </span>
-            </button>
+            </el-button>
           </li>
         </ol>
         <p v-else class="notice">该筛选下暂无评价.</p>
         <nav v-if="total > limit" class="pager">
-          <button type="button" class="btn" :disabled="page <= 1" @click="page--">上一页</button>
+          <el-button class="btn" :disabled="page <= 1" @click="page--">上一页</el-button>
           <span class="pager-info">{{ page }} / {{ totalPages }}</span>
-          <button type="button" class="btn" :disabled="page >= totalPages" @click="page++">
-            下一页
-          </button>
+          <el-button class="btn" :disabled="page >= totalPages" @click="page++"> 下一页 </el-button>
         </nav>
       </aside>
 
@@ -302,50 +329,57 @@ onMounted(loadCourses);
         <p v-else class="notice">暂无回复.</p>
 
         <section class="actions">
-          <form
+          <el-form
             v-if="canModerate && active.review.visibility === 'public'"
+            inline
             class="hide-form"
             @submit.prevent="submitHide"
           >
-            <label>
-              隐藏原因
-              <input
+            <el-form-item label="隐藏原因">
+              <el-input
                 v-model="hideReason"
-                type="text"
+                clearable
                 maxlength="255"
                 placeholder="例: 含广告 / 违规言论"
               />
-            </label>
-            <button type="submit" class="btn btn-danger" :disabled="submitting">隐藏评价</button>
-          </form>
-          <button
+            </el-form-item>
+            <el-button native-type="submit" class="btn btn-danger" :disabled="submitting">
+              隐藏评价
+            </el-button>
+          </el-form>
+          <el-button
             v-else-if="canModerate"
-            type="button"
             class="btn btn-primary"
             :disabled="submitting"
             @click="submitRestore"
           >
             恢复评价
-          </button>
+          </el-button>
 
-          <form
+          <el-form
             v-if="active.review.visibility === 'public'"
             class="reply-form"
             @submit.prevent="submitReply"
           >
-            <label>
-              {{ replyTo === null ? '管理员回复' : `回复 #${replyTo}` }}
-              <textarea v-model="replyBody" rows="3" maxlength="4000" placeholder="写下回复" />
-            </label>
+            <el-form-item :label="replyTo === null ? '管理员回复' : `回复 #${replyTo}`">
+              <el-input
+                v-model="replyBody"
+                clearable
+                type="textarea"
+                :rows="3"
+                maxlength="4000"
+                placeholder="写下回复"
+              />
+            </el-form-item>
             <div class="row-end">
-              <button v-if="replyTo !== null" type="button" class="btn" @click="replyTo = null">
+              <el-button v-if="replyTo !== null" class="btn" @click="replyTo = null">
                 取消回复
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="submitting">
+              </el-button>
+              <el-button native-type="submit" class="btn btn-primary" :disabled="submitting">
                 {{ submitting ? '提交中…' : '提交回复' }}
-              </button>
+              </el-button>
             </div>
-          </form>
+          </el-form>
           <p v-if="actionError" class="error">{{ actionError }}</p>
         </section>
       </article>
@@ -359,48 +393,130 @@ onMounted(loadCourses);
 <style scoped>
 .reviews-page {
   display: grid;
-  gap: 16px;
+  gap: 18px;
+  min-width: 0;
 }
-.head {
+.page-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 18px;
+}
+.title-block {
+  min-width: 0;
+}
+.section-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #168da7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 .display {
   margin: 0;
-  font-size: 1.4rem;
+  color: #102a43;
+  font-size: clamp(1.6rem, 2vw, 2rem);
+  letter-spacing: -0.025em;
 }
-.filter-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+.subtitle {
+  max-width: 620px;
+  margin: 7px 0 0;
+  color: #6b7c93;
+  font-size: 13px;
 }
-.filter {
+.head-metric {
   display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
+  min-width: 132px;
+  padding-left: 18px;
+  border-left: 1px solid #d8e2eb;
+  color: #6b7c93;
+  font-size: 12px;
+  line-height: 1.4;
 }
-.filter select {
-  padding: 4px 8px;
+.head-metric strong {
+  color: #102a43;
+  font-size: 25px;
+  line-height: 1.15;
+}
+.filter-panel {
+  --el-card-border-color: #dce6ef;
+  --el-card-padding: 18px;
+  min-width: 0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04);
+}
+.filter-panel :deep(.el-card__body) {
+  min-width: 0;
+  padding: 14px 18px;
+}
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 18px;
+  min-width: 0;
+}
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.filter-form :deep(.el-form-item__label) {
+  color: #52667a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.filter-control--course {
+  width: min(360px, 100%);
+}
+.filter-control--status {
+  width: 168px;
 }
 .layout {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
-  gap: 16px;
+  grid-template-columns: minmax(300px, 370px) minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+  min-width: 0;
 }
 @media (max-width: 900px) {
+  .head-metric {
+    margin-left: 0;
+  }
   .layout {
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 560px) {
+  .filter-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .filter-form :deep(.el-form-item) {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+  }
+  .filter-control--course,
+  .filter-control--status {
+    width: 100%;
+  }
+  .head-metric {
+    width: 100%;
+    padding: 10px 0 0;
+    border-top: 1px solid #d8e2eb;
+    border-left: 0;
+  }
+}
 .list-pane,
 .detail-pane {
-  border: 1px solid var(--color-border, #d0d4dc);
+  min-width: 0;
+  border: 1px solid #dce6ef;
   border-radius: 8px;
-  padding: 16px;
+  padding: 16px 18px;
   background: #fff;
+  box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04);
 }
 .review-list {
   list-style: none;

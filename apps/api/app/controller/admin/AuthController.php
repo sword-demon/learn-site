@@ -20,8 +20,7 @@ final class AuthController
         private readonly TokenService $tokens,
         private readonly CaptchaService $captcha,
         private readonly PermissionService $perms,
-    ) {
-    }
+    ) {}
 
     public function captcha(Request $request): \support\Response
     {
@@ -73,6 +72,7 @@ final class AuthController
         // time to filter the sidebar and guard routes. Refresh re-hydrates
         // via the same `effectiveCodes` call from AdminAuth middleware.
         $pair['permission_codes'] = $this->perms->effectiveCodes((int) $acct->id);
+        $pair['account_id'] = $acct->login; // 包含管理员账号用于前端显示
         return ApiResponse::ok($pair);
     }
 
@@ -94,7 +94,8 @@ final class AuthController
         }
         $rotated['must_change_password'] = (bool) $account->must_change_password;
         $rotated['permission_codes'] = $this->perms->effectiveCodes($accountId);
-        unset($rotated['account_id'], $rotated['kind']);
+        $rotated['account_id'] = $account->login; // 包含管理员账号用于前端显示
+        unset($rotated['kind']);
         return ApiResponse::ok($rotated);
     }
 

@@ -1,36 +1,79 @@
-import { test, expect } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-/**
- * T107 — admin smoke. Skip-on-offline same convention as the web suite.
- */
+const CAPTCHA_ANSWER = process.env.E2E_CAPTCHA_ANSWER ?? 'E2-7'
+const OWNER_ACCOUNT = process.env.E2E_OWNER_ACCOUNT ?? 'e2e-owner'
+const OWNER_PASSWORD = process.env.E2E_OWNER_PASSWORD ?? 'OwnerPass123!'
+const EDITOR_ACCOUNT = process.env.E2E_EDITOR_ACCOUNT ?? 'e2e-course-editor'
+const EDITOR_PASSWORD = process.env.E2E_EDITOR_PASSWORD ?? 'EditorPass123!'
 
-const STACK_READY = process.env.SKIP_SMOKE !== '1'
+const DRAFT_COURSE = 'E2E 待发布课程'
+const VISIBLE_COURSE = 'E2E 范围内免费课'
+const HIDDEN_COURSE = 'E2E 范围外课程'
 
-test.describe('admin smoke', () => {
-  test.skip(!STACK_READY, 'set SKIP_SMOKE=0 with the stack running to run smoke')
+async function login(page: Page, account: string, password: string): Promise<void> {
+  await page.goto('/login')
+  await expect(page).toHaveTitle(/管理员登录/)
+  await expect(page.getByRole('img', { name: '验证码' })).toBeVisible()
 
-  test('login page renders with captcha field', async ({ page }) => {
-    await page.goto('/login')
-    await expect(page.locator('input[name="login"], input[name="account"]')).toBeVisible()
-    await expect(page.locator('input[name="password"]')).toBeVisible()
+  await page.getByLabel('账号').fill(account)
+  await page.getByLabel('密码').fill(password)
+  await page.getByLabel('验证码').fill(CAPTCHA_ANSWER)
+
+  const loginResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/api/admin/v1/auth/login'),
+  )
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  expect((await loginResponse).status()).toBe(200)
+}
+
+test.describe.serial('管理端核心旅程', () => {
+  test('超级管理员通过验证码登录并发布完整草稿课程', async ({ page }) => {
+    await login(page, OWNER_ACCOUNT, OWNER_PASSWORD)
+    await expect(page).toHaveURL(/\/$/)
+    await expect(page.getByText('学习平台 · 管理端')).toBeVisible()
+
+    await page.getByText('课程管理', { exact: true }).click()
+    await expect(page).toHaveURL(/\/courses$/)
+
+    const courseRow = page.getByRole('row').filter({ hasText: DRAFT_COURSE })
+    await expect(courseRow).toContainText('草稿')
+    await courseRow.getByRole('button', { name: '发布', exact: true }).click()
+    await page.getByRole('button', { name: '确定', exact: true }).click()
+
+    await expect(courseRow).toContainText('已发布')
   })
 
-  test('admin can reach dashboard route after fake login', async ({ page }) => {
-    // Use the API directly to bypass captcha typing in CI. The token is
-    // stored in localStorage by the admin app on a successful login.
-    const apiBase = process.env.API_BASE_URL ?? 'http://127.0.0.1:8787'
-    const res = await page.request.post(`${apiBase}/api/admin/v1/auth/login`, {
-      data: { account: 'admin', password: 'change-me-now' },
+  test('受限员工只看到已授权菜单和本部门课程', async ({ page }) => {
+    await login(page, EDITOR_ACCOUNT, EDITOR_PASSWORD)
+    await expect(page).toHaveURL(/\/courses$/)
+
+    const menu = page.locator('.menu')
+    await expect(menu.getByText('课程管理', { exact: true })).toBeVisible()
+    await expect(menu.getByText('订单管理', { exact: true })).toHaveCount(0)
+    await expect(menu.getByText('组织管理', { exact: true })).toHaveCount(0)
+
+    await expect(page.getByText(VISIBLE_COURSE, { exact: true })).toBeVisible()
+    await expect(page.getByText(HIDDEN_COURSE, { exact: true })).toHaveCount(0)
+
+    await page.goto('/orders')
+    await expect(page).toHaveURL((url) =>
+      url.pathname === '/forbidden' && url.searchParams.get('from') === '/orders',
+    )
+    const main = page.getByRole('main')
+    await expect(main.getByText('无权访问', { exact: true })).toBeVisible()
+    await expect(main.getByText('当前账号没有访问此模块的权限', { exact: true })).toBeVisible()
+
+    const accessToken = await page.evaluate(() => {
+      const raw = localStorage.getItem('learn-site.admin.auth')
+      return raw ? (JSON.parse(raw) as { access?: string }).access : undefined
+    })
+    expect(accessToken).toBeTruthy()
+
+    const forbidden = await page.request.get('/api/admin/v1/orders', {
+      headers: { Authorization: `Bearer ${accessToken}` },
       failOnStatusCode: false,
     })
-    // If the captcha gate is up the response is 400 — that's still a
-    // green smoke: the route exists, the contract is intact.
-    expect([200, 400]).toContain(res.status())
-  })
-
-  test('menu lists primary admin modules', async ({ page }) => {
-    await page.goto('/login')
-    const menu = page.locator('nav, [data-test="admin-menu"]')
-    await expect(menu.first()).toBeVisible()
+    expect(forbidden.status()).toBe(403)
+    expect((await forbidden.json()).error.code).toBe('FORBIDDEN')
   })
 })

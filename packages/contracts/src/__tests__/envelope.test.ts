@@ -13,7 +13,7 @@ describe('envelope', () => {
     expect(ApiResponse(Shape).safeParse({ ok: 'yes' }).success).toBe(false);
   });
 
-  it('ErrorCode keeps the stable 10 codes', () => {
+  it('ErrorCode accepts every code emitted by the API response boundary', () => {
     expect(ErrorCode.options).toEqual([
       'CAPTCHA_INVALID',
       'TOKEN_EXPIRED',
@@ -24,6 +24,10 @@ describe('envelope', () => {
       'VALIDATION_FAILED',
       'LOGIN_INVALID',
       'RATE_LIMITED',
+      'CONFLICT',
+      'LAST_SUPER_ADMIN',
+      'CATEGORY_IN_USE',
+      'PAYMENT_UNSETTLED',
       'INTERNAL',
     ]);
   });

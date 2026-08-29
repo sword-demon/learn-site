@@ -1,73 +1,157 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { createShare } from '@/api/learner';
+import { useRoute, useRouter } from 'vue-router';
+import type { SharePosterDTO } from '@learn-site/contracts';
+import { hasTokens } from '@/api/http';
+import { addFavorite } from '@/api/learner';
+import { createShareLink, createSharePoster } from '@/api/share';
+import { loginPathFor } from '@/router/guards';
+import SharePosterDialog from '@/components/SharePosterDialog.vue';
 
-interface Props {
+const props = defineProps<{
   courseId: number;
   courseTitle: string;
-}
-const props = defineProps<Props>();
+}>();
 
-const sharing = ref(false);
-const shared = ref<string | null>(null);
+const route = useRoute();
+const router = useRouter();
+
+const busyAction = ref<'favorite' | 'link' | 'poster' | null>(null);
+const stableLink = ref<string | null>(null);
 const copied = ref(false);
-const errorMsg = ref<string | null>(null);
+const favorited = ref(false);
+const poster = ref<SharePosterDTO | null>(null);
+const posterOpen = ref(false);
+const message = ref<string | null>(null);
 
-async function share(): Promise<void> {
-  if (sharing.value) return;
-  sharing.value = true;
-  errorMsg.value = null;
+async function favorite(): Promise<void> {
+  if (busyAction.value || favorited.value) return;
+  if (!hasTokens()) {
+    await router.push(loginPathFor(route.fullPath));
+    return;
+  }
+  busyAction.value = 'favorite';
+  message.value = null;
   try {
-    const r = await createShare(props.courseId);
-    const url = new URL(r.share_url, window.location.origin).toString();
-    shared.value = url;
-    copied.value = false;
-    try {
-      await navigator.clipboard.writeText(url);
-      copied.value = true;
-    } catch {
-      // Clipboard might be unavailable — user can still copy manually.
+    await addFavorite(props.courseId);
+    favorited.value = true;
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === 'UNAUTHENTICATED') {
+      await router.push(loginPathFor(route.fullPath));
+      return;
     }
-  } catch (err) {
-    errorMsg.value = (err as Error).message || 'share_failed';
+    message.value = '收藏失败，请稍后重试';
   } finally {
-    sharing.value = false;
+    busyAction.value = null;
+  }
+}
+
+async function ensureStableLink(): Promise<string> {
+  if (stableLink.value) return stableLink.value;
+  const result = await createShareLink(props.courseId);
+  stableLink.value = new URL(result.share_url, window.location.origin).toString();
+  return stableLink.value;
+}
+
+async function copyLink(): Promise<void> {
+  if (busyAction.value) return;
+  busyAction.value = 'link';
+  message.value = null;
+  copied.value = false;
+  try {
+    const url = await ensureStableLink();
+    await navigator.clipboard.writeText(url);
+    copied.value = true;
+  } catch {
+    message.value = stableLink.value ? '请手动复制课程链接' : '无法生成分享链接';
+  } finally {
+    busyAction.value = null;
+  }
+}
+
+async function generatePoster(): Promise<void> {
+  if (busyAction.value) return;
+  busyAction.value = 'poster';
+  message.value = null;
+  try {
+    await ensureStableLink();
+    const result = await createSharePoster(props.courseId);
+    if (result.render_status === 'failed') {
+      message.value = '海报生成失败，分享链接仍可使用';
+      return;
+    }
+    poster.value = result;
+    posterOpen.value = true;
+  } catch {
+    message.value = stableLink.value ? '海报生成失败，分享链接仍可使用' : '无法生成分享链接';
+  } finally {
+    busyAction.value = null;
   }
 }
 </script>
 
 <template>
-  <div class="share-bar">
-    <span class="share-label">课程分享</span>
-    <button type="button" class="btn" :disabled="sharing" @click="share">
-      {{ sharing ? '生成中…' : '分享课程' }}
-    </button>
-    <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
-    <p v-else-if="shared" class="result">
-      链接：<a :href="shared">{{ shared }}</a>
-      <span v-if="copied" class="ok">已复制到剪贴板</span>
+  <section class="share-bar" :aria-label="`${courseTitle}的收藏与分享`">
+    <span class="share-label">收藏与分享</span>
+    <div class="share-actions">
+      <button
+        type="button"
+        class="share-button"
+        data-action="favorite"
+        :disabled="busyAction !== null || favorited"
+        @click="favorite"
+      >
+        {{ favorited ? '已收藏' : busyAction === 'favorite' ? '收藏中…' : '收藏课程' }}
+      </button>
+      <button
+        type="button"
+        class="share-button"
+        data-action="copy-link"
+        :disabled="busyAction !== null"
+        @click="copyLink"
+      >
+        {{ busyAction === 'link' ? '复制中…' : copied ? '已复制' : '复制链接' }}
+      </button>
+      <button
+        type="button"
+        class="share-button primary"
+        data-action="generate-poster"
+        :disabled="busyAction !== null"
+        @click="generatePoster"
+      >
+        {{ busyAction === 'poster' ? '生成中…' : '生成海报' }}
+      </button>
+    </div>
+    <p v-if="message" class="share-message">{{ message }}</p>
+    <p v-if="stableLink" class="share-result">
+      <a :href="stableLink">{{ stableLink }}</a>
     </p>
-  </div>
+    <SharePosterDialog v-model="posterOpen" :poster="poster" />
+  </section>
 </template>
 
 <style scoped>
 .share-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 15px 0;
+  gap: 10px 18px;
+  padding: 18px 0;
   border-top: 1px solid var(--line);
 }
-
 .share-label {
   color: var(--muted);
   font-size: 0.78rem;
 }
-
-.btn {
-  min-height: 34px;
-  padding: 6px 11px;
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.share-button {
+  min-height: 36px;
+  padding: 7px 12px;
   border: 1px solid var(--line);
   border-radius: 5px;
   background: var(--surface);
@@ -75,28 +159,37 @@ async function share(): Promise<void> {
   font: inherit;
   cursor: pointer;
 }
-
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.share-button.primary {
+  border-color: var(--pine);
+  background: var(--pine);
+  color: white;
 }
-
-.result {
+.share-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.share-message,
+.share-result {
+  grid-column: 2;
   max-width: 100%;
   margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
-
-.ok {
-  margin-left: 6px;
+.share-message {
+  color: #9e3f2c;
+}
+.share-result a {
   color: var(--pine);
 }
-
-.error {
-  margin: 0;
-  color: #9e3f2c;
-  font-size: 0.78rem;
+@media (max-width: 600px) {
+  .share-bar {
+    grid-template-columns: 1fr;
+  }
+  .share-message,
+  .share-result {
+    grid-column: 1;
+  }
 }
 </style>

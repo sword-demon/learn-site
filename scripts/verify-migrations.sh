@@ -56,4 +56,36 @@ for table in "${required_tables[@]}"; do
     fi
 done
 
+active_marker_extra="$(run_compose exec -T mysql sh -c \
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql --batch --skip-column-names -uroot "$MYSQL_DATABASE" -e "SELECT EXTRA FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = \"course_entitlements\" AND column_name = \"active_marker\""' \
+    | tr -d '\r')"
+if [[ "$active_marker_extra" != *'GENERATED'* ]]; then
+    printf '%s\n' 'verify-migrations: course_entitlements.active_marker is not a generated column' >&2
+    exit 1
+fi
+
+active_index_shape="$(run_compose exec -T mysql sh -c \
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql --batch --skip-column-names -uroot "$MYSQL_DATABASE" -e "SELECT CONCAT(GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR \",\"), \"|\", NON_UNIQUE) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = \"course_entitlements\" AND index_name = \"uq_course_entitlements_active\" GROUP BY INDEX_NAME, NON_UNIQUE"' \
+    | tr -d '\r')"
+if [[ "$active_index_shape" != 'learner_id,course_id,active_marker|0' ]]; then
+    printf 'verify-migrations: active entitlement unique index has unexpected shape: %s\n' "$active_index_shape" >&2
+    exit 1
+fi
+
+legacy_index_count="$(run_compose exec -T mysql sh -c \
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql --batch --skip-column-names -uroot "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM (SELECT INDEX_NAME FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = \"course_entitlements\" AND NON_UNIQUE = 0 AND INDEX_NAME <> \"PRIMARY\" GROUP BY INDEX_NAME, NON_UNIQUE HAVING GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR \",\") = \"learner_id,course_id,status\") AS legacy_indexes"' \
+    | tr -d '\r')"
+if [[ "$legacy_index_count" != '0' ]]; then
+    printf 'verify-migrations: legacy status-based entitlement unique index remains: %s\n' "$legacy_index_count" >&2
+    exit 1
+fi
+
+active_duplicate_count="$(run_compose exec -T mysql sh -c \
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql --batch --skip-column-names -uroot "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM (SELECT learner_id, course_id FROM course_entitlements WHERE status = \"active\" GROUP BY learner_id, course_id HAVING COUNT(*) > 1) AS duplicate_active"' \
+    | tr -d '\r')"
+if [[ "$active_duplicate_count" != '0' ]]; then
+    printf 'verify-migrations: duplicate active entitlements found: %s\n' "$active_duplicate_count" >&2
+    exit 1
+fi
+
 printf 'verify-migrations: %d required tables present; no pending migrations\n' "${#required_tables[@]}"

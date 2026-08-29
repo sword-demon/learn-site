@@ -70,7 +70,9 @@ onMounted(() => void reload());
             <router-link :to="`/courses/${course.course_id}`">{{ course.title }}</router-link>
           </h2>
           <p class="meta">
-            <span>讲师 · {{ course.teacher_name }}</span><span v-if="course.price_mode === 'paid'">¥{{ course.list_price.toFixed(2) }}</span><span v-else class="tag free">免费</span>
+            <span>讲师 · {{ course.teacher_name }}</span
+            ><span v-if="course.price_mode === 'paid'">¥{{ course.list_price.toFixed(2) }}</span
+            ><span v-else class="tag free">免费</span>
           </p>
           <div class="favorite-footer">
             <span class="status" :data-status="course.status">{{

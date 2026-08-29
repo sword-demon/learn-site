@@ -82,6 +82,11 @@ export const CourseTreeDTO = CourseDTO.extend({
 });
 export type CourseTreeDTO = z.infer<typeof CourseTreeDTO>;
 
+export const CourseDeletionResult = z.object({
+  deleted: z.literal(true),
+});
+export type CourseDeletionResult = z.infer<typeof CourseDeletionResult>;
+
 export const AssetDTO = z.object({
   id: z.number().int().positive(),
   kind: z.enum(['pdf', 'video']),
@@ -252,6 +257,10 @@ export const PublicCourseDTO = z.object({
   sale_start_at: z.string().nullable(),
   sale_end_at: z.string().nullable(),
   viewer_authorized: z.boolean(),
+  viewer_entitlement_status: z.enum(['active', 'revoked']).nullable().default(null),
+  viewer_entitlement_source: z.enum(['free', 'purchase']).nullable().default(null),
+  viewer_revoked_reason: z.string().nullable().default(null),
+  viewer_can_rejoin: z.boolean().default(false),
   learner_count: z.number().int().nonnegative(),
   created_at: z.string(),
 });
@@ -278,7 +287,7 @@ export type LessonDeliveryMarkdownDTO = z.infer<typeof LessonDeliveryMarkdownDTO
 export const LessonDeliveryAssetDTO = z.object({
   kind: z.enum(['pdf', 'video']),
   asset_id: z.number().int().positive(),
-  storage_path: z.string(),
+  media_url: z.string().startsWith('/api/media/assets/'),
   mime_type: z.string(),
   size_bytes: z.number().int().nonnegative(),
   status: z.enum(['processing', 'ready', 'missing', 'broken']),

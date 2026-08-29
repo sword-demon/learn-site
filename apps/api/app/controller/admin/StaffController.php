@@ -40,11 +40,17 @@ final class StaffController
     public function index(Request $request): \support\Response
     {
         $status = (string) $request->get('status', '');
-        $items = $this->staff->listAll(
+        $search = trim((string) $request->get('search', ''));
+        $limitParam = $request->get('limit');
+        $limit = $limitParam !== null && $limitParam !== '' ? (int) $limitParam : null;
+        $page = max(1, (int) $request->get('page', 1));
+        return ApiResponse::ok($this->staff->list(
             $status !== '' ? $status : null,
+            $search !== '' ? $search : null,
+            $page,
+            $limit,
             (int) ($request->account_id ?? 0),
-        );
-        return ApiResponse::ok(['items' => $items]);
+        ));
     }
 
     public function show(Request $request, string $id): \support\Response

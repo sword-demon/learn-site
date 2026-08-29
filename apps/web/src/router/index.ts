@@ -1,5 +1,6 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { requireLearnerAuth } from '@/router/guards'
+import { createRouter, createWebHistory } from 'vue-router';
+import { requireLearnerAuth } from '@/router/guards';
+import { finishRouteLoading, startRouteLoading } from '@/router/loading';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -10,7 +11,11 @@ const router = createRouter({
       children: [
         { path: '', name: 'home', component: () => import('@/views/home/HomeView.vue') },
         { path: 'maps', name: 'maps', component: () => import('@/views/maps/MapListView.vue') },
-        { path: 'maps/:id', name: 'map-detail', component: () => import('@/views/maps/MapDetailView.vue') },
+        {
+          path: 'maps/:id',
+          name: 'map-detail',
+          component: () => import('@/views/maps/MapDetailView.vue'),
+        },
         {
           path: 'categories/:id',
           name: 'category',
@@ -46,10 +51,22 @@ const router = createRouter({
           component: () => import('@/views/me/MyOrdersView.vue'),
         },
         {
+          path: 'checkout/:courseId',
+          name: 'checkout',
+          beforeEnter: requireLearnerAuth,
+          component: () => import('@/views/checkout/CheckoutView.vue'),
+        },
+        {
           path: 'me/messages',
           name: 'messages',
           beforeEnter: requireLearnerAuth,
           component: () => import('@/views/me/MessagesView.vue'),
+        },
+        {
+          path: 'me/account',
+          name: 'account',
+          beforeEnter: requireLearnerAuth,
+          component: () => import('@/views/me/AccountView.vue'),
         },
       ],
     },
@@ -65,8 +82,20 @@ const router = createRouter({
     },
   ],
   scrollBehavior() {
-    return { top: 0 }
+    return { top: 0 };
   },
-})
+});
 
-export default router
+router.beforeEach(() => {
+  startRouteLoading();
+});
+
+router.afterEach(() => {
+  finishRouteLoading();
+});
+
+router.onError(() => {
+  finishRouteLoading();
+});
+
+export default router;

@@ -27,22 +27,38 @@ final class NotificationController
             if ($aid <= 0) {
                 return ApiResponse::fail(ApiResponse::UNAUTHENTICATED, 'UNAUTHENTICATED');
             }
-            $rows = Db::name('learner_notifications')
+            $page = max(1, (int) $request->get('page', 1));
+            $limit = max(1, min(100, (int) $request->get('limit', 20)));
+            $query = Db::name('learner_notifications')
                 ->where('learner_id', $aid)
+                ->order('id', 'desc');
+            $total = (int) (clone $query)->count();
+            $rows = $query
                 ->order('id', 'desc')
-                ->limit(50)
+                ->page($page, $limit)
                 ->select()
                 ->toArray();
-            $items = array_map(static fn ($r) => [
+            $items = array_map(fn ($r) => [
                 'id' => (int) $r['id'],
                 'kind' => (string) $r['kind'],
                 'title' => (string) $r['title'],
                 'body' => $r['body'] !== null ? (string) $r['body'] : null,
+                'resource_type' => $r['resource_type'] !== null ? (string) $r['resource_type'] : null,
+                'resource_id' => $r['resource_id'] !== null ? (int) $r['resource_id'] : null,
+                'resource_available' => $this->resourceAvailable(
+                    $r['resource_type'] !== null ? (string) $r['resource_type'] : null,
+                    $r['resource_id'] !== null ? (int) $r['resource_id'] : null,
+                ),
                 'payload' => $r['payload_json'] !== null ? json_decode((string) $r['payload_json'], true) : null,
                 'read' => $r['read_at'] !== null,
                 'created_at' => (string) $r['created_at'],
             ], is_array($rows) ? $rows : []);
-            return ApiResponse::ok(['items' => $items]);
+            return ApiResponse::ok([
+                'items' => $items,
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+            ]);
         } catch (\Throwable $e) {
             Logger::error('notifications.failed', ['err' => $e->getMessage()]);
             return ApiResponse::fail(ApiResponse::INTERNAL, 'INTERNAL');
@@ -59,12 +75,19 @@ final class NotificationController
             if ($aid <= 0) {
                 return ApiResponse::fail(ApiResponse::UNAUTHENTICATED, 'UNAUTHENTICATED');
             }
-            $now = date('Y-m-d H:i:s');
-            Db::name('learner_notifications')
+            $row = Db::name('learner_notifications')
                 ->where('id', (int) $id)
                 ->where('learner_id', $aid)
-                ->whereNull('read_at')
-                ->update(['read_at' => $now]);
+                ->find();
+            if (!$row) {
+                return ApiResponse::fail(ApiResponse::NOT_FOUND, 'MESSAGE_NOT_FOUND');
+            }
+            if ($row['read_at'] === null) {
+                Db::name('learner_notifications')
+                    ->where('id', (int) $id)
+                    ->where('learner_id', $aid)
+                    ->update(['read_at' => date('Y-m-d H:i:s')]);
+            }
             return ApiResponse::ok(['read' => true]);
         } catch (BusinessException $e) {
             return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, $e->getMessage());
@@ -72,5 +95,17 @@ final class NotificationController
             Logger::error('notifications.read_failed', ['err' => $e->getMessage()]);
             return ApiResponse::fail(ApiResponse::INTERNAL, 'INTERNAL');
         }
+    }
+
+    private function resourceAvailable(?string $type, ?int $id): bool
+    {
+        if ($type === null || $id === null || $id <= 0) {
+            return false;
+        }
+        return match ($type) {
+            'question' => Db::name('questions')->where('id', $id)->count() > 0,
+            'course' => Db::name('courses')->where('id', $id)->where('status', 'published')->count() > 0,
+            default => false,
+        };
     }
 }

@@ -1,5 +1,6 @@
 import http from './http';
 import {
+  ApiOk,
   HideReviewInput,
   PostReplyInput,
   ReviewFilterOptionsDTO,
@@ -22,34 +23,39 @@ export interface ModerationListParams {
   limit?: number;
 }
 
+const ReviewListEnvelope = ApiOk(ReviewListDTO);
+const ReviewFilterOptionsEnvelope = ApiOk(ReviewFilterOptionsDTO);
+const ReviewThreadEnvelope = ApiOk(ReviewThreadDTO);
+const ReviewReplyEnvelope = ApiOk(ReviewReplyDTO);
+
 export async function listForModeration(params: ModerationListParams): Promise<ReviewListDTO> {
   const { data } = await http.get<unknown>('/reviews', { params });
-  return ReviewListDTO.parse(data);
+  return ReviewListEnvelope.parse(data).data;
 }
 
 export async function fetchModerationFilterOptions(): Promise<ReviewFilterOptionsDTO> {
   const { data } = await http.get<unknown>('/reviews/filter-options');
-  return ReviewFilterOptionsDTO.parse(data);
+  return ReviewFilterOptionsEnvelope.parse(data).data;
 }
 
 export async function fetchAdminThread(id: number): Promise<ReviewThreadDTO> {
   const { data } = await http.get<unknown>(`/reviews/${id}`);
-  return ReviewThreadDTO.parse(data);
+  return ReviewThreadEnvelope.parse(data).data;
 }
 
 export async function hideReview(id: number, input: HideReviewInput): Promise<ReviewThreadDTO> {
   const { data } = await http.post<unknown>(`/reviews/${id}/hide`, HideReviewInput.parse(input));
-  return ReviewThreadDTO.parse(data);
+  return ReviewThreadEnvelope.parse(data).data;
 }
 
 export async function restoreReview(id: number): Promise<ReviewThreadDTO> {
   const { data } = await http.post<unknown>(`/reviews/${id}/restore`);
-  return ReviewThreadDTO.parse(data);
+  return ReviewThreadEnvelope.parse(data).data;
 }
 
 export async function postReviewReply(id: number, input: PostReplyInput): Promise<ReviewReplyDTO> {
   const { data } = await http.post<unknown>(`/reviews/${id}/replies`, PostReplyInput.parse(input));
-  return ReviewReplyDTO.parse(data);
+  return ReviewReplyEnvelope.parse(data).data;
 }
 
 export async function hideReviewReply(
@@ -60,10 +66,10 @@ export async function hideReviewReply(
     `/review-replies/${id}/hide`,
     HideReviewInput.parse(input),
   );
-  return ReviewThreadDTO.parse(data);
+  return ReviewThreadEnvelope.parse(data).data;
 }
 
 export async function restoreReviewReply(id: number): Promise<ReviewThreadDTO> {
   const { data } = await http.post<unknown>(`/review-replies/${id}/restore`);
-  return ReviewThreadDTO.parse(data);
+  return ReviewThreadEnvelope.parse(data).data;
 }

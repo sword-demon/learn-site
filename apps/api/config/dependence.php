@@ -12,16 +12,21 @@
  * @license   http://www.opens.org/licenses/mit-license.php MIT License
  */
 
+use App\service\SharePosterService;
 use App\support\payment\FakePaymentAdapter;
 use App\support\payment\PaymentAdapter;
 use App\support\storage\ImageStorage;
 use App\support\storage\LocalImageStorage;
+use App\support\storage\AssetStorage;
+use App\support\storage\LocalAssetStorage;
 
 return [
     ImageStorage::class => new LocalImageStorage(),
+    AssetStorage::class => new LocalAssetStorage(),
     // Phase 6 (US3): bind the payment-adapter interface to the fake
     // implementation. When a real WeChat Native adapter lands in a
     // later phase, only this binding changes — OrderService and the
     // controllers stay the same.
     PaymentAdapter::class => new FakePaymentAdapter(),
+    SharePosterService::class => new SharePosterService(),
 ];

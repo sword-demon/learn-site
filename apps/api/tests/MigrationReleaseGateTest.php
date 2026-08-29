@@ -28,6 +28,9 @@ final class MigrationReleaseGateTest extends TestCase
         self::assertStringContainsString('phinx status', $source);
         self::assertStringContainsString('required_tables', $source);
         self::assertStringContainsString('course_entitlements', $source);
+        self::assertStringContainsString('active_marker', $source);
+        self::assertStringContainsString('uq_course_entitlements_active', $source);
+        self::assertStringContainsString('duplicate_active', $source);
         self::assertStringContainsString('/health', $migrate);
         self::assertStringContainsString('verify-migrations.sh', $migrate);
     }

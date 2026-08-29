@@ -19,6 +19,21 @@ final class RestoreRehearsalTest extends TestCase
         self::assertStringContainsString('RESTORE_STARTED', $source);
     }
 
+    public function testRestoreDoesNotPublishPortsAndCleansPartialStartup(): void
+    {
+        $source = $this->readProjectFile('ops/backup/restore.sh');
+        $overlay = $this->readProjectFile('compose.restore.yaml');
+
+        self::assertStringContainsString('compose.restore.yaml', $source);
+        self::assertStringContainsString('ports: !reset []', $overlay);
+
+        $cleanupEnabledAt = strpos($source, 'RESTORE_STARTED=1');
+        $composeUpAt = strpos($source, 'run_compose up');
+        self::assertIsInt($cleanupEnabledAt);
+        self::assertIsInt($composeUpAt);
+        self::assertLessThan($composeUpAt, $cleanupEnabledAt);
+    }
+
     public function testRestoreValidatesChecksumsUploadsReferencesHealthAndMigrationState(): void
     {
         $source = $this->readProjectFile('ops/backup/restore.sh');

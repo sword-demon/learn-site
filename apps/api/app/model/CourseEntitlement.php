@@ -26,4 +26,9 @@ final class CourseEntitlement extends Model
 {
     protected string $table = 'course_entitlements';
     protected string $pk = 'id';
+
+    public function isRevocable(): bool
+    {
+        return (string) $this->source === 'free' && (string) $this->status === 'active';
+    }
 }

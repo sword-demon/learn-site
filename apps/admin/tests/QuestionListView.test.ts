@@ -69,9 +69,14 @@ async function chooseOption(
 ): Promise<void> {
   const select = wrapper.get(`[data-field="${field}"]`);
   await select.get('.el-select__wrapper').trigger('click');
-  const option = select.findAll('.el-select-dropdown__item').find((item) => item.text() === label);
+  const option = Array.from(
+    document.body.querySelectorAll<HTMLElement>('.el-select-dropdown__item'),
+  )
+    .reverse()
+    .find((item) => item.textContent?.trim() === label);
   expect(option).toBeDefined();
-  await option?.trigger('click');
+  option?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await flushPromises();
 }
 
 describe('QuestionListView', () => {
@@ -85,6 +90,17 @@ describe('QuestionListView', () => {
     qaApi.fetchInbox.mockImplementation(async (params: Record<string, unknown>) =>
       params.status === 'pending' ? inbox([question]) : inbox([]),
     );
+  });
+
+  it('keeps filter poppers out of scrolling containers', () => {
+    const wrapper = mountQuestionList();
+    const select = wrapper
+      .findAllComponents({ name: 'ElSelect' })
+      .find((component) => component.attributes('data-field') === 'status');
+
+    expect(select).toBeDefined();
+    expect(select?.props('teleported')).toBe(true);
+    expect(select?.props('placement')).toBe('bottom-start');
   });
 
   it('loads the pending inbox by default', async () => {

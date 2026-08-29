@@ -79,7 +79,8 @@ const statusOptions: Array<{ value: MapStatusFilter; label: string }> = [
 const filterStatus = ref<MapStatusFilter>('all');
 const availableCourses = computed(() => {
   const usedCourseIds = new Set(
-    active.value?.stages?.flatMap((stage) => stage.courses?.map((step) => step.course_id) ?? []) ?? [],
+    active.value?.stages?.flatMap((stage) => stage.courses?.map((step) => step.course_id) ?? []) ??
+      [],
   );
   return courses.value.filter((course) => !usedCourseIds.has(course.id));
 });
@@ -383,7 +384,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             class="filter-control"
             placement="bottom-start"
             :teleported="true"
-            :clearable="false"
+            clearable
             placeholder="全部"
             data-field="status"
           >
@@ -418,19 +419,39 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             <el-tag type="info" effect="plain">{{ list?.items?.length ?? 0 }} 条</el-tag>
           </div>
         </template>
-        <el-form v-if="canManage" data-role="new-map" class="new-map" @submit.prevent="submitCreate">
+        <el-form
+          v-if="canManage"
+          data-role="new-map"
+          class="new-map"
+          @submit.prevent="submitCreate"
+        >
           <div class="section-title"><Plus /><span>新建地图</span></div>
           <div class="compact-form">
             <el-form-item label="所属部门" required>
-              <el-select v-model="newMap.department_id" class="full-control" :teleported="false">
+              <el-select
+                v-model="newMap.department_id"
+                clearable
+                class="full-control"
+                :teleported="false"
+              >
                 <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
               </el-select>
             </el-form-item>
             <el-form-item label="标题" required>
-              <el-input v-model="newMap.title" maxlength="128" placeholder="例如：前端工程师成长路线" />
+              <el-input
+                v-model="newMap.title"
+                clearable
+                maxlength="128"
+                placeholder="例如：前端工程师成长路线"
+              />
             </el-form-item>
             <el-form-item label="简介">
-              <el-input v-model="newMap.summary" maxlength="255" placeholder="一句话说明学习路径" />
+              <el-input
+                v-model="newMap.summary"
+                clearable
+                maxlength="255"
+                placeholder="一句话说明学习路径"
+              />
             </el-form-item>
           </div>
           <el-button type="primary" native-type="submit" :loading="submitting" class="full-control">
@@ -459,7 +480,9 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                 <strong>{{ m.title }}</strong>
                 <small>更新于 {{ m.updated_at }}</small>
               </span>
-              <el-tag :type="statusType(m.status)" effect="light" size="small">{{ statusLabel(m.status) }}</el-tag>
+              <el-tag :type="statusType(m.status)" effect="light" size="small">{{
+                statusLabel(m.status)
+              }}</el-tag>
             </el-button>
           </li>
         </ol>
@@ -487,7 +510,9 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
               </div>
             </div>
             <div class="actions">
-              <el-tag :type="statusType(active.status)" effect="light">{{ statusLabel(active.status) }}</el-tag>
+              <el-tag :type="statusType(active.status)" effect="light">{{
+                statusLabel(active.status)
+              }}</el-tag>
               <el-button
                 v-if="canPublish"
                 type="primary"
@@ -543,7 +568,9 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             <div class="settings-heading">
               <div>
                 <div class="section-title settings-title"><Setting /><span>地图设置</span></div>
-                <p class="settings-intro">完善地图的定位与学习画像，让学员一眼知道这条路径适合谁。</p>
+                <p class="settings-intro">
+                  完善地图的定位与学习画像，让学员一眼知道这条路径适合谁。
+                </p>
               </div>
               <span class="settings-caption">基础信息</span>
             </div>
@@ -551,21 +578,58 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
               <div class="settings-fields">
                 <div class="settings-grid">
                   <el-form-item label="标题" required>
-                    <el-input v-model="mapSettings.title" name="title" maxlength="128" placeholder="例如：前端工程师成长路线" />
+                    <el-input
+                      v-model="mapSettings.title"
+                      clearable
+                      name="title"
+                      maxlength="128"
+                      placeholder="例如：前端工程师成长路线"
+                    />
                   </el-form-item>
                   <el-form-item label="所属部门" required>
-                    <el-select v-model="mapSettings.department_id" name="department_id" data-field="department_id" :teleported="false">
-                      <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
+                    <el-select
+                      v-model="mapSettings.department_id"
+                      clearable
+                      name="department_id"
+                      data-field="department_id"
+                      :teleported="false"
+                    >
+                      <el-option
+                        v-for="d in departments"
+                        :key="d.id"
+                        :label="d.name"
+                        :value="d.id"
+                      />
                     </el-select>
                   </el-form-item>
                   <el-form-item label="简介" class="settings-wide">
-                    <el-input v-model="mapSettings.summary" name="summary" maxlength="255" placeholder="用一句话说明这条学习路径将带来的成长" />
+                    <el-input
+                      v-model="mapSettings.summary"
+                      clearable
+                      name="summary"
+                      maxlength="255"
+                      placeholder="用一句话说明这条学习路径将带来的成长"
+                    />
                   </el-form-item>
                   <el-form-item label="学习目标">
-                    <el-input v-model="mapSettings.objective" name="objective" type="textarea" :rows="4" placeholder="学完这条地图后，学员能够独立完成什么？" />
+                    <el-input
+                      v-model="mapSettings.objective"
+                      clearable
+                      name="objective"
+                      type="textarea"
+                      :rows="4"
+                      placeholder="学完这条地图后，学员能够独立完成什么？"
+                    />
                   </el-form-item>
                   <el-form-item label="适用人群">
-                    <el-input v-model="mapSettings.audience" name="audience" type="textarea" :rows="4" placeholder="例如：有 1 年前端经验，希望提升工程能力的开发者" />
+                    <el-input
+                      v-model="mapSettings.audience"
+                      clearable
+                      name="audience"
+                      type="textarea"
+                      :rows="4"
+                      placeholder="例如：有 1 年前端经验，希望提升工程能力的开发者"
+                    />
                   </el-form-item>
                 </div>
               </div>
@@ -582,7 +646,9 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                   data-role="map-cover-upload"
                   :upload="uploadMapCover"
                 />
-                <p class="cover-description">选择一张能代表学习主题的横版图片，建议使用 16:9 构图。</p>
+                <p class="cover-description">
+                  选择一张能代表学习主题的横版图片，建议使用 16:9 构图。
+                </p>
               </aside>
             </div>
             <div class="settings-footer">
@@ -611,10 +677,20 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
             </div>
             <div class="new-stage-form">
               <el-form-item label="阶段标题" required class="stage-name-field">
-                <el-input v-model="newStage.title" maxlength="128" placeholder="例如：类型基础" />
+                <el-input
+                  v-model="newStage.title"
+                  clearable
+                  maxlength="128"
+                  placeholder="例如：类型基础"
+                />
               </el-form-item>
               <el-form-item label="阶段简介" class="stage-summary-field">
-                <el-input v-model="newStage.summary" maxlength="255" placeholder="阶段学习重点" />
+                <el-input
+                  v-model="newStage.summary"
+                  clearable
+                  maxlength="255"
+                  placeholder="阶段学习重点"
+                />
               </el-form-item>
               <el-form-item class="stage-action-field">
                 <el-button type="primary" native-type="submit" :loading="submitting">
@@ -643,6 +719,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                 <template v-if="canManage">
                   <el-input
                     class="stage-title"
+                    clearable
                     :model-value="stage.title"
                     maxlength="128"
                     @change="updateStageField(stage.id, { title: $event })"
@@ -674,6 +751,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                 <el-form-item label="阶段说明">
                   <el-input
                     name="stage_summary"
+                    clearable
                     type="textarea"
                     :rows="2"
                     :model-value="stage.summary ?? ''"
@@ -685,7 +763,9 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
                 <li v-for="sc in stage.courses" :key="sc.map_stage_course_id" class="course">
                   <div class="course-icon"><Collection /></div>
                   <div class="course-copy">
-                    <span class="course-title">{{ sc.course?.title ?? `课程 #${sc.course_id}` }}</span>
+                    <span class="course-title">{{
+                      sc.course?.title ?? `课程 #${sc.course_id}`
+                    }}</span>
                     <span v-if="sc.course" class="course-meta">
                       {{ sc.course.teacher_name }} · {{ courseStatusLabel(sc.course.status) }}
                     </span>
@@ -712,8 +792,19 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
               >
                 <div>
                   <el-form-item label="选择课程" required>
-                    <el-select v-model="addCourseId" data-field="course_id" :teleported="false" placeholder="请选择课程">
-                      <el-option v-for="c in availableCourses" :key="c.id" :label="c.title" :value="c.id" />
+                    <el-select
+                      v-model="addCourseId"
+                      clearable
+                      data-field="course_id"
+                      :teleported="false"
+                      placeholder="请选择课程"
+                    >
+                      <el-option
+                        v-for="c in availableCourses"
+                        :key="c.id"
+                        :label="c.title"
+                        :value="c.id"
+                      />
                     </el-select>
                   </el-form-item>
                 </div>
@@ -747,147 +838,655 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
 </template>
 
 <style scoped>
-.page { display: grid; gap: 18px; min-width: 0; }
-.page-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
-.title-block { min-width: 0; }
-.section-kicker { display: block; margin-bottom: 6px; color: #168da7; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; }
-.display { margin: 0; color: #102a43; font-size: clamp(1.6rem, 2vw, 2rem); letter-spacing: -0.025em; }
-.subtitle { max-width: 620px; margin: 7px 0 0; color: #6b7c93; font-size: 13px; }
-.head-metric { display: grid; min-width: 132px; padding-left: 18px; border-left: 1px solid #d8e2eb; color: #6b7c93; font-size: 12px; line-height: 1.4; }
-.head-metric strong { color: #102a43; font-size: 25px; line-height: 1.15; }
+.page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.title-block {
+  min-width: 0;
+}
+.section-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #168da7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.display {
+  margin: 0;
+  color: #102a43;
+  font-size: clamp(1.6rem, 2vw, 2rem);
+  letter-spacing: -0.025em;
+}
+.subtitle {
+  max-width: 620px;
+  margin: 7px 0 0;
+  color: #6b7c93;
+  font-size: 13px;
+}
+.head-metric {
+  display: grid;
+  min-width: 132px;
+  padding-left: 18px;
+  border-left: 1px solid #d8e2eb;
+  color: #6b7c93;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.head-metric strong {
+  color: #102a43;
+  font-size: 25px;
+  line-height: 1.15;
+}
 .filter-panel,
 .left-pane,
-.right-pane { --el-card-border-color: #dce6ef; --el-card-padding: 18px; border-radius: 8px; box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04); }
-.filter-panel :deep(.el-card__body) { padding: 14px 18px; }
-.filter-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; }
-.filter-form :deep(.el-form-item) { margin-bottom: 0; }
-.filter-form :deep(.el-form-item__label) { color: #52667a; font-size: 13px; font-weight: 600; }
-.filter-control { width: 190px; }
-.layout { display: grid; grid-template-columns: minmax(290px, 360px) minmax(0, 1fr); align-items: start; gap: 18px; }
+.right-pane {
+  --el-card-border-color: #dce6ef;
+  --el-card-padding: 18px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04);
+}
+.filter-panel :deep(.el-card__body) {
+  padding: 14px 18px;
+}
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 18px;
+}
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.filter-form :deep(.el-form-item__label) {
+  color: #52667a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.filter-control {
+  width: 190px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(290px, 360px) minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
 .left-pane :deep(.el-card__header),
-.right-pane :deep(.el-card__header) { padding: 16px 18px; }
-.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.panel-heading h2 { margin: 0; color: #102a43; font-size: 15px; }
-.panel-heading p { margin: 3px 0 0; color: #829ab1; font-size: 12px; }
-.new-map { display: grid; gap: 8px; }
-.section-title { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; color: #243b53; font-size: 14px; font-weight: 700; }
-.section-title svg { width: 16px; color: #168da7; }
+.right-pane :deep(.el-card__header) {
+  padding: 16px 18px;
+}
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-heading h2 {
+  margin: 0;
+  color: #102a43;
+  font-size: 15px;
+}
+.panel-heading p {
+  margin: 3px 0 0;
+  color: #829ab1;
+  font-size: 12px;
+}
+.new-map {
+  display: grid;
+  gap: 8px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: #243b53;
+  font-size: 14px;
+  font-weight: 700;
+}
+.section-title svg {
+  width: 16px;
+  color: #168da7;
+}
 .compact-form :deep(.el-form-item),
-.settings-grid :deep(.el-form-item) { margin-bottom: 14px; }
+.settings-grid :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
 .compact-form :deep(.el-form-item__label),
 .settings-grid :deep(.el-form-item__label),
 .new-stage-form :deep(.el-form-item__label),
 .add-course-form :deep(.el-form-item__label),
-.stage-summary :deep(.el-form-item__label) { color: #52667a; font-size: 12px; font-weight: 600; }
-.full-control { width: 100%; }
-.map-list { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
-.map-item { border: 1px solid #e4ebf1; border-radius: 7px; transition: border-color 0.18s ease, background-color 0.18s ease; }
-.map-item.active { border-color: #55b8c5; background: #f1fafb; }
-.map-button { display: flex; width: 100%; height: auto; min-height: 66px; padding: 10px 11px; align-items: center; gap: 9px; text-align: left; white-space: normal; }
-.map-button:hover { color: #102a43; background: transparent; }
-.map-marker { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 7px; color: #168da7; background: #e7f6f8; }
-.map-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
-.map-copy strong { overflow-wrap: anywhere; color: #243b53; font-size: 13px; }
-.map-copy small { overflow-wrap: anywhere; color: #829ab1; font-size: 11px; }
-.map-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid #e6edf3; }
-.map-title-block { min-width: 0; }
-.map-head h2 { margin: 0; color: #102a43; font-size: 21px; letter-spacing: -0.02em; }
-.map-meta-list { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 9px; color: #6b7c93; font-size: 12px; }
-.summary { max-width: 680px; margin: 6px 0 0; color: #52667a; font-size: 13px; }
-.actions { display: flex; gap: 8px; align-items: center; }
-.publish-issues { margin-bottom: 16px; }
-.issue-list { padding-left: 18px; margin: 4px 0 0; line-height: 1.7; }
-.map-settings { display: grid; gap: 18px; padding-bottom: 22px; margin-bottom: 18px; border-bottom: 1px solid #dfe9ee; }
-.settings-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding-bottom: 2px; }
-.settings-title { margin-bottom: 5px; }
-.settings-intro { margin: 0; color: #6b7c93; font-size: 12px; line-height: 1.6; }
-.settings-caption { flex: 0 0 auto; padding: 5px 9px; border: 1px solid #d6e5e6; border-radius: 999px; color: #277c7d; background: #f2f9f8; font-size: 11px; font-weight: 700; }
-.settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 20px; align-items: start; }
-.settings-fields { min-width: 0; }
-.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
-.settings-grid .settings-wide { grid-column: 1 / -1; }
+.stage-summary :deep(.el-form-item__label) {
+  color: #52667a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.full-control {
+  width: 100%;
+}
+.map-list {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.map-item {
+  border: 1px solid #e4ebf1;
+  border-radius: 7px;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+.map-item.active {
+  border-color: #55b8c5;
+  background: #f1fafb;
+}
+.map-button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 66px;
+  padding: 10px 11px;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  white-space: normal;
+}
+.map-button:hover {
+  color: #102a43;
+  background: transparent;
+}
+.map-marker {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border-radius: 7px;
+  color: #168da7;
+  background: #e7f6f8;
+}
+.map-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+}
+.map-copy strong {
+  overflow-wrap: anywhere;
+  color: #243b53;
+  font-size: 13px;
+}
+.map-copy small {
+  overflow-wrap: anywhere;
+  color: #829ab1;
+  font-size: 11px;
+}
+.map-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e6edf3;
+}
+.map-title-block {
+  min-width: 0;
+}
+.map-head h2 {
+  margin: 0;
+  color: #102a43;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+.map-meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+  margin-top: 9px;
+  color: #6b7c93;
+  font-size: 12px;
+}
+.summary {
+  max-width: 680px;
+  margin: 6px 0 0;
+  color: #52667a;
+  font-size: 13px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.publish-issues {
+  margin-bottom: 16px;
+}
+.issue-list {
+  padding-left: 18px;
+  margin: 4px 0 0;
+  line-height: 1.7;
+}
+.map-settings {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 22px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #dfe9ee;
+}
+.settings-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 2px;
+}
+.settings-title {
+  margin-bottom: 5px;
+}
+.settings-intro {
+  margin: 0;
+  color: #6b7c93;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.settings-caption {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid #d6e5e6;
+  border-radius: 999px;
+  color: #277c7d;
+  background: #f2f9f8;
+  font-size: 11px;
+  font-weight: 700;
+}
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 230px;
+  gap: 20px;
+  align-items: start;
+}
+.settings-fields {
+  min-width: 0;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.settings-grid .settings-wide {
+  grid-column: 1 / -1;
+}
 .settings-grid :deep(.el-form-item__label),
-.map-settings :deep(.el-form-item__label) { padding-bottom: 6px; color: #52667a; font-size: 12px; font-weight: 700; line-height: 1.2; }
+.map-settings :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  color: #52667a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
 .settings-grid :deep(.el-select),
-.settings-grid :deep(.el-input) { width: 100%; }
+.settings-grid :deep(.el-input) {
+  width: 100%;
+}
 .settings-grid :deep(.el-input__wrapper),
-.settings-grid :deep(.el-textarea__inner) { border-radius: 7px; }
-.settings-grid :deep(.el-textarea__inner) { min-height: 104px; resize: vertical; }
-.cover-workbench { min-width: 0; padding: 15px; border: 1px solid #cfe5e2; border-left: 3px solid #2ca6a4; border-radius: 9px; background: #f5fbfa; }
-.cover-workbench-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
-.field-kicker { display: block; margin-bottom: 4px; color: #3c9692; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-.cover-workbench h3 { margin: 0; color: #173f4a; font-size: 15px; }
-.optional-mark { padding: 3px 6px; border-radius: 4px; color: #a15c16; background: #fff2df; font-size: 10px; font-weight: 700; }
-.cover-description { margin: 12px 0 0; color: #6b7c93; font-size: 11px; line-height: 1.65; }
-.cover-workbench :deep(.cover-upload) { display: grid; gap: 11px; align-items: stretch; }
-.cover-workbench :deep(.cover-preview) { display: grid; gap: 8px; align-items: start; }
-.cover-workbench :deep(.cover-image) { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.settings-grid :deep(.el-textarea__inner) {
+  border-radius: 7px;
+}
+.settings-grid :deep(.el-textarea__inner) {
+  min-height: 104px;
+  resize: vertical;
+}
+.cover-workbench {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #cfe5e2;
+  border-left: 3px solid #2ca6a4;
+  border-radius: 9px;
+  background: #f5fbfa;
+}
+.cover-workbench-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+.field-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #3c9692;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.cover-workbench h3 {
+  margin: 0;
+  color: #173f4a;
+  font-size: 15px;
+}
+.optional-mark {
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #a15c16;
+  background: #fff2df;
+  font-size: 10px;
+  font-weight: 700;
+}
+.cover-description {
+  margin: 12px 0 0;
+  color: #6b7c93;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.cover-workbench :deep(.cover-upload) {
+  display: grid;
+  gap: 11px;
+  align-items: stretch;
+}
+.cover-workbench :deep(.cover-preview) {
+  display: grid;
+  gap: 8px;
+  align-items: start;
+}
+.cover-workbench :deep(.cover-image) {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
 .cover-workbench :deep(.el-upload),
-.cover-workbench :deep(.el-upload .el-button) { display: block; width: 100%; }
-.cover-workbench :deep(.cover-hint) { display: block; line-height: 1.55; }
-.settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 2px; }
-.save-note { display: inline-flex; align-items: center; gap: 6px; color: #78909c; font-size: 11px; }
-.save-note svg { width: 14px; color: #2ca6a4; }
-.row-end { display: flex; justify-content: flex-end; gap: 8px; }
-.new-stage { padding: 1px 0 20px; margin-bottom: 18px; border-bottom: 1px solid #dfe9ee; }
-.stage-form-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
-.stage-form-heading .section-title { margin-bottom: 11px; }
-.stage-form-heading p { margin: 0; color: #829ab1; font-size: 11px; }
-.new-stage-form { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.35fr) auto; gap: 14px; align-items: end; }
-.new-stage-form :deep(.el-form-item) { min-width: 0; margin-bottom: 0; }
-.new-stage-form :deep(.el-input) { width: 100%; }
-.stage-action-field :deep(.el-form-item__content) { justify-content: flex-end; }
-.stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.stage-heading h3 { margin: 0; color: #243b53; font-size: 15px; }
-.stage-heading span { display: block; margin-top: 3px; color: #829ab1; font-size: 12px; }
-.stages { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
-.stage { display: grid; gap: 10px; padding: 14px; border: 1px solid #e1eaf0; border-radius: 7px; background: #fbfdfe; }
-.stage-head { display: flex; gap: 8px; align-items: center; }
-.stage-title { min-width: 0; flex: 1; }
-.stage-order { width: 88px; }
+.cover-workbench :deep(.el-upload .el-button) {
+  display: block;
+  width: 100%;
+}
+.cover-workbench :deep(.cover-hint) {
+  display: block;
+  line-height: 1.55;
+}
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+.save-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #78909c;
+  font-size: 11px;
+}
+.save-note svg {
+  width: 14px;
+  color: #2ca6a4;
+}
+.row-end {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.new-stage {
+  padding: 1px 0 20px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #dfe9ee;
+}
+.stage-form-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.stage-form-heading .section-title {
+  margin-bottom: 11px;
+}
+.stage-form-heading p {
+  margin: 0;
+  color: #829ab1;
+  font-size: 11px;
+}
+.new-stage-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.35fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+.new-stage-form :deep(.el-form-item) {
+  min-width: 0;
+  margin-bottom: 0;
+}
+.new-stage-form :deep(.el-input) {
+  width: 100%;
+}
+.stage-action-field :deep(.el-form-item__content) {
+  justify-content: flex-end;
+}
+.stage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.stage-heading h3 {
+  margin: 0;
+  color: #243b53;
+  font-size: 15px;
+}
+.stage-heading span {
+  display: block;
+  margin-top: 3px;
+  color: #829ab1;
+  font-size: 12px;
+}
+.stages {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.stage {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e1eaf0;
+  border-radius: 7px;
+  background: #fbfdfe;
+}
+.stage-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.stage-title {
+  min-width: 0;
+  flex: 1;
+}
+.stage-order {
+  width: 88px;
+}
 .stage-copy h3,
-.stage-copy p { margin: 0; }
-.stage-copy h3 { color: #243b53; font-size: 15px; }
-.stage-copy p { margin-top: 4px; color: #6b7c93; font-size: 12px; }
-.stage-summary { display: block; }
-.stage-summary :deep(.el-form-item) { margin-bottom: 0; }
-.course-list { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
-.course { display: flex; min-width: 0; gap: 9px; align-items: center; padding: 8px 10px; border: 1px solid #e5edf2; border-radius: 6px; background: #fff; }
-.course-icon { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border-radius: 6px; color: #168da7; background: #e7f6f8; font-size: 14px; }
-.course-copy { display: grid; min-width: 0; flex: 1; gap: 2px; }
-.course-title { overflow-wrap: anywhere; color: #243b53; font-size: 13px; font-weight: 600; }
-.course-meta { color: #829ab1; font-size: 11px; }
-.add-course { padding: 10px 12px; border: 1px dashed #b9dfe3; border-radius: 7px; background: #f7fcfc; }
-.add-course-form :deep(.el-form-item) { margin-bottom: 0; }
-.add-course-form :deep(.el-select) { width: min(100%, 300px); }
-.right-pane :deep(.el-empty) { min-height: 320px; justify-content: center; }
-.right-pane :deep(.el-alert) { margin-bottom: 14px; }
-@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+.stage-copy p {
+  margin: 0;
+}
+.stage-copy h3 {
+  color: #243b53;
+  font-size: 15px;
+}
+.stage-copy p {
+  margin-top: 4px;
+  color: #6b7c93;
+  font-size: 12px;
+}
+.stage-summary {
+  display: block;
+}
+.stage-summary :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.course-list {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.course {
+  display: flex;
+  min-width: 0;
+  gap: 9px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #e5edf2;
+  border-radius: 6px;
+  background: #fff;
+}
+.course-icon {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border-radius: 6px;
+  color: #168da7;
+  background: #e7f6f8;
+  font-size: 14px;
+}
+.course-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+.course-title {
+  overflow-wrap: anywhere;
+  color: #243b53;
+  font-size: 13px;
+  font-weight: 600;
+}
+.course-meta {
+  color: #829ab1;
+  font-size: 11px;
+}
+.add-course {
+  padding: 10px 12px;
+  border: 1px dashed #b9dfe3;
+  border-radius: 7px;
+  background: #f7fcfc;
+}
+.add-course-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.add-course-form :deep(.el-select) {
+  width: min(100%, 300px);
+}
+.right-pane :deep(.el-empty) {
+  min-height: 320px;
+  justify-content: center;
+}
+.right-pane :deep(.el-alert) {
+  margin-bottom: 14px;
+}
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
 @media (max-width: 860px) {
-  .settings-layout { grid-template-columns: 1fr; }
-  .cover-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 230px); gap: 0 16px; align-items: center; }
-  .cover-workbench-head { grid-row: span 2; margin-bottom: 0; }
-  .cover-description { grid-column: 2; margin-top: 10px; }
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+  .cover-workbench {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
+    gap: 0 16px;
+    align-items: center;
+  }
+  .cover-workbench-head {
+    grid-row: span 2;
+    margin-bottom: 0;
+  }
+  .cover-description {
+    grid-column: 2;
+    margin-top: 10px;
+  }
 }
 @media (max-width: 700px) {
-  .settings-grid { grid-template-columns: 1fr; }
-  .settings-grid .settings-wide { grid-column: auto; }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-grid .settings-wide {
+    grid-column: auto;
+  }
   .settings-heading,
-  .stage-form-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
-  .settings-caption { align-self: flex-start; }
-  .cover-workbench { display: block; }
-  .cover-workbench-head { margin-bottom: 13px; }
-  .cover-description { margin-top: 12px; }
-  .new-stage-form { display: grid; grid-template-columns: 1fr; gap: 0; }
-  .new-stage-form :deep(.el-input) { width: 100%; }
-  .new-stage-form :deep(.el-form-item) { margin-bottom: 12px; }
+  .stage-form-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .settings-caption {
+    align-self: flex-start;
+  }
+  .cover-workbench {
+    display: block;
+  }
+  .cover-workbench-head {
+    margin-bottom: 13px;
+  }
+  .cover-description {
+    margin-top: 12px;
+  }
+  .new-stage-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .new-stage-form :deep(.el-input) {
+    width: 100%;
+  }
+  .new-stage-form :deep(.el-form-item) {
+    margin-bottom: 12px;
+  }
 }
 @media (max-width: 560px) {
-  .filter-form { display: grid; grid-template-columns: 1fr; gap: 4px; }
-  .filter-form :deep(.el-form-item) { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; }
-  .filter-control { width: 100%; }
-  .stage-head { align-items: stretch; flex-wrap: wrap; }
-  .stage-title { width: 100%; flex-basis: 100%; }
-  .stage-order { width: 110px; }
+  .filter-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .filter-form :deep(.el-form-item) {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: center;
+  }
+  .filter-control {
+    width: 100%;
+  }
+  .stage-head {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .stage-title {
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .stage-order {
+    width: 110px;
+  }
 }
 </style>

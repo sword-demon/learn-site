@@ -15,6 +15,7 @@ export * from "./favorite.js";
 export * from "./site.js";
 export * from "./audit.js";
 export * from "./learner.js";
+export * from "./learnerProfile.js";
 export * from "./courseStudent.js";
 export * from "./notification.js";
 export * from "./order.js";

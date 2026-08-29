@@ -30,8 +30,9 @@ use support\think\Db;
  *   4. intro_rich_text passes HtmlSanitizer on every write.
  *   5. publishCourse: category enabled, intro non-empty, ≥1 enabled
  *      chapter containing ≥1 enabled lesson whose required payload is set.
- *   6. deleteCourse: status in {draft, unpublished} and no enrollments or
- *      orders reference it (missing tables → treated as zero).
+ *   6. deleteCourse: actor can access the course, status is draft or
+ *      unpublished, and no orders, entitlements, learning records, or
+ *      learning-map entries reference it. Detached assets are retained.
  *
  *   ponytail: invariant — orders / enrollments / entitlements / qa /
  *   reviews / course_student hold course_id only; they re-resolve to the
@@ -191,21 +192,33 @@ final class CourseService
         return $this->getCourseTree((int) $course->id);
     }
 
-    public function deleteCourse(int $id): void
+    public function deleteCourse(int $id, int $actorStaffAccountId): void
     {
         $course = Course::find($id);
         if (!$course) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
         }
-        $status = (string) $course->status;
-        if (!in_array($status, ['draft', 'unpublished'], true)) {
-            throw new BusinessException('CONFLICT', 'COURSE_NOT_DELETABLE');
+        $courseRow = $course->toArray();
+        DataScopeService::assertCourseAccessibleFromScope(
+            (new DataScopeService())->resolveForCourses($actorStaffAccountId),
+            (int) $courseRow['department_id'],
+            (int) $courseRow['created_by_staff_id'],
+            $actorStaffAccountId,
+        );
+        if (!$course->isDeletableStatus()) {
+            throw new BusinessException('CONFLICT', 'COURSE_DELETE_REQUIRES_UNPUBLISHED');
         }
-        // course_enrollments and orders land in Phase 6 — try/catch the
-        // missing-table case so delete still works in isolation.
-        $blocking = $this->countCourseReferences($id);
-        if ($blocking > 0) {
-            throw new BusinessException('CONFLICT', 'COURSE_HAS_ENROLLMENTS');
+        if ((int) Db::name('orders')->where('course_id', $id)->count() > 0) {
+            throw new BusinessException('CONFLICT', 'COURSE_HAS_ORDERS');
+        }
+        if ((int) Db::name('course_entitlements')->where('course_id', $id)->count() > 0) {
+            throw new BusinessException('CONFLICT', 'COURSE_HAS_ENTITLEMENTS');
+        }
+        if ($this->hasCourseLearningRecords($id)) {
+            throw new BusinessException('CONFLICT', 'COURSE_HAS_LEARNING_RECORDS');
+        }
+        if ((int) Db::name('map_stage_courses')->where('course_id', $id)->count() > 0) {
+            throw new BusinessException('CONFLICT', 'COURSE_IN_LEARNING_MAP');
         }
         Db::transaction(function () use ($id) {
             Course::where('id', $id)->delete();
@@ -622,20 +635,17 @@ final class CourseService
         return $patch;
     }
 
-    private function countCourseReferences(int $courseId): int
+    private function hasCourseLearningRecords(int $courseId): bool
     {
-        $total = 0;
-        try {
-            $total += (int) Db::name('course_enrollments')->where('course_id', $courseId)->count();
-        } catch (\Throwable) {
-            // ponytail: course_enrollments lands in Phase 6.
+        if ((int) Db::name('course_enrollments')->where('course_id', $courseId)->count() > 0) {
+            return true;
         }
-        try {
-            $total += (int) Db::name('orders')->where('course_id', $courseId)->count();
-        } catch (\Throwable) {
-            // ponytail: orders lands in Phase 6.
-        }
-        return $total;
+
+        return (int) Db::name('lesson_progresses')->alias('lp')
+            ->join('lessons l', 'l.id = lp.lesson_id')
+            ->join('chapters ch', 'ch.id = l.chapter_id')
+            ->where('ch.course_id', $courseId)
+            ->count() > 0;
     }
 
     /**

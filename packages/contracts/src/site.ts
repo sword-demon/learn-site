@@ -20,8 +20,5 @@ export const SiteProfileUpdateInput = z.object({
 })
 export type SiteProfileUpdateInput = z.infer<typeof SiteProfileUpdateInput>
 
-export const SiteProfileUpdatedDTO = z.object({
-  ok: z.literal(true),
-  truncated: z.boolean(),
-})
+export const SiteProfileUpdatedDTO = SiteIntro
 export type SiteProfileUpdatedDTO = z.infer<typeof SiteProfileUpdatedDTO>

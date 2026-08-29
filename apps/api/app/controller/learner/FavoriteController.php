@@ -4,90 +4,43 @@ declare(strict_types=1);
 namespace App\controller\learner;
 
 use App\service\BusinessException;
+use App\service\FavoriteService;
 use App\support\ApiResponse;
 use App\support\Logger;
 use support\Request;
-use support\think\Db;
 
-/**
- * Learner favorites (Phase 17 / US7 — T088).
- *
- *   GET    /api/learner/v1/me/favorites?page=&limit=
- *   POST   /api/learner/v1/courses/{id}/favorite   (idempotent toggle → on)
- *   DELETE /api/learner/v1/courses/{id}/favorite   (idempotent toggle → off)
- *
- * Data model is intentionally minimal: a (learner_id, course_id) tuple
- * with created_at. No service layer — the invariants are 1 row per
- * pair and we already enforce that with a unique index.
- */
 final class FavoriteController
 {
+    public function __construct(private readonly FavoriteService $favorites)
+    {
+    }
+
     public function index(Request $request): \support\Response
     {
         return $this->wrap(function () use ($request) {
             $learnerId = $this->viewerId($request);
             $page  = max(1, (int) $request->get('page', 1));
             $limit = max(1, min(100, (int) $request->get('limit', 20)));
-            $total = (int) Db::name('favorites')->where('learner_id', $learnerId)->count();
-            $rows = Db::name('favorites')
-                ->alias('f')
-                ->join('courses c', 'c.id = f.course_id')
-                ->where('f.learner_id', $learnerId)
-                ->field('f.course_id, f.created_at, c.title, c.cover_url, c.teacher_name, c.price_mode, c.list_price, c.status')
-                ->order('f.id', 'desc')
-                ->page($page, $limit)
-                ->select()
-                ->toArray();
-            $items = array_map(static fn($r) => [
-                'course_id'    => (int) $r['course_id'],
-                'title'        => (string) $r['title'],
-                'cover_url'    => $r['cover_url'] ? (string) $r['cover_url'] : null,
-                'teacher_name' => (string) $r['teacher_name'],
-                'price_mode'   => (string) $r['price_mode'],
-                'list_price'   => (float) $r['list_price'],
-                'status'       => (string) $r['status'],
-                'favorited_at' => (string) $r['created_at'],
-            ], is_array($rows) ? $rows : []);
-            return [
-                'items' => $items,
-                'total' => $total,
-                'page'  => $page,
-                'limit' => $limit,
-            ];
+            return $this->favorites->list($learnerId, $page, $limit);
         });
     }
 
-    public function add(Request $request, string $courseId): \support\Response
+    public function add(Request $request, string $id): \support\Response
     {
-        return $this->wrap(function () use ($request, $courseId) {
+        return $this->wrap(function () use ($request, $id) {
             $learnerId = $this->viewerId($request);
-            $cid = $this->id($courseId);
-            $exists = Db::name('courses')
-                ->where('id', $cid)
-                ->where('status', 'published')
-                ->find();
-            if (!$exists) {
-                throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
-            }
-            $now = date('Y-m-d H:i:s');
-            Db::name('favorites')->insert([
-                'learner_id' => $learnerId,
-                'course_id'  => $cid,
-                'created_at' => $now,
-            ]);
+            $cid = $this->id($id);
+            $this->favorites->add($learnerId, $cid);
             return ['course_id' => $cid, 'favorited' => true];
         });
     }
 
-    public function remove(Request $request, string $courseId): \support\Response
+    public function remove(Request $request, string $id): \support\Response
     {
-        return $this->wrap(function () use ($request, $courseId) {
+        return $this->wrap(function () use ($request, $id) {
             $learnerId = $this->viewerId($request);
-            $cid = $this->id($courseId);
-            Db::name('favorites')
-                ->where('learner_id', $learnerId)
-                ->where('course_id', $cid)
-                ->delete();
+            $cid = $this->id($id);
+            $this->favorites->remove($learnerId, $cid);
             return ['course_id' => $cid, 'favorited' => false];
         });
     }

@@ -53,49 +53,6 @@ final class HardenReviewSchema extends AbstractMigration
             ])
             ->update();
 
-        $this->table('moderation_logs', ['id' => false, 'primary_key' => ['id']])
-            ->addColumn('id', 'biginteger', [
-                'identity' => true,
-                'signed' => false,
-                'null' => false,
-            ])
-            ->addColumn('object_type', 'enum', [
-                'values' => ['review', 'reply'],
-                'null' => false,
-            ])
-            ->addColumn('object_id', 'biginteger', [
-                'signed' => false,
-                'null' => false,
-            ])
-            ->addColumn('action', 'enum', [
-                'values' => ['hide', 'restore'],
-                'null' => false,
-            ])
-            ->addColumn('reason', 'string', [
-                'limit' => 255,
-                'null' => false,
-                'default' => '',
-            ])
-            ->addColumn('staff_id', 'biginteger', [
-                'signed' => false,
-                'null' => false,
-            ])
-            ->addColumn('created_at', 'datetime', ['null' => false])
-            ->addIndex(
-                ['object_type', 'object_id', 'id'],
-                ['name' => 'idx_moderation_logs_object'],
-            )
-            ->addIndex(
-                ['staff_id', 'created_at'],
-                ['name' => 'idx_moderation_logs_staff_created'],
-            )
-            ->addForeignKey('staff_id', 'staff_users', 'account_id', [
-                'delete' => 'RESTRICT',
-                'update' => 'RESTRICT',
-                'constraint' => 'fk_moderation_logs_staff',
-            ])
-            ->create();
-
         $this->execute(
             'ALTER TABLE reviews '
             . 'ADD CONSTRAINT chk_reviews_rating CHECK (rating BETWEEN 1 AND 5)',
@@ -105,8 +62,6 @@ final class HardenReviewSchema extends AbstractMigration
     public function down(): void
     {
         $this->execute('ALTER TABLE reviews DROP CHECK chk_reviews_rating');
-
-        $this->table('moderation_logs')->drop()->save();
 
         $replies = $this->table('review_replies');
         if ($replies->hasForeignKey('hidden_by_staff_id')) {

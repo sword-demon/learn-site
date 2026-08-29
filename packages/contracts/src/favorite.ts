@@ -28,9 +28,25 @@ export const FavoriteToggleDTO = z.object({
 })
 export type FavoriteToggleDTO = z.infer<typeof FavoriteToggleDTO>
 
-export const ShareCreateDTO = z.object({
-  token: z.string(),
+export const ShareLinkDTO = z.object({
+  course_id: z.number().int().positive(),
   share_url: z.string(),
-  render_status: z.enum(['pending', 'ready', 'failed']),
 })
-export type ShareCreateDTO = z.infer<typeof ShareCreateDTO>
+export type ShareLinkDTO = z.infer<typeof ShareLinkDTO>
+
+export const SharePosterSnapshotDTO = z.object({
+  cover_url: z.string().nullable(),
+  title: z.string(),
+  teacher_name: z.string(),
+  price_label: z.string(),
+})
+export type SharePosterSnapshotDTO = z.infer<typeof SharePosterSnapshotDTO>
+
+export const SharePosterDTO = z.object({
+  poster_id: z.number().int().positive().nullable(),
+  token: z.string().nullable(),
+  share_url: z.string(),
+  render_status: z.enum(['ready', 'failed']),
+  snapshot: SharePosterSnapshotDTO,
+})
+export type SharePosterDTO = z.infer<typeof SharePosterDTO>

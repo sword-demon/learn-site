@@ -79,13 +79,19 @@ curl -sf http://localhost:8787/health
 
 ```bash
 make help        # 查看所有 Make 目标
+make build       # 构建全部生产镜像
+make up          # 构建并启动全部服务
 make ps          # 容器状态
 make logs        # 查看日志（默认 api 服务）
 make migrate     # 执行数据库迁移
 make seed        # 执行种子数据
+make backup BACKUP_DIR=/absolute/path             # 备份数据库与 uploads
+make rehearse-restore BACKUP_DIR=/absolute/path   # 在隔离 Compose project 恢复演练
 make sh-api      # 进入 api 容器 shell
-make down        # 停止服务（保留数据卷）
+make down        # SIGTERM 优雅停栈并保留数据卷
 ```
+
+`make logs SERVICE=api` 跟随指定服务的 Compose 日志。API 以非 root 用户运行，`make down` 会按 `stop_grace_period` 先发送 SIGTERM；只有进程未在期限内退出时才会强制终止。日常停栈不要使用 `down -v`，后者会删除数据卷。
 
 ### 测试与质量门禁
 
@@ -93,16 +99,19 @@ make down        # 停止服务（保留数据卷）
 make test                              # API + 前端测试套件
 make test-api                          # PHPUnit（Compose test profile）
 make test-web                          # 前端 typecheck + build
+make test-e2e                          # Playwright 核心旅程（隔离 Compose project）
+make test-perf                         # 真实鉴权的 95% / 2 秒性能冒烟
 
 # 容器内单独执行
 docker compose exec api composer test
 docker compose exec api composer stan
 ```
 
-性能冒烟（单用户 95% 请求 2 秒内）：
+性能冒烟会重置独立的 `learn-site-e2e` 测试库，采集浏览、目录、收藏和进度各 20 个串行样本；每类及总体都必须至少 95% 返回 HTTP 200 且低于 2 秒。200 并发是发布后观测项，不阻塞首版合并。
 
 ```bash
-bash apps/api/tests/perf/timing.sh
+make test-perf
+make e2e-down  # 验证结束后删除隔离测试卷
 ```
 
 ### 前端 Monorepo（pnpm）

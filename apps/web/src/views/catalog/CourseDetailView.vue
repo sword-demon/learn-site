@@ -22,13 +22,18 @@
             <span>{{ chapters.length }} 个章节</span>
             <span
               v-if="chapters.some((chapter) => chapter.lessons.some((lesson) => lesson.is_preview))"
-            >支持试看</span>
+              >支持试看</span
+            >
           </div>
           <div class="course-price">
             <span v-if="detail.course.price_mode === 'free'" class="tag free">免费课程</span>
             <template v-else>
-              <span class="price-now">¥ {{ formatPrice(detail.course.sale_price || detail.course.list_price) }}</span>
-              <span v-if="detail.course.sale_price > 0" class="price-was">¥ {{ formatPrice(detail.course.list_price) }}</span>
+              <span class="price-now"
+                >¥ {{ formatPrice(detail.course.sale_price || detail.course.list_price) }}</span
+              >
+              <span v-if="detail.course.sale_price > 0" class="price-was"
+                >¥ {{ formatPrice(detail.course.list_price) }}</span
+              >
               <span v-if="saleWindowOpen" class="tag sale">限时优惠</span>
             </template>
           </div>
@@ -48,18 +53,13 @@
               :disabled="starting"
               @click="startFree"
             >
-              {{ starting ? '授权中…' : '开始学习' }}
+              {{ starting ? '授权中…' : detail.course.viewer_can_rejoin ? '再次加入' : '开始学习' }}
             </button>
-            <button
-              v-else-if="firstLesson"
-              type="button"
-              class="btn btn-primary"
-              :disabled="buying"
-              @click="buy"
-            >
-              {{ buying ? '下单中…' : '立即购买' }}
+            <button v-else-if="firstLesson" type="button" class="btn btn-primary" @click="buy">
+              立即购买
             </button>
             <span v-else class="notice">这门课还没有可学习的课节。</span>
+            <p v-if="startError" class="notice error">{{ startError }}</p>
           </div>
         </div>
         <div class="hero-cover">
@@ -72,10 +72,10 @@
         </div>
       </section>
 
-      <section v-if="detail.course.intro_html" class="section-frame intro">
+      <section v-if="showIntro" class="section-frame intro">
         <p class="eyebrow"><span class="eyebrow-rule" />课程说明</p>
         <h2 class="section-title display">课程介绍</h2>
-        <div class="prose" v-html="detail.course.intro_html" />
+        <MarkdownRenderer :html="detail.course.intro_html" class="intro-body" />
       </section>
 
       <section class="section-frame lessons">
@@ -131,6 +131,8 @@
                     :course-id="detail.course.id"
                     :lesson-id="lesson.id"
                     :lesson-title="lesson.title"
+                    :can-rejoin="detail.course.viewer_can_rejoin"
+                    :revoked-reason="detail.course.viewer_revoked_reason"
                     @entitled="onEntitled"
                   >
                     <router-link
@@ -160,7 +162,11 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { PublicCourseDetailDTO } from '@learn-site/contracts';
-import { createCourseOrder, fetchCourseDetail, startCourse } from '@/api/learner';
+import { hasTokens } from '@/api/http';
+import { fetchCourseDetail, startCourse } from '@/api/learner';
+import { loginPathFor } from '@/router/guards';
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
+import { hasRichHtml } from '@/utils/richHtml';
 import AccessGate from '@/views/catalog/AccessGate.vue';
 import ReviewTree from '@/views/catalog/ReviewTree.vue';
 import ShareBar from '@/views/catalog/ShareBar.vue';
@@ -173,8 +179,9 @@ const detail = ref<PublicCourseDetailDTO | null>(null);
 const loading = ref(true);
 const loadError = ref(false);
 const starting = ref(false);
-const buying = ref(false);
+const startError = ref<string | null>(null);
 const chapters = computed(() => detail.value?.chapters ?? []);
+const showIntro = computed(() => hasRichHtml(detail.value?.course.intro_html));
 
 const firstLesson = computed(() => {
   for (const chapter of chapters.value) {
@@ -216,30 +223,36 @@ function openFirst(): void {
 
 async function startFree(): Promise<void> {
   if (!detail.value) return;
+  if (!hasTokens()) {
+    await router.push(loginPathFor(route.fullPath));
+    return;
+  }
   starting.value = true;
+  startError.value = null;
   try {
     const result = await startCourse(detail.value.course.id);
     detail.value.course.viewer_authorized = true;
+    detail.value.course.viewer_entitlement_status = 'active';
+    detail.value.course.viewer_entitlement_source = result.source;
+    detail.value.course.viewer_revoked_reason = null;
+    detail.value.course.viewer_can_rejoin = false;
     if (result.first_lesson)
       router.push(`/learn/${detail.value.course.id}/${result.first_lesson.id}`);
-  } catch {
-    loadError.value = true;
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    if (code === 'UNAUTHENTICATED') {
+      await router.push(loginPathFor(route.fullPath));
+      return;
+    }
+    startError.value = code === 'NOT_FOUND' ? '课程不存在或已下架。' : '授权失败，请稍后再试。';
   } finally {
     starting.value = false;
   }
 }
 
-async function buy(): Promise<void> {
+function buy(): void {
   if (!detail.value) return;
-  buying.value = true;
-  try {
-    await createCourseOrder(detail.value.course.id);
-    router.push('/me/orders');
-  } catch {
-    loadError.value = true;
-  } finally {
-    buying.value = false;
-  }
+  router.push(`/checkout/${detail.value.course.id}`);
 }
 
 function formatPrice(n: number): string {
@@ -260,7 +273,12 @@ function kindLabel(kind: string): string {
 }
 
 function onEntitled(): void {
-  if (detail.value) detail.value.course.viewer_authorized = true;
+  if (detail.value) {
+    detail.value.course.viewer_authorized = true;
+    detail.value.course.viewer_entitlement_status = 'active';
+    detail.value.course.viewer_revoked_reason = null;
+    detail.value.course.viewer_can_rejoin = false;
+  }
 }
 </script>
 
@@ -393,7 +411,7 @@ function onEntitled(): void {
   font-size: 1.55rem;
 }
 
-.intro .prose {
+.intro-body {
   max-width: 72ch;
 }
 

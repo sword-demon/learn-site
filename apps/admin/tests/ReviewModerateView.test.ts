@@ -3,6 +3,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReviewDTO, ReviewReplyDTO, ReviewThreadDTO } from '@learn-site/contracts';
+import { installElementPlus } from '@/plugins/element-plus';
 
 const reviewApi = vi.hoisted(() => ({
   fetchAdminThread: vi.fn(),
@@ -74,7 +75,7 @@ const thread: ReviewThreadDTO = {
 };
 
 async function mountAndOpen(): Promise<ReturnType<typeof mount>> {
-  const wrapper = mount(ReviewModerateView);
+  const wrapper = mount(ReviewModerateView, { global: { plugins: [installElementPlus] } });
   await flushPromises();
   await wrapper.get('.review-button').trigger('click');
   await flushPromises();
@@ -100,12 +101,24 @@ describe('ReviewModerateView', () => {
   });
 
   it('loads scoped course options without using the course management API', async () => {
-    const wrapper = mount(ReviewModerateView);
+    const wrapper = mount(ReviewModerateView, { global: { plugins: [installElementPlus] } });
     await flushPromises();
 
     expect(reviewApi.fetchModerationFilterOptions).toHaveBeenCalledOnce();
     expect(catalogApi.listCourses).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain(course.title);
+
+    const courseSelect = wrapper
+      .findAllComponents({ name: 'ElSelect' })
+      .find((component) => component.attributes('data-field') === 'course_id');
+    const statusSelect = wrapper
+      .findAllComponents({ name: 'ElSelect' })
+      .find((component) => component.attributes('data-field') === 'visibility');
+
+    expect(courseSelect?.props('teleported')).toBe(true);
+    expect(courseSelect?.props('placement')).toBe('bottom-start');
+    expect(courseSelect?.classes()).toContain('filter-control--course');
+    expect(statusSelect?.classes()).toContain('filter-control--status');
   });
 
   it('renders the real three-level tree with public author identity', async () => {

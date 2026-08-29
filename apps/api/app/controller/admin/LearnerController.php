@@ -78,9 +78,39 @@ final class LearnerController
 
             $total = (clone $q)->count();
             $rows = $q->order('a.id', 'desc')->page($page, $limit)->select()->toArray();
-            $items = array_map(static function ($r) {
+            $learnerIds = array_values(array_map(
+                static fn(array $row): int => (int) $row['id'],
+                is_array($rows) ? $rows : [],
+            ));
+            $learningByLearner = [];
+            $ordersByLearner = [];
+            if ($learnerIds !== []) {
+                $learningRows = Db::name('course_enrollments')
+                    ->where('learner_id', 'in', $learnerIds)
+                    ->field('learner_id, COUNT(*) AS course_count, SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) AS completed_course_count')
+                    ->group('learner_id')
+                    ->select()
+                    ->toArray();
+                foreach ($learningRows as $summary) {
+                    $learningByLearner[(int) $summary['learner_id']] = $summary;
+                }
+                $orderRows = Db::name('orders')
+                    ->where('learner_id', 'in', $learnerIds)
+                    ->where('status', 'succeeded')
+                    ->field('learner_id, COUNT(*) AS successful_order_count, COALESCE(SUM(paid_amount), 0) AS total_paid_amount')
+                    ->group('learner_id')
+                    ->select()
+                    ->toArray();
+                foreach ($orderRows as $summary) {
+                    $ordersByLearner[(int) $summary['learner_id']] = $summary;
+                }
+            }
+            $items = array_map(static function ($r) use ($learningByLearner, $ordersByLearner) {
+                $learnerId = (int) $r['id'];
+                $learning = $learningByLearner[$learnerId] ?? [];
+                $orders = $ordersByLearner[$learnerId] ?? [];
                 return [
-                    'account_id' => (int) $r['id'],
+                    'account_id' => $learnerId,
                     'login' => (string) $r['login'],
                     'display_name' => (string) $r['display_name'],
                     'department_id' => null,
@@ -89,6 +119,10 @@ final class LearnerController
                     'must_change_password' => (int) $r['must_change_password'] === 1,
                     'last_login_at' => $r['last_login_at'] ? (string) $r['last_login_at'] : null,
                     'created_at' => (string) $r['created_at'],
+                    'course_count' => (int) ($learning['course_count'] ?? 0),
+                    'completed_course_count' => (int) ($learning['completed_course_count'] ?? 0),
+                    'successful_order_count' => (int) ($orders['successful_order_count'] ?? 0),
+                    'total_paid_amount' => (float) ($orders['total_paid_amount'] ?? 0),
                 ];
             }, is_array($rows) ? $rows : []);
             return [

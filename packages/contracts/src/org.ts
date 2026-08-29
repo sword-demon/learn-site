@@ -208,7 +208,13 @@ export const DepartmentListDTO = z.object({ items: z.array(DepartmentDTO) });
 export const PostListDTO = z.object({ items: z.array(PostDTO) });
 export const RoleListDTO = z.object({ items: z.array(RoleDTO) });
 export const PermissionListDTO = z.object({ items: z.array(PermissionDTO) });
-export const StaffListDTO = z.object({ items: z.array(StaffDTO) });
+export const StaffListDTO = z.object({
+  items: z.array(StaffDTO),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive().max(200),
+});
+export type StaffListDTO = z.infer<typeof StaffListDTO>;
 export const OrgDeleteResultDTO = z.object({ deleted: z.literal(true) });
 export const StaffOverrideResultDTO = z.object({ overrides: z.array(StaffOverride) });
 export const StaffKickResultDTO = z.object({ revoked: z.number().int().min(0) });

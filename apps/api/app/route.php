@@ -24,6 +24,8 @@ Route::group($learnerV1, function () {
     Route::get('/courses/{id}', [\App\controller\learner\CatalogController::class, 'courseDetail']);
     Route::get('/courses/{courseId}/reviews', [\App\controller\learner\ReviewController::class, 'list']);
     Route::get('/reviews/{id}', [\App\controller\learner\ReviewController::class, 'thread']);
+    Route::post('/courses/{id}/share-link', [\App\controller\learner\ShareController::class, 'link']);
+    Route::post('/courses/{id}/posters', [\App\controller\learner\ShareController::class, 'poster']);
 
     // Phase 13 / US6 — published learning maps (auth optional)
     Route::get('/learning-maps', [\App\controller\learner\LearningMapController::class, 'index']);
@@ -32,6 +34,8 @@ Route::group($learnerV1, function () {
 
 Route::group($learnerV1, function () {
     Route::post('/auth/logout', [\App\controller\learner\AuthController::class, 'logout']);
+    Route::get('/me', [\App\controller\learner\LearnerController::class, 'me']);
+    Route::patch('/me', [\App\controller\learner\LearnerController::class, 'updateMe']);
 
     // Phase 5 / US1 — lesson delivery (auth required)
     Route::get('/courses/{courseId}/lessons/{lessonId}', [\App\controller\learner\LessonController::class, 'deliver']);
@@ -43,13 +47,13 @@ Route::group($learnerV1, function () {
     Route::get('/orders/{id}',               [\App\controller\learner\OrderController::class, 'show']);
     Route::get('/my/learning',               [\App\controller\learner\LearningController::class, 'myLearning']);
     Route::post('/lessons/{id}/progress',    [\App\controller\learner\LearningController::class, 'reportProgress']);
+    Route::post('/lessons/{id}/video-heartbeat', [\App\controller\learner\LearningController::class, 'videoHeartbeat']);
 
     // Phase 11 / US4 — lesson Q&A (auth required)
     Route::get('/lessons/{lessonId}/questions',       [\App\controller\learner\QuestionController::class, 'index']);
     Route::post('/lessons/{lessonId}/questions',      [\App\controller\learner\QuestionController::class, 'create']);
     Route::get('/questions/{id}',                     [\App\controller\learner\QuestionController::class, 'show']);
     Route::post('/questions/{id}/messages',           [\App\controller\learner\QuestionController::class, 'followup']);
-    Route::post('/questions/{id}/followup',           [\App\controller\learner\QuestionController::class, 'followup']);
 
     // Phase 12 / US5 — reviews + reply tree
     Route::post('/courses/{courseId}/reviews', [\App\controller\learner\ReviewController::class, 'post']);
@@ -60,15 +64,14 @@ Route::group($learnerV1, function () {
     // Phase 13 / US6 — learning maps
     Route::post('/learning-maps/{id}/start', [\App\controller\learner\LearningMapController::class, 'start']);
 
-    // Phase 17 / US7 — favorites + share (T087/T088)
+    // Phase 17 / US7 — favorites
     Route::get('/me/favorites', [\App\controller\learner\FavoriteController::class, 'index']);
     Route::post('/courses/{id}/favorite', [\App\controller\learner\FavoriteController::class, 'add']);
     Route::delete('/courses/{id}/favorite', [\App\controller\learner\FavoriteController::class, 'remove']);
-    Route::post('/courses/{id}/share', [\App\controller\learner\ShareController::class, 'create']);
 
     // Phase 21 / US18 — learner inbox (T104 surface)
-    Route::get('/me/notifications', [\App\controller\learner\NotificationController::class, 'index']);
-    Route::post('/me/notifications/{id}/read', [\App\controller\learner\NotificationController::class, 'read']);
+    Route::get('/messages', [\App\controller\learner\NotificationController::class, 'index']);
+    Route::post('/messages/{id}/read', [\App\controller\learner\NotificationController::class, 'read']);
 })->middleware([\App\middleware\LearnerAuth::class]);
 
 // The fake notify seam is test-only. Production settles through the delayed
@@ -80,6 +83,8 @@ if (getenv('APP_ENV') === 'testing') {
     });
 }
 
+Route::get('/api/media/assets/{id}', [\App\controller\media\CourseMediaController::class, 'show'])
+    ->middleware([\App\middleware\OptionalLearnerAuth::class]);
 Route::get('/api/media/{key:.+}', [\App\controller\media\CourseCoverMediaController::class, 'show']);
 
 Route::group($adminV1, function () {
@@ -168,11 +173,6 @@ Route::group($adminV1, function () {
     Route::get('/questions/{id}',      [\App\controller\admin\QuestionController::class, 'show']);
     Route::post('/questions/{id}/answer', [\App\controller\admin\QuestionController::class, 'answer']);
     Route::post('/questions/{id}/close', [\App\controller\admin\QuestionController::class, 'close']);
-    Route::get('/qa',                  [\App\controller\admin\QuestionController::class, 'inbox']);
-    Route::get('/qa/filter-options',   [\App\controller\admin\QuestionController::class, 'filterOptions']);
-    Route::get('/qa/{id}',             [\App\controller\admin\QuestionController::class, 'show']);
-    Route::post('/qa/{id}/answer',     [\App\controller\admin\QuestionController::class, 'answer']);
-    Route::post('/qa/{id}/close',      [\App\controller\admin\QuestionController::class, 'close']);
 
     // Phase 12 / US5 — review moderation (review.view / review.moderate)
     Route::get('/reviews',             [\App\controller\admin\ReviewController::class, 'list']);
@@ -207,6 +207,7 @@ Route::group($adminV1, function () {
     // Phase 18 / US8 — site-wide learner accounts + per-course student list (T091).
     Route::get('/learners', [\App\controller\admin\LearnerController::class, 'index']);
     Route::get('/courses/{courseId}/students', [\App\controller\admin\CourseStudentController::class, 'index']);
+    Route::post('/courses/{courseId}/students/{accountId}/progress/reset', [\App\controller\admin\CourseStudentController::class, 'resetProgress']);
     Route::post('/courses/{courseId}/students/{accountId}/revoke', [\App\controller\admin\CourseStudentController::class, 'revoke']);
 })->middleware([
     \App\middleware\AdminAuth::class,
@@ -222,13 +223,11 @@ Route::group($adminV1, function () {
     \App\middleware\Authorize::class,
 ]);
 
-// Phase 19 / US11 — site profile + audit log (T095). Authorize enforces
-// `site.manage` for /site and `audit.view` for /audit.
+// Phase 19 / US11 — site profile + moderation log.
 Route::group($adminV1, function () {
     Route::get('/site', [\App\controller\admin\SiteController::class, 'show']);
-    Route::put('/site', [\App\controller\admin\SiteController::class, 'update']);
-    Route::get('/audit', [\App\controller\admin\AuditController::class, 'index']);
-Route::get('/moderation-logs', [\App\controller\admin\AuditController::class, 'index']);
+    Route::patch('/site', [\App\controller\admin\SiteController::class, 'update']);
+    Route::get('/moderation-logs', [\App\controller\admin\AuditController::class, 'index']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,

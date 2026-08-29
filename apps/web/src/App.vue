@@ -1,5 +1,6 @@
 <template>
   <div class="app-shell">
+    <RouteLoadingBar />
     <div class="app-content">
       <router-view />
     </div>
@@ -8,6 +9,7 @@
 </template>
 
 <script setup lang="ts">
+import RouteLoadingBar from '@/components/RouteLoadingBar.vue';
 import SiteFooter from '@/components/SiteFooter.vue';
 </script>
 

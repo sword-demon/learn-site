@@ -42,16 +42,15 @@ const formattedAt = (value: string): string => (value ? value.replace('T', ' ').
   >
     <article class="reply-content">
       <header class="reply-head">
-        <button
+        <el-button
           v-if="node.children.length"
-          type="button"
           class="collapse-button"
           :title="expanded ? '收起子回复' : '展开子回复'"
           :aria-label="expanded ? '收起子回复' : '展开子回复'"
           @click="expanded = !expanded"
         >
           {{ expanded ? '−' : '+' }}
-        </button>
+        </el-button>
         <strong>{{ node.reply.author_name }}</strong>
         <span v-if="node.reply.edited" class="edited">已编辑</span>
         <span class="badge" :data-visibility="node.reply.visibility">
@@ -64,59 +63,53 @@ const formattedAt = (value: string): string => (value ? value.replace('T', ' ').
       <p v-if="node.reply.hidden_reason" class="reason">隐藏原因: {{ node.reply.hidden_reason }}</p>
 
       <div class="reply-tools">
-        <button
+        <el-button
           v-if="canReply && node.reply.visibility === 'public'"
-          type="button"
           class="link"
           @click="emit('reply', node.reply.id)"
         >
           回复
-        </button>
-        <button
+        </el-button>
+        <el-button
           v-if="canModerate && node.reply.visibility === 'public'"
-          type="button"
           class="link danger"
           data-action="hide-reply"
           :disabled="busy"
           @click="askingToHide = true"
         >
           隐藏回复
-        </button>
-        <button
+        </el-button>
+        <el-button
           v-if="canModerate && node.reply.visibility === 'hidden'"
-          type="button"
           class="link"
           data-action="restore-reply"
           :disabled="busy"
           @click="emit('restore', node.reply.id)"
         >
           恢复回复
-        </button>
+        </el-button>
       </div>
 
-      <form
+      <el-form
         v-if="askingToHide"
         class="hide-reply-form"
         data-role="reply-hide-form"
         @submit.prevent="submitHide(node.reply.id)"
       >
-        <label>
-          隐藏原因
-          <input
-            v-model="hideReason"
-            data-role="reply-hide-reason"
-            type="text"
-            maxlength="255"
-            required
-          />
-        </label>
+        <el-form-item label="隐藏原因" required>
+          <el-input v-model="hideReason" clearable data-role="reply-hide-reason" maxlength="255" />
+        </el-form-item>
         <div class="form-actions">
-          <button type="button" class="btn" @click="askingToHide = false">取消</button>
-          <button type="submit" class="btn btn-danger" :disabled="busy || !hideReason.trim()">
+          <el-button class="btn" @click="askingToHide = false">取消</el-button>
+          <el-button
+            native-type="submit"
+            class="btn btn-danger"
+            :disabled="busy || !hideReason.trim()"
+          >
             确认隐藏
-          </button>
+          </el-button>
         </div>
-      </form>
+      </el-form>
     </article>
 
     <ol v-if="expanded && node.children.length" class="reply-children">

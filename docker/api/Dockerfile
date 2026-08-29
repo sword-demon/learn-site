@@ -72,6 +72,7 @@ COPY apps/api /app
 COPY ops /workspace/ops
 COPY scripts /workspace/scripts
 COPY Makefile /workspace/Makefile
+COPY compose.yaml compose.test.yaml compose.restore.yaml /workspace/
 RUN mkdir -p /app/runtime/logs /app/runtime/views
 WORKDIR /app
 CMD ["php", "vendor/bin/phpunit"]

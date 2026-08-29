@@ -122,6 +122,9 @@ final class PublicCatalogService
 
         $category = Db::name('categories')->where('id', (int) $course->category_id)->find();
         $authorized = $this->viewerAuthorized((int) $course->id, $viewerAccountId); // ponytail: phase-6
+        $latestEntitlement = $viewerAccountId !== null && $viewerAccountId > 0
+            ? $this->entitlements->findLatest($viewerAccountId, (int) $course->id)
+            : null;
 
         $chapterRows = Db::name('chapters')
             ->where('course_id', $courseId)
@@ -153,7 +156,12 @@ final class PublicCatalogService
         }
 
         return [
-            'course' => $this->shapeDetailCourse($course->toArray(), $category, $authorized),
+            'course' => $this->shapeDetailCourse(
+                $course->toArray(),
+                $category,
+                $authorized,
+                $latestEntitlement,
+            ),
             'chapters' => $chapters,
         ];
     }
@@ -230,20 +238,18 @@ final class PublicCatalogService
     /**
      * @param array<string, mixed> $row
      * @param array<string, mixed>|null $category
+     * @param array<string, mixed>|null $latestEntitlement
      * @return array<string, mixed>
      */
-    /**
-     * @param array<string, mixed> $row
-     * @param array<string, mixed>|null $category
-     * @return array<string, mixed>
-     */
-    /**
-     * @param array<string, mixed> $row
-     * @param array<string, mixed>|null $category
-     * @return array<string, mixed>
-     */
-    private function shapeDetailCourse(array $row, ?array $category, bool $authorized): array
+    private function shapeDetailCourse(
+        array $row,
+        ?array $category,
+        bool $authorized,
+        ?array $latestEntitlement,
+    ): array
     {
+        $entitlementStatus = $latestEntitlement !== null ? (string) $latestEntitlement['status'] : null;
+        $entitlementSource = $latestEntitlement !== null ? (string) $latestEntitlement['source'] : null;
         return [
             'id'              => (int) $row['id'],
             'category_id'     => (int) $row['category_id'],
@@ -259,6 +265,15 @@ final class PublicCatalogService
             'sale_start_at'   => $row['sale_start_at'] ?? null,
             'sale_end_at'     => $row['sale_end_at'] ?? null,
             'viewer_authorized' => $authorized,
+            'viewer_entitlement_status' => $entitlementStatus,
+            'viewer_entitlement_source' => $entitlementSource,
+            'viewer_revoked_reason' => $latestEntitlement !== null
+                ? ($latestEntitlement['revoked_reason'] ?? null)
+                : null,
+            'viewer_can_rejoin' => !$authorized
+                && $entitlementStatus === 'revoked'
+                && $entitlementSource === 'free'
+                && (string) $row['price_mode'] === 'free',
             'learner_count'   => $this->publicLearnerCount((int) $row['id']),
             'created_at'      => (string) ($row['created_at'] ?? ''),
         ];

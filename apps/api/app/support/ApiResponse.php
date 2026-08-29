@@ -20,6 +20,9 @@ use support\Response;
  *   409     — CONFLICT / CATEGORY_IN_USE
  *   422     — PAYMENT_UNSETTLED
  *   500     — INTERNAL
+ *
+ * Course deletion blockers use CONFLICT with stable message keys documented
+ * in contracts/admin-api.md so clients can present actionable copy.
  */
 final class ApiResponse
 {

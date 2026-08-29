@@ -28,25 +28,4 @@ return [
             'publicPath' => public_path(),
         ],
     ],
-    'monitor' => [
-        'handler' => app\process\Monitor::class,
-        'reloadable' => false,
-        'constructor' => [
-            'monitorDir' => array_merge([
-                app_path(),
-                config_path(),
-                base_path() . '/process',
-                base_path() . '/support',
-                base_path() . '/resource',
-                base_path() . '/.env',
-            ], glob(base_path() . '/plugin/*/app') ?: [], glob(base_path() . '/plugin/*/config') ?: []),
-            'monitorExtensions' => [
-                'php', 'html', 'htm', 'env',
-            ],
-            'options' => [
-                'enable_file_monitor' => false,
-                'enable_memory_monitor' => DIRECTORY_SEPARATOR === '/',
-            ],
-        ],
-    ],
 ];

@@ -42,10 +42,10 @@ final class OrderController
      * Returns the payment envelope: { order_id, status: 'pending',
      *   payment: { type, code_url, ... } }.
      */
-    public function create(Request $request): \support\Response
+    public function create(Request $request, string $id): \support\Response
     {
         $learnerId = $this->requireLearner($request);
-        $courseId = (int) ($request->route('id') ?? $request->route('courseId') ?? 0);
+        $courseId = (int) $id;
         if ($courseId <= 0) {
             return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'COURSE_INVALID');
         }
@@ -86,10 +86,10 @@ final class OrderController
      * confirm existence-vs-ownership with separate error codes — that
      * would leak the order id space.
      */
-    public function show(Request $request): \support\Response
+    public function show(Request $request, string $id): \support\Response
     {
         $learnerId = $this->requireLearner($request);
-        $orderId = (int) ($request->route('id') ?? 0);
+        $orderId = (int) $id;
         if ($orderId <= 0) {
             return ApiResponse::fail(ApiResponse::NOT_FOUND, 'ORDER_NOT_FOUND');
         }

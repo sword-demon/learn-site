@@ -1,86 +1,133 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { hasPermission } from '@/api/http';
 import {
   listCourseStudents,
   revokeCourseStudent,
+  resetCourseStudentProgress,
   type CourseStudentDTO,
   type CourseStudentListDTO,
-} from '@/api/courseStudents'
+} from '@/api/courseStudents';
 
-defineOptions({ name: 'CourseStudentView' })
+defineOptions({ name: 'CourseStudentView' });
 
-const route = useRoute()
-const courseId = computed(() => Number(route.params.id))
+const route = useRoute();
+const courseId = computed(() => Number(route.params.id));
 
-const list = ref<CourseStudentListDTO | null>(null)
-const loading = ref(false)
-const errorMsg = ref<string | null>(null)
-const submittingId = ref<number | null>(null)
+const list = ref<CourseStudentListDTO | null>(null);
+const loading = ref(false);
+const errorMsg = ref<string | null>(null);
+const submittingId = ref<number | null>(null);
 
 const filters = ref({
   status: '' as '' | 'active' | 'revoked',
+  source: '' as '' | 'free' | 'purchase',
+  learning_status: '' as '' | 'not_started' | 'in_progress' | 'completed',
   page: 1,
   limit: 20,
-})
+});
 
-const total = computed(() => list.value?.total ?? 0)
+const total = computed(() => list.value?.total ?? 0);
+const canReset = computed(() => hasPermission('course_student.reset'));
+const canRevoke = computed(() => hasPermission('course_student.revoke_free'));
 const totalPages = computed(() =>
   list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
-)
+);
 
 async function reload(): Promise<void> {
-  loading.value = true
-  errorMsg.value = null
+  loading.value = true;
+  errorMsg.value = null;
   try {
     const params: {
-      status?: 'active' | 'revoked'
-      page: number
-      limit: number
-    } = { page: filters.value.page, limit: filters.value.limit }
-    if (filters.value.status) params.status = filters.value.status
-    list.value = await listCourseStudents(courseId.value, params)
+      status?: 'active' | 'revoked';
+      source?: 'free' | 'purchase';
+      learning_status?: 'not_started' | 'in_progress' | 'completed';
+      page: number;
+      limit: number;
+    } = { page: filters.value.page, limit: filters.value.limit };
+    if (filters.value.status) params.status = filters.value.status;
+    if (filters.value.source) params.source = filters.value.source;
+    if (filters.value.learning_status) params.learning_status = filters.value.learning_status;
+    list.value = await listCourseStudents(courseId.value, params);
   } catch (err) {
-    errorMsg.value = (err as Error).message || 'load_failed'
+    errorMsg.value = (err as Error).message || 'load_failed';
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 watch(courseId, () => {
-  filters.value.page = 1
-  void reload()
-})
+  filters.value.page = 1;
+  void reload();
+});
 
 async function revoke(row: CourseStudentDTO): Promise<void> {
-  if (submittingId.value !== null) return
-  if (row.entitlement_status !== 'active') return
+  if (submittingId.value !== null) return;
+  if (row.entitlement_status !== 'active') return;
   if (row.source !== 'free') {
-    errorMsg.value = '仅免费授权可在此撤销, 付费授权走退款流程.'
-    return
+    errorMsg.value = '仅免费授权可在此撤销, 付费授权走退款流程.';
+    return;
   }
-  const reason = prompt(`撤销 ${row.login} 的免费授权, 请填写原因：`, 'admin_revoke')
-  if (reason === null) return
-  submittingId.value = row.account_id
+  const input = prompt(`撤销 ${row.login} 的免费授权，请填写原因：`);
+  if (input === null) return;
+  const reason = input.trim();
+  if (!reason) {
+    errorMsg.value = '请填写撤销原因。';
+    return;
+  }
+  submittingId.value = row.account_id;
   try {
-    await revokeCourseStudent(courseId.value, row.account_id, reason)
-    await reload()
+    await revokeCourseStudent(courseId.value, row.account_id, reason);
+    await reload();
   } catch (err) {
-    errorMsg.value = (err as Error).message || 'revoke_failed'
+    errorMsg.value = revokeErrorMessage(err);
   } finally {
-    submittingId.value = null
+    submittingId.value = null;
+  }
+}
+
+async function resetProgress(row: CourseStudentDTO): Promise<void> {
+  if (submittingId.value !== null) return;
+  if (!confirm(`确认重置 ${row.login} 在本课程的全部学习进度？`)) return;
+  submittingId.value = row.account_id;
+  try {
+    await resetCourseStudentProgress(courseId.value, row.account_id);
+    await reload();
+  } catch (err) {
+    errorMsg.value = (err as Error).message || 'reset_failed';
+  } finally {
+    submittingId.value = null;
   }
 }
 
 onMounted(() => {
-  void reload()
-})
+  void reload();
+});
 
 function sourceLabel(src: CourseStudentDTO['source']): string {
-  return src === 'free' ? '免费授权' : '购买'
+  return src === 'free' ? '免费授权' : '购买';
 }
 function entitlementLabel(s: CourseStudentDTO['entitlement_status']): string {
-  return s === 'active' ? '有效' : '已撤销'
+  return s === 'active' ? '有效' : '已撤销';
+}
+function learningLabel(status: CourseStudentDTO['learning_status']): string {
+  if (status === 'completed') return '已完成';
+  if (status === 'in_progress') return '学习中';
+  return '未开始';
+}
+
+function revokeErrorMessage(error: unknown): string {
+  const apiError = (
+    error as {
+      response?: { data?: { error?: { code?: string; message?: string } } };
+    }
+  ).response?.data?.error;
+  if (apiError?.code === 'FORBIDDEN' && apiError.message === 'PAID_NOT_REVOCABLE') {
+    return '付费授权不能在此撤销。';
+  }
+  if (apiError?.message === 'REVOKE_REASON_REQUIRED') return '请填写撤销原因。';
+  return apiError?.message || (error as Error).message || '撤销失败，请稍后再试。';
 }
 </script>
 
@@ -91,127 +138,272 @@ function entitlementLabel(s: CourseStudentDTO['entitlement_status']): string {
       <p class="muted">共 {{ total }} 人</p>
     </header>
 
-    <section class="filters">
-      <label>
-        授权状态
-        <select v-model="filters.status">
-          <option value="">全部</option>
-          <option value="active">有效</option>
-          <option value="revoked">已撤销</option>
-        </select>
-      </label>
-      <button
-        type="button"
-        class="btn btn-primary"
-        :disabled="loading"
-        @click="(filters.page = 1, reload())"
-      >
-        查询
-      </button>
-    </section>
+    <el-form class="filters filter-form" inline @submit.prevent="((filters.page = 1), reload())">
+      <el-form-item label="授权状态">
+        <el-select
+          v-model="filters.status"
+          class="filter-control"
+          clearable
+          :teleported="false"
+          placeholder="全部"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="有效" value="active" />
+          <el-option label="已撤销" value="revoked" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="加入来源">
+        <el-select
+          v-model="filters.source"
+          class="filter-control"
+          clearable
+          name="source"
+          data-field="source"
+          placeholder="全部"
+          :teleported="false"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="免费加入" value="free" />
+          <el-option label="付费取得" value="purchase" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="学习状态">
+        <el-select
+          v-model="filters.learning_status"
+          class="filter-control"
+          clearable
+          name="learning_status"
+          data-field="learning_status"
+          placeholder="全部"
+          :teleported="false"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="未开始" value="not_started" />
+          <el-option label="学习中" value="in_progress" />
+          <el-option label="已完成" value="completed" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button
+          class="btn btn-primary"
+          data-action="query"
+          :disabled="loading"
+          native-type="submit"
+        >
+          查询
+        </el-button>
+      </el-form-item>
+    </el-form>
 
     <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
     <p v-else-if="loading" class="notice">加载中…</p>
 
-    <table v-else-if="list && list.items.length" class="data">
-      <thead>
-        <tr>
-          <th>账号</th>
-          <th>姓名</th>
-          <th>部门</th>
-          <th>账号状态</th>
-          <th>来源</th>
-          <th>授权</th>
-          <th>最近登录</th>
-          <th>授权时间</th>
-          <th>撤销时间</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in list.items" :key="row.account_id">
-          <td>{{ row.login }}</td>
-          <td>{{ row.display_name }}</td>
-          <td>{{ row.department_name || '—' }}</td>
-          <td>
-            <span :data-status="row.account_status">{{ row.account_status }}</span>
-          </td>
-          <td>{{ sourceLabel(row.source) }}</td>
-          <td>
-            <span :data-entitlement="row.entitlement_status">{{ entitlementLabel(row.entitlement_status) }}</span>
-          </td>
-          <td>{{ row.last_login_at || '—' }}</td>
-          <td>{{ row.enrolled_at }}</td>
-          <td>{{ row.revoked_at || '—' }}</td>
-          <td class="actions">
-            <button
-              v-if="row.entitlement_status === 'active' && row.source === 'free'"
-              type="button"
+    <el-table v-else v-loading="loading" :data="list?.items ?? []" stripe class="data">
+      <el-table-column prop="login" label="账号" min-width="140" />
+      <el-table-column prop="nickname" label="昵称" min-width="120" />
+      <el-table-column label="账号状态" min-width="110">
+        <template #default="{ row }">
+          <span :data-status="row.account_status">{{ row.account_status }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="来源" min-width="100">
+        <template #default="{ row }">{{ sourceLabel(row.source) }}</template>
+      </el-table-column>
+      <el-table-column label="授权" min-width="100">
+        <template #default="{ row }">
+          <span :data-entitlement="row.entitlement_status">{{
+            entitlementLabel(row.entitlement_status)
+          }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="进度" min-width="80">
+        <template #default="{ row }">{{ row.progress_percent }}%</template>
+      </el-table-column>
+      <el-table-column label="学习状态" min-width="110">
+        <template #default="{ row }">{{ learningLabel(row.learning_status) }}</template>
+      </el-table-column>
+      <el-table-column label="最近学习" min-width="170">
+        <template #default="{ row }">{{ row.last_learning_at || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="完成时间" min-width="170">
+        <template #default="{ row }">{{ row.completed_at || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="最近登录" min-width="170">
+        <template #default="{ row }">{{ row.last_login_at || '—' }}</template>
+      </el-table-column>
+      <el-table-column prop="enrolled_at" label="授权时间" min-width="170" />
+      <el-table-column label="撤销时间" min-width="170">
+        <template #default="{ row }">{{ row.revoked_at || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="撤销原因" min-width="180">
+        <template #default="{ row }">{{ row.revoked_reason || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="canReset || canRevoke" label="操作" min-width="180" fixed="right">
+        <template #default="{ row }">
+          <div class="actions">
+            <el-button
+              v-if="canReset"
+              class="btn"
+              :disabled="submittingId === row.account_id"
+              @click="resetProgress(row)"
+            >
+              重置进度
+            </el-button>
+            <el-button
+              v-if="canRevoke && row.entitlement_status === 'active' && row.source === 'free'"
               class="btn warn"
+              data-action="revoke"
               :disabled="submittingId === row.account_id"
               @click="revoke(row)"
             >
               撤销授权
-            </button>
-            <span v-else class="muted">—</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-else class="empty">还没有学员选修这门课.</p>
+            </el-button>
+          </div>
+        </template>
+      </el-table-column>
+      <template #empty><el-empty description="还没有学员选修这门课" :image-size="88" /></template>
+    </el-table>
 
     <nav v-if="list && totalPages > 1" class="pager">
-      <button
-        type="button"
-        :disabled="filters.page <= 1"
-        @click="(filters.page -= 1, reload())"
-      >
+      <el-button :disabled="filters.page <= 1" @click="((filters.page -= 1), reload())">
         上一页
-      </button>
+      </el-button>
       <span>{{ filters.page }} / {{ totalPages }}</span>
-      <button
-        type="button"
-        :disabled="filters.page >= totalPages"
-        @click="(filters.page += 1, reload())"
-      >
+      <el-button :disabled="filters.page >= totalPages" @click="((filters.page += 1), reload())">
         下一页
-      </button>
+      </el-button>
     </nav>
   </main>
 </template>
 
 <style scoped>
-.page { display: grid; gap: 16px; }
-.head { display: flex; align-items: baseline; justify-content: space-between; }
-.display { margin: 0; font-size: 1.4rem; }
-.muted { color: var(--color-text-muted, #5b6472); margin: 0; font-size: 0.85rem; }
-.filters { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
-.filters label { display: grid; gap: 4px; font-size: 0.85rem; }
-.filters select {
-  padding: 6px 8px; border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px; font: inherit;
+.page {
+  display: grid;
+  gap: 16px;
 }
-.error { color: #b42318; margin: 0; }
-.notice { color: var(--color-text-muted, #5b6472); margin: 0; }
-.empty { color: var(--color-text-muted, #5b6472); margin: 0; }
-.data { width: 100%; border-collapse: collapse; background: #fff; }
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.display {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.muted {
+  color: var(--color-text-muted, #5b6472);
+  margin: 0;
+  font-size: 0.85rem;
+}
+.filters {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 18px;
+  min-width: 0;
+}
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.filter-form :deep(.el-form-item__label) {
+  color: #52667a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.filter-control {
+  width: 168px;
+}
+.error {
+  color: #b42318;
+  margin: 0;
+}
+.notice {
+  color: var(--color-text-muted, #5b6472);
+  margin: 0;
+}
+.empty {
+  color: var(--color-text-muted, #5b6472);
+  margin: 0;
+}
+.data {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
 .data th,
 .data td {
-  padding: 8px 10px; border-bottom: 1px solid var(--color-border, #e3e6ee);
-  font-size: 0.9rem; text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border, #e3e6ee);
+  font-size: 0.9rem;
+  text-align: left;
 }
-.data th { background: var(--color-bg-soft, #fafbfd); }
-[data-status='active'] { color: #137a3c; }
-[data-status='disabled'] { color: #b42318; }
-[data-entitlement='active'] { color: #137a3c; }
-[data-entitlement='revoked'] { color: #b42318; }
-.actions { display: flex; gap: 6px; }
-.btn.warn { color: #b42318; border-color: #f3c1bb; background: #fff5f3; }
+.data th {
+  background: var(--color-bg-soft, #fafbfd);
+}
+[data-status='active'] {
+  color: #137a3c;
+}
+[data-status='disabled'] {
+  color: #b42318;
+}
+[data-entitlement='active'] {
+  color: #137a3c;
+}
+[data-entitlement='revoked'] {
+  color: #b42318;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+}
+.btn.warn {
+  color: #b42318;
+  border-color: #f3c1bb;
+  background: #fff5f3;
+}
 .btn {
-  padding: 6px 12px; border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px; background: #fff; font: inherit; cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border, #d0d4dc);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
 }
-.btn-primary { background: var(--color-primary, #2563eb); color: #fff; border-color: transparent; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.pager { display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+.btn-primary {
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  border-color: transparent;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pager {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+@media (max-width: 560px) {
+  .filter-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .filter-form :deep(.el-form-item) {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  .filter-control {
+    width: 100%;
+  }
+}
 </style>

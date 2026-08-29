@@ -38,7 +38,7 @@ final class CaptchaService
             return null;
         }
         $id     = bin2hex(random_bytes(8));
-        $answer = $this->generateAnswer();
+        $answer = $this->testingAnswer() ?? $this->generateAnswer();
         $redis->setex(self::PREFIX . $id, self::TTL, strtolower($answer));
         return ['captcha_id' => $id, 'image' => $this->renderImage($answer), 'ttl_seconds' => self::TTL];
     }
@@ -78,6 +78,18 @@ final class CaptchaService
             $out .= $alphabet[random_int(0, $len - 1)];
         }
         return $out;
+    }
+
+    private function testingAnswer(): ?string
+    {
+        if (getenv('APP_ENV') !== 'testing') {
+            return null;
+        }
+        $answer = trim((string) (getenv('E2E_CAPTCHA_ANSWER') ?: ''));
+        if (!preg_match('/^[A-Za-z0-9-]{1,8}$/', $answer)) {
+            return null;
+        }
+        return $answer;
     }
 
     private function renderImage(string $answer): string

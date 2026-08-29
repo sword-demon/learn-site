@@ -17,10 +17,8 @@ use support\Request;
  *     Header: X-Fake-Payment-Result: succeeded|failed|cancelled|unknown
  *     Body:   { "order_id": <int>, "out_trade_no"?: <string> }
  *
- * The real WeChat Native callback lives at
- *   POST /api/internal/v1/payments/wechat/notify
- * and is reserved for a Phase beyond MVP. It returns an HTTP 200 with
- * a WeChat-shaped acknowledgement so the provider doesn't retry.
+ * The real WeChat Native callback route and APIv3 signature verification are
+ * reserved for a phase beyond MVP and are not registered here.
  *
  * Notes:
  *   - This endpoint is intentionally NOT authenticated with a learner
@@ -42,6 +40,9 @@ final class PaymentNotifyController
 
     public function fake(Request $request): \support\Response
     {
+        if (getenv('APP_ENV') !== 'testing') {
+            return ApiResponse::fail(ApiResponse::FORBIDDEN, 'PAYMENT_NOTIFY_NOT_AVAILABLE');
+        }
         return $this->dispatch($request);
     }
 

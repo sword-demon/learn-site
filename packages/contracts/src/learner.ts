@@ -10,6 +10,10 @@ export const LearnerAccountDTO = z.object({
   must_change_password: z.boolean(),
   last_login_at: z.string().nullable(),
   created_at: z.string(),
+  course_count: z.number().int().nonnegative(),
+  completed_course_count: z.number().int().nonnegative(),
+  successful_order_count: z.number().int().nonnegative(),
+  total_paid_amount: z.number().nonnegative(),
 })
 export type LearnerAccountDTO = z.infer<typeof LearnerAccountDTO>
 

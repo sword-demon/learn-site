@@ -4,6 +4,7 @@
 COMPOSE      := docker compose
 COMPOSE_TEST := docker compose -f compose.yaml -f compose.test.yaml --profile test
 COMPOSE_DBG  := docker compose -f compose.yaml -f compose.debug.yaml
+COMPOSE_E2E  := API_PORT=18787 ADMIN_PORT=18081 WEB_PORT=18080 docker compose -p learn-site-e2e -f compose.yaml -f compose.test.yaml --profile test
 SERVICE      ?= api
 API_PORT     ?= 8787
 
@@ -11,7 +12,7 @@ API_PORT     ?= 8787
 
 .PHONY: help env bootstrap up down restart ps logs build rebuild rebuild-web rebuild-admin rebuild-api rebuild-all \
 	migrate seed backup restore rehearse-restore verify-images verify-migrations verify-runtime-boundaries \
-	health sh-api test test-api test-web debug prototype
+	health sh-api test test-api test-web test-e2e test-perf e2e-down debug prototype
 
 help:
 	@echo "make bootstrap   # .env + 构建启动 + 迁移 + 种子 + 健康检查"
@@ -33,6 +34,9 @@ help:
 	@echo "make test        # api-test + frontend-test"
 	@echo "make test-api    # PHPUnit (compose test profile)"
 	@echo "make test-web    # 前端 typecheck + build"
+	@echo "make test-e2e    # 独立 Compose project 跑管理端与学习端 Playwright"
+	@echo "make test-perf   # 重置 E2E 夹具并跑单用户 95%/2s 性能冒烟"
+	@echo "make e2e-down    # 删除独立 E2E project 及其测试卷"
 	@echo "make debug       # 额外暴露 MySQL 3306"
 	@echo "make prototype   # 打开 throwaway HTML 原型 :4173"
 
@@ -115,6 +119,21 @@ test-api: .env
 
 test-web: .env
 	$(COMPOSE_TEST) run --rm frontend-test
+
+test-e2e: .env
+	$(COMPOSE_E2E) up -d --build mysql redis api admin web
+	$(COMPOSE_E2E) exec -T api php vendor/bin/phinx migrate -e runtime
+	$(COMPOSE_E2E) run --rm --build e2e-fixture
+	$(COMPOSE_E2E) run --rm --build e2e
+
+test-perf: .env
+	$(COMPOSE_E2E) up -d --build mysql redis api
+	$(COMPOSE_E2E) exec -T api php vendor/bin/phinx migrate -e runtime
+	$(COMPOSE_E2E) run --rm --build e2e-fixture
+	$(COMPOSE_E2E) exec -T api bash tests/perf/timing.sh
+
+e2e-down:
+	$(COMPOSE_E2E) down -v
 
 test-fmt: .env
 	$(COMPOSE_TEST) run --rm api-fmt

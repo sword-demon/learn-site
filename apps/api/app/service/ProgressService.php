@@ -45,6 +45,107 @@ final class ProgressService
     }
 
     /**
+     * Return the learner's durable course records together with the newest
+     * entitlement state. Revoked free access remains visible so the learner
+     * can understand why resume is blocked and rejoin without losing progress.
+     *
+     * @return array{items:list<array<string, mixed>>}
+     */
+    public function listLearning(int $learnerId): array
+    {
+        if ($learnerId <= 0) {
+            throw new BusinessException('VALIDATION_FAILED', 'LEARNER_INVALID');
+        }
+
+        $enrollments = Db::name('course_enrollments')
+            ->where('learner_id', $learnerId)
+            ->select()
+            ->toArray();
+        $entitlements = Db::name('course_entitlements')
+            ->where('learner_id', $learnerId)
+            ->order('id', 'desc')
+            ->select()
+            ->toArray();
+
+        $latestByCourse = [];
+        foreach ($entitlements as $entitlement) {
+            $courseId = (int) $entitlement['course_id'];
+            if (!isset($latestByCourse[$courseId])) {
+                $latestByCourse[$courseId] = $entitlement;
+            }
+        }
+
+        $enrollmentByCourse = [];
+        foreach ($enrollments as $enrollment) {
+            $enrollmentByCourse[(int) $enrollment['course_id']] = $enrollment;
+        }
+
+        $courseIds = array_values(array_unique(array_merge(
+            array_map('intval', array_keys($enrollmentByCourse)),
+            array_map('intval', array_keys($latestByCourse)),
+        )));
+        if ($courseIds === []) {
+            return ['items' => []];
+        }
+
+        $courses = Db::name('courses')->where('id', 'in', $courseIds)->select()->toArray();
+        $courseById = [];
+        foreach ($courses as $course) {
+            $courseById[(int) $course['id']] = $course;
+        }
+
+        $items = [];
+        foreach ($courseIds as $courseId) {
+            $course = $courseById[$courseId] ?? null;
+            $entitlement = $latestByCourse[$courseId] ?? null;
+            if ($course === null || $entitlement === null) {
+                continue;
+            }
+            $enrollment = $enrollmentByCourse[$courseId] ?? null;
+            $entitlementStatus = (string) $entitlement['status'];
+            $entitlementSource = (string) $entitlement['source'];
+            $enrollmentUpdatedAt = (string) ($enrollment['updated_at'] ?? '');
+            $entitlementUpdatedAt = (string) ($entitlement['updated_at'] ?? '');
+
+            $items[] = [
+                'course_id' => $courseId,
+                'progress_percent' => (int) ($enrollment['progress_percent'] ?? 0),
+                'last_lesson_id' => isset($enrollment['last_lesson_id']) && $enrollment['last_lesson_id'] !== null
+                    ? (int) $enrollment['last_lesson_id']
+                    : null,
+                'last_position' => (int) ($enrollment['last_position'] ?? 0),
+                'completed_at' => !empty($enrollment['completed_at'])
+                    ? (string) $enrollment['completed_at']
+                    : null,
+                'updated_at' => max($enrollmentUpdatedAt, $entitlementUpdatedAt),
+                'entitlement_status' => $entitlementStatus,
+                'entitlement_source' => $entitlementSource,
+                'revoked_at' => !empty($entitlement['revoked_at']) ? (string) $entitlement['revoked_at'] : null,
+                'revoked_reason' => !empty($entitlement['revoked_reason'])
+                    ? (string) $entitlement['revoked_reason']
+                    : null,
+                'can_rejoin' => $entitlementStatus === 'revoked'
+                    && $entitlementSource === 'free'
+                    && (string) $course['status'] === 'published'
+                    && (string) $course['price_mode'] === 'free',
+                'course' => [
+                    'id' => $courseId,
+                    'title' => (string) $course['title'],
+                    'cover_url' => $course['cover_url'] ? (string) $course['cover_url'] : null,
+                    'teacher_name' => (string) ($course['teacher_name'] ?? ''),
+                    'status' => (string) $course['status'],
+                    'price_mode' => (string) $course['price_mode'],
+                ],
+            ];
+        }
+
+        usort($items, static fn(array $left, array $right): int =>
+            strcmp((string) $right['updated_at'], (string) $left['updated_at']));
+
+        return ['items' => $items];
+    }
+
+    /**
      * Record an open / progress event for a single lesson. Used by
      *   - markdown/pdf: when the learner clicks the "open" link.
      *   - video: at every heartbeat (≤30s) with the new position.

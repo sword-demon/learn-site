@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\service;
 
+use App\model\CourseEntitlement;
 use App\support\Logger;
 use support\think\Db;
 
@@ -173,48 +174,82 @@ final class EntitlementService
      *
      * @param int|null $revokedByStaffId staff account performing the revoke; null = self-service / system.
      */
-    public function revoke(int $learnerId, int $courseId, string $reason, ?int $revokedByStaffId = null): void
+    /** @return array<string, mixed>|null */
+    public function revoke(int $learnerId, int $courseId, string $reason, ?int $revokedByStaffId = null): ?array
     {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new BusinessException('VALIDATION_FAILED', 'REVOKE_REASON_REQUIRED');
+        }
+        if (mb_strlen($reason) > 255) {
+            throw new BusinessException('VALIDATION_FAILED', 'REASON_TOO_LONG');
+        }
         $now = date('Y-m-d H:i:s');
-        $affected = Db::name('course_entitlements')
-            ->where('learner_id', $learnerId)
-            ->where('course_id', $courseId)
-            ->where('status', 'active')
-            ->update([
-                'status'         => 'revoked',
-                'revoked_at'     => $now,
+        $revoked = Db::transaction(function () use ($learnerId, $courseId, $reason, $revokedByStaffId, $now): ?array {
+            $entitlement = CourseEntitlement::where('learner_id', $learnerId)
+                ->where('course_id', $courseId)
+                ->where('status', 'active')
+                ->lock(true)
+                ->find();
+            if (!$entitlement) {
+                return null;
+            }
+            if (!$entitlement->isRevocable()) {
+                throw new BusinessException('FORBIDDEN', 'PAID_NOT_REVOCABLE');
+            }
+
+            CourseEntitlement::where('id', (int) $entitlement->id)
+                ->where('status', 'active')
+                ->update([
+                    'status' => 'revoked',
+                    'revoked_at' => $now,
+                    'revoked_reason' => $reason,
+                    'revoked_by_staff_id' => $revokedByStaffId,
+                    'updated_at' => $now,
+                ]);
+
+            return array_merge($entitlement->toArray(), [
+                'status' => 'revoked',
+                'revoked_at' => $now,
                 'revoked_reason' => $reason,
                 'revoked_by_staff_id' => $revokedByStaffId,
-                'updated_at'     => $now,
+                'updated_at' => $now,
             ]);
-        if ($affected > 0) {
-            Logger::warning('entitlement.revoked', [
-                'learner_id'  => $learnerId,
-                'course_id'   => $courseId,
-                'reason'      => $reason,
-                'revoked_by'  => $revokedByStaffId,
-            ]);
-            // ponytail: best-effort notification; never let the inbox
-            // write mask the revoke result. A future mailer will sweep
-            // unread rows; the dispatcher here only writes the inbox.
-            try {
-                $courseName = (string) (Db::name('courses')->where('id', $courseId)->value('title') ?? '');
-                $title = $courseName !== '' ? "「{$courseName}」的授权已被撤销" : '您的课程授权已被撤销';
-                (new MessageService())->emit(
-                    MessageService::KIND_ENTITLEMENT_REVOKED,
-                    $learnerId,
-                    $title,
-                    '原因：' . $reason,
-                    ['course_id' => $courseId, 'reason' => $reason, 'revoked_by' => $revokedByStaffId],
-                );
-            } catch (\Throwable $e) {
-                Logger::warning('entitlement.notification_failed', [
-                    'learner_id' => $learnerId,
-                    'course_id' => $courseId,
-                    'err' => $e->getMessage(),
-                ]);
-            }
+        });
+        if ($revoked === null) {
+            return null;
         }
+
+        Logger::warning('entitlement.revoked', [
+            'learner_id' => $learnerId,
+            'course_id' => $courseId,
+            'reason' => $reason,
+            'revoked_by' => $revokedByStaffId,
+        ]);
+        // The inbox is best-effort; authorization revocation must not depend
+        // on a secondary notification write.
+        try {
+            $courseName = (string) (Db::name('courses')->where('id', $courseId)->value('title') ?? '');
+            $title = $courseName !== '' ? "「{$courseName}」的授权已被撤销" : '您的课程授权已被撤销';
+            (new MessageService())->emit(
+                MessageService::KIND_ENTITLEMENT_REVOKED,
+                $learnerId,
+                $title,
+                '原因：' . $reason,
+                ['course_id' => $courseId, 'reason' => $reason, 'revoked_by' => $revokedByStaffId],
+                'course',
+                $courseId,
+                'entitlement_revoked:' . (int) $revoked['id'],
+            );
+        } catch (\Throwable $e) {
+            Logger::warning('entitlement.notification_failed', [
+                'learner_id' => $learnerId,
+                'course_id' => $courseId,
+                'err' => $e->getMessage(),
+            ]);
+        }
+
+        return $revoked;
     }
 
     /**
@@ -230,6 +265,26 @@ final class EntitlementService
             ->where('status', 'active')
             ->find();
         return $row ? $this->shape($row) : null;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findLatest(int $learnerId, int $courseId): ?array
+    {
+        $row = Db::name('course_entitlements')
+            ->where('learner_id', $learnerId)
+            ->where('course_id', $courseId)
+            ->order('id', 'desc')
+            ->find();
+        if (!$row) {
+            return null;
+        }
+        return array_merge($this->shape($row), [
+            'revoked_at' => $row['revoked_at'] ? (string) $row['revoked_at'] : null,
+            'revoked_reason' => $row['revoked_reason'] ? (string) $row['revoked_reason'] : null,
+            'revoked_by_staff_id' => isset($row['revoked_by_staff_id']) && $row['revoked_by_staff_id'] !== null
+                ? (int) $row['revoked_by_staff_id']
+                : null,
+        ]);
     }
 
     /**

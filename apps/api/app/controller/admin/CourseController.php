@@ -70,7 +70,14 @@ final class CourseController
 
     public function destroy(Request $request, string $id): \support\Response
     {
-        return $this->wrap(fn() => $this->service->deleteCourse($this->id($id)));
+        return $this->wrap(function () use ($request, $id) {
+            $this->service->deleteCourse(
+                $this->id($id),
+                (int) ($request->account_id ?? 0),
+            );
+
+            return ['deleted' => true];
+        });
     }
 
     // ─── Chapters ─────────────────────────────────────────────────────

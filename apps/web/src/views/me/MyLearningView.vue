@@ -40,14 +40,31 @@
           </div>
           <p class="progress-meta">
             <span class="percent">{{ item.progress_percent }}%</span>
-            <span v-if="item.completed_at" class="tag done">已完成</span>
+            <span v-if="item.entitlement_status === 'revoked'" class="tag revoked">访问已撤销</span>
+            <span v-else-if="item.completed_at" class="tag done">已完成</span>
             <span v-else-if="item.last_lesson_id" class="tag resume">从上次继续</span>
             <span v-else class="tag fresh">尚未开始</span>
           </p>
+          <p v-if="item.entitlement_status === 'revoked'" class="revoke-note">
+            {{ item.revoked_reason ? `撤销原因：${item.revoked_reason}` : '课程访问权已被撤销。' }}
+          </p>
         </div>
         <div class="actions">
+          <button
+            v-if="item.entitlement_status === 'revoked' && item.can_rejoin"
+            type="button"
+            class="btn btn-primary"
+            data-action="rejoin"
+            :disabled="rejoiningCourseId === item.course_id"
+            @click="rejoin(item)"
+          >
+            {{ rejoiningCourseId === item.course_id ? '重新加入中…' : '再次加入' }}
+          </button>
+          <span v-else-if="item.entitlement_status === 'revoked'" class="access-unavailable">
+            {{ item.course.status === 'published' ? '当前无法重新加入' : '课程已下架' }}
+          </span>
           <router-link
-            v-if="item.last_lesson_id"
+            v-else-if="item.last_lesson_id"
             :to="`/learn/${item.course_id}/${item.last_lesson_id}`"
             class="btn btn-primary"
           >
@@ -57,6 +74,9 @@
             进入课程 <span aria-hidden="true">→</span>
           </router-link>
         </div>
+        <p v-if="rejoinErrorCourseId === item.course_id" class="rejoin-error" role="alert">
+          重新加入失败，请稍后再试。
+        </p>
       </li>
     </ul>
   </main>
@@ -64,14 +84,38 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import type { MyLearningItemDTO } from '@learn-site/contracts';
-import { fetchMyLearning } from '@/api/learner';
+import { fetchMyLearning, startCourse } from '@/api/learner';
 
 defineOptions({ name: 'MyLearningView' });
 
 const items = ref<MyLearningItemDTO[]>([]);
 const loading = ref(true);
 const loadError = ref(false);
+const rejoiningCourseId = ref<number | null>(null);
+const rejoinErrorCourseId = ref<number | null>(null);
+const router = useRouter();
+
+async function rejoin(item: MyLearningItemDTO): Promise<void> {
+  if (!item.can_rejoin || rejoiningCourseId.value !== null) return;
+  rejoiningCourseId.value = item.course_id;
+  rejoinErrorCourseId.value = null;
+  try {
+    const result = await startCourse(item.course_id);
+    if (item.last_lesson_id) {
+      await router.push(`/learn/${item.course_id}/${item.last_lesson_id}`);
+    } else if (result.first_lesson) {
+      await router.push(`/learn/${item.course_id}/${result.first_lesson.id}`);
+    } else {
+      await router.push(`/courses/${item.course_id}`);
+    }
+  } catch {
+    rejoinErrorCourseId.value = item.course_id;
+  } finally {
+    rejoiningCourseId.value = null;
+  }
+}
 
 onMounted(async () => {
   try {
@@ -227,12 +271,33 @@ onMounted(async () => {
 .tag.fresh {
   background: var(--surface-muted);
 }
+.tag.revoked {
+  border-color: #e8b7a9;
+  background: #fff2ee;
+  color: #9e3f2c;
+}
+.revoke-note {
+  margin: 9px 0 0;
+  color: #9e3f2c;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
 .actions {
   display: flex;
   justify-content: end;
 }
 .actions .btn {
   white-space: nowrap;
+}
+.access-unavailable {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.rejoin-error {
+  grid-column: 2 / -1;
+  margin: -8px 0 0;
+  color: #9e3f2c;
+  font-size: 0.78rem;
 }
 @media (max-width: 700px) {
   .course-row {
