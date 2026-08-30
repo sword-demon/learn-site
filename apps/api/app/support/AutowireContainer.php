@@ -47,10 +47,6 @@ final class AutowireContainer extends Container
             return new $name(...array_values($constructor));
         }
 
-        if (array_key_exists($name, $this->bindings)) {
-            return $this->resolveBinding($this->bindings[$name]);
-        }
-
         return $this->resolve($name);
     }
 

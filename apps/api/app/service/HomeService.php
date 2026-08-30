@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\service;
@@ -8,10 +7,6 @@ use App\model\Category;
 
 final class HomeService
 {
-    public function __construct(private readonly BannerService $bannerService = new BannerService())
-    {
-    }
-
     /**
      * Public site profile. Returns a default shape when the table is
      * missing (first boot) so the home payload contract is stable.
@@ -65,16 +60,6 @@ final class HomeService
             return [];
         }
         return self::nest($rows);
-    }
-
-    /** @return list<array{id:int,image_url:string,link_url:?string,sort_order:int}> */
-    public function banners(): array
-    {
-        try {
-            return $this->bannerService->listPublic();
-        } catch (\Throwable) {
-            return [];
-        }
     }
 
     /**

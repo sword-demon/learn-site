@@ -9,18 +9,13 @@ use App\support\storage\ImageStorage;
 
 final class CourseCoverMediaController
 {
-    public function __construct(
-        private readonly ImageStorage $storage,
-        private readonly ?ImageStorage $bannerStorage = null,
-    ) {
+    public function __construct(private readonly ImageStorage $storage)
+    {
     }
 
     public function show(string $key): \support\Response
     {
         $resolved = $this->storage->resolve($key);
-        if ($resolved === null && str_starts_with($key, 'banners/')) {
-            $resolved = $this->bannerStorage?->resolve($key);
-        }
         if ($resolved === null) {
             return ApiResponse::fail(ApiResponse::NOT_FOUND, 'COVER_NOT_FOUND');
         }

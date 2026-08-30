@@ -13,10 +13,7 @@
  */
 
 use App\service\SharePosterService;
-use App\service\BannerService;
 use App\service\CheckinService;
-use App\controller\admin\BannerImageController;
-use App\controller\media\CourseCoverMediaController;
 use App\support\payment\FakePaymentAdapter;
 use App\support\payment\PaymentAdapter;
 use App\support\storage\ImageStorage;
@@ -26,13 +23,6 @@ use App\support\storage\LocalAssetStorage;
 
 return [
     ImageStorage::class => new LocalImageStorage(),
-    BannerImageController::class => static fn (): BannerImageController => new BannerImageController(
-        new LocalImageStorage(prefix: 'banners'),
-    ),
-    CourseCoverMediaController::class => static fn (): CourseCoverMediaController => new CourseCoverMediaController(
-        new LocalImageStorage(),
-        new LocalImageStorage(prefix: 'banners'),
-    ),
     AssetStorage::class => new LocalAssetStorage(),
     // Phase 6 (US3): bind the payment-adapter interface to the fake
     // implementation. When a real WeChat Native adapter lands in a
@@ -41,5 +31,4 @@ return [
     PaymentAdapter::class => new FakePaymentAdapter(),
     SharePosterService::class => new SharePosterService(),
     CheckinService::class => new CheckinService(),
-    BannerService::class => new BannerService(),
 ];

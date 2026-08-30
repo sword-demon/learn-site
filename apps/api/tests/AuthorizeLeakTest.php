@@ -52,28 +52,6 @@ final class AuthorizeLeakTest extends TestCase
         yield 'scheduled tasks run' => ['/api/admin/v1/scheduled-tasks/1/run', 'POST', 'scheduled_task.manage'];
         yield 'checkin list' => ['/api/admin/v1/checkins', 'GET', 'checkin.manage'];
         yield 'checkin delete' => ['/api/admin/v1/checkins/42', 'DELETE', 'checkin.manage'];
-        yield 'banner list' => ['/api/admin/v1/banners', 'GET', 'banner.manage'];
-        yield 'banner detail' => ['/api/admin/v1/banners/42', 'GET', 'banner.manage'];
-        yield 'banner update' => ['/api/admin/v1/banners/42', 'PATCH', 'banner.manage'];
-        yield 'banner delete' => ['/api/admin/v1/banners/42', 'DELETE', 'banner.manage'];
-        yield 'banner upload' => ['/api/admin/v1/banner-images', 'POST', 'banner.manage'];
-    }
-
-    public function testBannerRouteIsForbiddenWithoutPermissionAndDoesNotCallHandler(): void
-    {
-        $request = new Request("GET /api/admin/v1/banners HTTP/1.1\r\nHost: test\r\n\r\n");
-        $request->permissions = ['qa.view'];
-        $called = false;
-
-        $response = (new Authorize())->process($request, static function () use (&$called): Response {
-            $called = true;
-            return ApiResponse::ok(['secret' => 'banner body']);
-        });
-
-        self::assertFalse($called);
-        self::assertSame(403, $response->getStatusCode());
-        self::assertStringNotContainsString('banner body', (string) $response->rawBody());
-        self::assertStringNotContainsString('banner.manage', (string) $response->rawBody());
     }
 
     public function testMiddlewareReturnsFixed403WithoutCallingHandler(): void

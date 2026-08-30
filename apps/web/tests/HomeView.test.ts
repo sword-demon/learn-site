@@ -38,7 +38,6 @@ describe('HomeView', () => {
     learnerApi.fetchHome.mockResolvedValue({
       categories: [category],
       recent_courses: [course],
-      banners: [],
       site_intro: {
         title: '拾阶学社',
         subtitle: '日进一阶',
@@ -76,38 +75,5 @@ describe('HomeView', () => {
     expect(learnerApi.fetchCategoryCourses).toHaveBeenCalledWith(3, 1, 100);
     expect(learnerApi.fetchCategoryCourses).toHaveBeenCalledTimes(1);
     expect(wrapper.text()).toContain('前端开发');
-  });
-
-  it('mounts the home banner carousel from the home payload', async () => {
-    learnerApi.fetchHome.mockResolvedValueOnce({
-      categories: [],
-      recent_courses: [],
-      banners: [
-        {
-          id: 7,
-          image_url: '/api/media/banners/2026/08/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webp',
-          link_url: null,
-          sort_order: 0,
-        },
-      ],
-      site_intro: {
-        title: '拾阶学社',
-        subtitle: '日进一阶',
-        body_html: '',
-        contact_email: '',
-        updated_at: null,
-      },
-    });
-    const router = createRouter({
-      history: createMemoryHistory(),
-      routes: [{ path: '/', component: HomeView }],
-    });
-    await router.push('/');
-    await router.isReady();
-
-    const wrapper = mount(HomeView, { global: { plugins: [createPinia(), router] } });
-    await flushPromises();
-
-    expect(wrapper.find('[data-testid="home-banner-carousel"]').exists()).toBe(true);
   });
 });

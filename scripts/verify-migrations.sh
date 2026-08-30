@@ -44,7 +44,7 @@ required_tables=(
     categories courses chapters lessons assets orders course_entitlements
     course_enrollments lesson_progresses questions reviews learning_maps
     favorites site_profile notification_dispatches notification_dispatch_recipients
-    learner_notifications scheduled_tasks scheduled_task_runs learner_daily_checkins banners
+    learner_notifications scheduled_tasks scheduled_task_runs learner_daily_checkins
 )
 
 for table in "${required_tables[@]}"; do

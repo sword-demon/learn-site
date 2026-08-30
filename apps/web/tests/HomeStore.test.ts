@@ -13,7 +13,6 @@ import { useHomeStore } from '@/stores/home';
 const homePayload: HomePayload = {
   categories: [{ id: 1, name: '编程', children: [] }],
   recent_courses: [],
-  banners: [],
   site_intro: {
     title: '把每一次学习，收进自己的课程档案',
     subtitle: '从一门课开始。',
@@ -37,7 +36,6 @@ describe('home store', () => {
 
     expect(learnerApi.fetchHome).toHaveBeenCalledTimes(1);
     expect(store.categories).toEqual(homePayload.categories);
-    expect(store.banners).toEqual(homePayload.banners);
     expect(store.intro).toEqual(homePayload.site_intro);
     expect(store.loading).toBe(false);
     expect(store.error).toBe(false);

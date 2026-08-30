@@ -86,7 +86,6 @@ import {
   Monitor,
   Notebook,
   OfficeBuilding,
-  Picture,
   Reading,
   ShoppingCart,
   User,
@@ -119,7 +118,6 @@ const menuIcons: Record<string, Component> = {
   '/org/posts': Notebook,
   '/org/roles': Management,
   '/org/staff': User,
-  '/banners': Picture,
 };
 
 function iconFor(path: string): Component {

@@ -16,7 +16,6 @@
             <file>tests/ContainerTest.php</file>
             <file>tests/ImageStorageTest.php</file>
             <file>tests/CourseCoverControllerTest.php</file>
-            <file>tests/BannerTest.php</file>
         </testsuite>
         <testsuite name="Orm">
             <file>tests/ThinkOrmStackTest.php</file>
