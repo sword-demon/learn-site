@@ -65,4 +65,29 @@ describe('home store', () => {
     expect(refreshed.intro?.updated_at).toBe('2026-08-28 11:00:00');
     expect(learnerApi.fetchHome).toHaveBeenCalledTimes(2);
   });
+
+  it('exposes recommended_maps from the home payload', async () => {
+    const fakeMap = {
+      id: 1,
+      department_id: 1,
+      title: '诸子百家',
+      summary: '了解春秋战国的思想流派',
+      cover_url: null,
+      objective: null,
+      audience: null,
+      status: 'published' as const,
+      created_at: '2026-08-30 10:00:00',
+      updated_at: '2026-08-31 10:00:00',
+      enrollment: null,
+    };
+    learnerApi.fetchHome.mockResolvedValueOnce({
+      ...homePayload,
+      recommended_maps: [fakeMap],
+    });
+    const store = useHomeStore();
+    await store.load();
+
+    expect(store.recommendedMaps).toHaveLength(1);
+    expect(store.recommendedMaps[0]?.title).toBe('诸子百家');
+  });
 });

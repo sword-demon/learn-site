@@ -11,6 +11,39 @@
 
     <div v-else>
       <HomeBannerCarousel v-if="banners.length > 0" :banners="banners" />
+
+      <section
+        v-if="recommendedMaps.length > 0"
+        class="home__map-rail"
+        data-testid="recommended-map-rail"
+        aria-label="推荐学习地图"
+      >
+        <header class="home__map-rail-head">
+          <h2>推荐学习地图</h2>
+          <router-link to="/maps" class="home__map-rail-more">查看全部 →</router-link>
+        </header>
+        <div class="home__map-grid">
+          <article
+            v-for="m in recommendedMaps"
+            :key="m.id"
+            class="home__map-card"
+            :data-map-id="m.id"
+          >
+            <div class="home__map-card-cover">
+              <img v-if="m.cover_url" :src="m.cover_url" :alt="m.title" />
+              <div v-else class="home__map-card-cover-fallback" aria-hidden="true">
+                {{ m.title.slice(0, 2) }}
+              </div>
+            </div>
+            <div class="home__map-card-body">
+              <h3>{{ m.title }}</h3>
+              <p v-if="m.summary" class="home__map-card-summary">{{ m.summary }}</p>
+              <router-link :to="`/maps/${m.id}`" class="home__map-card-cta">开始探索 →</router-link>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <div class="home-grid">
         <aside class="tree-panel" aria-label="课程分类">
           <h3>分类目录</h3>
@@ -91,7 +124,7 @@ const homeStore = useHomeStore();
 const session = useLoginFamilyStore();
 const route = useRoute();
 const router = useRouter();
-const { categories, recentCourses, banners, loading, error } = storeToRefs(homeStore);
+const { categories, recentCourses, banners, recommendedMaps, loading, error } = storeToRefs(homeStore);
 
 const selectedId = ref<number | null>(null);
 const courses = ref<CourseListItemDTO[]>([]);
@@ -253,5 +286,100 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 10px;
   padding-right: 10px;
+}
+
+.home__map-rail {
+  margin: 24px 0 32px;
+}
+
+.home__map-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 16px;
+}
+
+.home__map-rail-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.home__map-rail-more {
+  color: var(--seal, #409eff);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.home__map-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.home__map-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line, #ebeef5);
+  border-radius: var(--r, 8px);
+  background: #fff;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.home__map-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.home__map-card-cover {
+  aspect-ratio: 16 / 9;
+  background: var(--card-2, #f5f7fa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home__map-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home__map-card-cover-fallback {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--ink-2, #909399);
+}
+
+.home__map-card-body {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home__map-card-body h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--ink, #303133);
+}
+
+.home__map-card-summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2, #606266);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.home__map-card-cta {
+  margin-top: auto;
+  color: var(--seal, #409eff);
+  font-size: 14px;
+  text-decoration: none;
 }
 </style>

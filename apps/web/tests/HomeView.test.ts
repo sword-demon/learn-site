@@ -110,4 +110,79 @@ describe('HomeView', () => {
 
     expect(wrapper.find('[data-testid="home-banner-carousel"]').exists()).toBe(true);
   });
+
+  it('renders the recommended learning maps rail when payload has maps', async () => {
+    learnerApi.fetchHome.mockResolvedValueOnce({
+      categories: [category],
+      recent_courses: [course],
+      banners: [],
+      recommended_maps: [
+        {
+          id: 11,
+          department_id: 1,
+          title: '诸子百家',
+          summary: '了解春秋战国的思想流派',
+          cover_url: null,
+          objective: null,
+          audience: null,
+          status: 'published' as const,
+          created_at: '2026-08-30 10:00:00',
+          updated_at: '2026-08-31 10:00:00',
+          enrollment: null,
+        },
+      ],
+      site_intro: {
+        title: '拾阶学社',
+        subtitle: '日进一阶',
+        body_html: '',
+        contact_email: '',
+        updated_at: null,
+      },
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: HomeView },
+        { path: '/maps/:id', component: { template: '<div />' } },
+        { path: '/maps', component: { template: '<div />' } },
+      ],
+    });
+    await router.push('/');
+    await router.isReady();
+
+    const wrapper = mount(HomeView, { global: { plugins: [createPinia(), router] } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="recommended-map-rail"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('推荐学习地图');
+    expect(wrapper.text()).toContain('诸子百家');
+    expect(wrapper.text()).toContain('了解春秋战国的思想流派');
+  });
+
+  it('hides the recommended learning maps rail when payload has none', async () => {
+    learnerApi.fetchHome.mockResolvedValueOnce({
+      categories: [],
+      recent_courses: [],
+      banners: [],
+      recommended_maps: [],
+      site_intro: {
+        title: '拾阶学社',
+        subtitle: '日进一阶',
+        body_html: '',
+        contact_email: '',
+        updated_at: null,
+      },
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: HomeView }],
+    });
+    await router.push('/');
+    await router.isReady();
+
+    const wrapper = mount(HomeView, { global: { plugins: [createPinia(), router] } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="recommended-map-rail"]').exists()).toBe(false);
+  });
 });
