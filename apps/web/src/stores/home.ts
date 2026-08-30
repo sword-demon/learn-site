@@ -4,6 +4,7 @@ import type {
   BannerPublicDTO,
   CategoryNode,
   CourseListItemDTO,
+  RecommendedMapDTO,
   SiteIntro,
 } from '@learn-site/contracts';
 import { fetchHome } from '@/api/learner';
@@ -12,6 +13,7 @@ export const useHomeStore = defineStore('home', () => {
   const categories = ref<CategoryNode[]>([]);
   const recentCourses = ref<CourseListItemDTO[]>([]);
   const banners = ref<BannerPublicDTO[]>([]);
+  const recommendedMaps = ref<RecommendedMapDTO[]>([]);
   const intro = ref<SiteIntro | null>(null);
   const loading = ref(false);
   const loaded = ref(false);
@@ -30,6 +32,7 @@ export const useHomeStore = defineStore('home', () => {
         categories.value = home.categories;
         recentCourses.value = home.recent_courses;
         banners.value = home.banners;
+        recommendedMaps.value = home.recommended_maps ?? [];
         intro.value = home.site_intro;
         loaded.value = true;
       } catch {
@@ -43,5 +46,14 @@ export const useHomeStore = defineStore('home', () => {
     return inflight;
   }
 
-  return { categories, recentCourses, banners, intro, loading, error, load };
+  return {
+    categories,
+    recentCourses,
+    banners,
+    recommendedMaps,
+    intro,
+    loading,
+    error,
+    load,
+  };
 });

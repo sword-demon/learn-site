@@ -14,6 +14,7 @@ const homePayload: HomePayload = {
   categories: [{ id: 1, name: '编程', children: [] }],
   recent_courses: [],
   banners: [],
+  recommended_maps: [],
   site_intro: {
     title: '把每一次学习，收进自己的课程档案',
     subtitle: '从一门课开始。',

@@ -24,6 +24,7 @@ final class HomeController
             'site_intro' => $this->home->siteIntro(),
             'recent_courses' => $this->catalog->recentPublishedCourses(12),
             'banners' => $this->home->banners(),
+            'recommended_maps' => $this->home->recommendedMaps(3),
         ], $request->request_id ?? null);
     }
 }

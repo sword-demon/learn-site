@@ -78,6 +78,56 @@ final class HomeService
     }
 
     /**
+     * Top-N published learning maps for the home recommendation rail.
+     * Anonymous-friendly — enrollment lookup is omitted here; the detail
+     * endpoint enriches it.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function recommendedMaps(int $limit = 3): array
+    {
+        $limit = max(1, min(10, $limit));
+        try {
+            $rows = \support\think\Db::name('learning_maps')
+                ->where('status', 'published')
+                ->order('id', 'desc')
+                ->limit($limit)
+                ->select()
+                ->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = self::shapeMapSummary($r) + ['enrollment' => null];
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private static function shapeMapSummary(array $row): array
+    {
+        return [
+            'id'            => (int) ($row['id'] ?? 0),
+            'department_id' => (int) ($row['department_id'] ?? 0),
+            'title'         => (string) ($row['title'] ?? ''),
+            'summary'       => isset($row['summary']) ? (string) $row['summary'] : null,
+            'cover_url'     => isset($row['cover_url']) ? (string) $row['cover_url'] : null,
+            'objective'     => isset($row['objective']) ? (string) $row['objective'] : null,
+            'audience'      => isset($row['audience']) ? (string) $row['audience'] : null,
+            'status'        => (string) ($row['status'] ?? 'published'),
+            'created_at'    => (string) ($row['created_at'] ?? ''),
+            'updated_at'    => (string) ($row['updated_at'] ?? ''),
+        ];
+    }
+
+    /**
      * @param list<array<string,mixed>> $rows
      * @return list<array{id:int,name:string,children:list<mixed>}>
      */
