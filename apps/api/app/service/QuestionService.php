@@ -17,8 +17,8 @@ use think\db\Query;
  * (FR-046 + data-model §互动). Closing is admin-only.
  *
  * Invariants:
- *   1. Authorization check reuses EntitlementService.viewerAuthorized — a
- *      learner without an active entitlement cannot post or read a thread.
+ *   1. Authorization allows active entitlements, free courses, and preview
+ *      lessons the learner can already open — see assertCanParticipate().
  *   2. answered_at / answered_by_staff_id are stamped on the first admin
  *      message; later admin messages do not move the timestamp again.
  *   3. Question rows are append-only in feel: the learner never edits the
@@ -45,9 +45,7 @@ final class QuestionService
             throw new BusinessException('NOT_FOUND', 'LESSON_NOT_FOUND');
         }
         $courseId = (int) $lesson['course_id'];
-        if (!$this->entitlements->viewerAuthorized($courseId, $learnerId)) {
-            throw new BusinessException('FORBIDDEN', 'NOT_AUTHORIZED');
-        }
+        $this->assertCanParticipate($courseId, $learnerId, $lessonId);
         $title = trim($title);
         $body  = trim($body);
         if ($title === '' || mb_strlen($title) > 128) {
@@ -223,9 +221,7 @@ final class QuestionService
         if (!$lesson) {
             throw new BusinessException('NOT_FOUND', 'LESSON_NOT_FOUND');
         }
-        if (!$this->entitlements->viewerAuthorized((int) $lesson['course_id'], $learnerId)) {
-            throw new BusinessException('FORBIDDEN', 'NOT_AUTHORIZED');
-        }
+        $this->assertCanParticipate((int) $lesson['course_id'], $learnerId, $lessonId);
         $page  = max(1, (int) ($filters['page']  ?? 1));
         $limit = min(50, max(1, (int) ($filters['limit'] ?? 20)));
         $statusFilter = (string) ($filters['status'] ?? '');
@@ -244,9 +240,8 @@ final class QuestionService
     {
         $q = $this->findQuestionOrThrow($questionId);
         $courseId = (int) $q['course_id'];
-        if (!$this->entitlements->viewerAuthorized($courseId, $learnerId)) {
-            throw new BusinessException('FORBIDDEN', 'NOT_AUTHORIZED');
-        }
+        $lessonId = isset($q['lesson_id']) && $q['lesson_id'] !== null ? (int) $q['lesson_id'] : null;
+        $this->assertCanParticipate($courseId, $learnerId, $lessonId);
         return $this->findThread($questionId, $learnerId);
     }
 
@@ -480,6 +475,30 @@ final class QuestionService
             'body'              => (string) $m['body'],
             'created_at'        => (string) $m['created_at'],
         ];
+    }
+
+    private function assertCanParticipate(int $courseId, int $learnerId, ?int $lessonId = null): void
+    {
+        if ($this->entitlements->viewerAuthorized($courseId, $learnerId)) {
+            return;
+        }
+        $course = Db::name('courses')->where('id', $courseId)->find();
+        if (!$course || (string) $course['status'] !== 'published') {
+            throw new BusinessException('FORBIDDEN', 'NOT_AUTHORIZED');
+        }
+        if ((string) $course['price_mode'] === 'free') {
+            return;
+        }
+        if ($lessonId !== null) {
+            $lesson = Db::name('lessons')
+                ->where('id', $lessonId)
+                ->where('status', 'enabled')
+                ->find();
+            if ($lesson && (int) ($lesson['is_preview'] ?? 0) === 1) {
+                return;
+            }
+        }
+        throw new BusinessException('FORBIDDEN', 'NOT_AUTHORIZED');
     }
 
     private function emitQuestionUpdate(

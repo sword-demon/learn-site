@@ -110,8 +110,38 @@ final class QuestionServiceIntegrationTest extends TestCase
         $this->assertCount(4, $authorizedView['messages']);
         $this->assertNull($authorizedView['messages'][0]['author_learner_id']);
 
+        $unauthorizedView = $this->service->showForLearner($this->unauthorizedLearnerId, $questionId);
+        $this->assertSame('answered', $unauthorizedView['question']['status']);
+        $this->assertCount(4, $unauthorizedView['messages']);
+    }
+
+    public function testFreeCourseLearnerWithoutEntitlementCanAskAndList(): void
+    {
+        $listed = $this->service->listForLesson($this->unauthorizedLearnerId, $this->inScopeLessonId, []);
+        $this->assertIsArray($listed['items']);
+
+        $asked = $this->service->askOnLesson(
+            $this->unauthorizedLearnerId,
+            $this->inScopeLessonId,
+            'Free course question',
+            'Can I ask before starting?',
+        );
+        $this->assertSame('Free course question', $asked['question']['title']);
+    }
+
+    public function testPaidCourseRequiresEntitlementForQa(): void
+    {
+        Db::name('courses')->where('id', $this->selfScopeCourseId)->update([
+            'price_mode' => 'paid',
+            'list_price' => 99,
+        ]);
+
         $this->assertBusinessException(
-            fn (): array => $this->service->showForLearner($this->unauthorizedLearnerId, $questionId),
+            fn (): array => $this->service->listForLesson(
+                $this->unauthorizedLearnerId,
+                $this->selfScopeLessonId,
+                [],
+            ),
             'FORBIDDEN',
             'NOT_AUTHORIZED',
         );

@@ -25,7 +25,7 @@ async function load(): Promise<void> {
 
 function progressLabel(enrollment: LearnerMapListDTO['items'][number]['enrollment']): string {
   if (!enrollment) return '';
-  return ` · 进度 ${enrollment.progress_percent}%`;
+  return `${enrollment.completed_courses}/${enrollment.total_courses} (${enrollment.progress_percent}%)`;
 }
 
 function coverStyle(map: LearnerMapListDTO['items'][number]) {
@@ -48,18 +48,13 @@ onMounted(load);
       <span v-if="!loading && !loadError" class="cnt">{{ mapCount }} 条已发布路径</span>
     </div>
 
-    <p v-if="loading" class="notice">地图加载中…</p>
+    <el-skeleton v-if="loading" animated :rows="5" />
     <div v-else-if="loadError" class="notice error">
-      <p>地图暂时读不到，请稍后再试。</p>
-      <button type="button" class="btn btn-ghost" data-action="retry" @click="load">重新加载</button>
+      <el-alert title="地图暂时读不到，请稍后再试。" type="error" :closable="false" show-icon />
+      <el-button data-action="retry" @click="load">重新加载</el-button>
     </div>
     <div v-else-if="data && data.items.length" class="panel">
-      <router-link
-        v-for="map in data.items"
-        :key="map.id"
-        :to="`/maps/${map.id}`"
-        class="map-row"
-      >
+      <router-link v-for="map in data.items" :key="map.id" :to="`/maps/${map.id}`" class="map-row">
         <div class="cover" :style="coverStyle(map)">
           <img v-if="map.cover_url" :src="map.cover_url" :alt="`${map.title}封面`" />
           <b v-else style="font-size: 30px">{{ coverGlyph(map.title) }}</b>
@@ -67,16 +62,29 @@ onMounted(load);
         <div>
           <h3>{{ map.title }}</h3>
           <p class="goal">{{ map.objective || map.summary || '按阶段推进学习' }}</p>
-          <div class="meta small muted">
-            {{ map.enrollment ? '已加入' : '未加入' }}{{ progressLabel(map.enrollment) }}
+          <p v-if="map.audience" class="meta small muted">适合：{{ map.audience }}</p>
+          <div v-if="map.enrollment" class="map-progress">
+            <el-progress :percentage="map.enrollment.progress_percent" :show-text="false" />
+            <span class="small muted">{{ progressLabel(map.enrollment) }}</span>
           </div>
+          <el-tag v-else type="info" size="small" effect="plain">未加入</el-tag>
         </div>
         <div>
-          <span v-if="map.enrollment" class="btn btn-primary btn-sm">继续 →</span>
-          <span v-else class="btn btn-ghost btn-sm">查看路径</span>
+          <el-tag v-if="map.enrollment" type="success" effect="dark">继续</el-tag>
+          <el-tag v-else type="info" effect="plain">查看路径</el-tag>
         </div>
       </router-link>
     </div>
-    <p v-else class="empty">暂无已发布的学习地图。</p>
+    <el-empty v-else description="暂无已发布的学习地图。" />
   </main>
 </template>
+
+<style scoped>
+.map-progress {
+  display: grid;
+  max-width: 320px;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+</style>

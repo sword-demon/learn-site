@@ -10,12 +10,18 @@
       公告与站内信来自系统通知，问答 / 进度 / 授权为课程相关提醒。
     </p>
 
-    <p v-if="loading" class="notice">消息加载中…</p>
-    <p v-else-if="errorMessage" class="notice error">{{ errorMessage }}</p>
-    <div v-else-if="messages.length === 0" class="empty">
-      <span class="serif">没有消息</span>
-      公告、站内信与问答、进度、授权等系统通知会出现在这里
-    </div>
+    <el-skeleton v-if="loading" animated :rows="5" />
+    <el-alert
+      v-else-if="errorMessage"
+      :title="errorMessage"
+      type="error"
+      :closable="false"
+      show-icon
+    />
+    <el-empty
+      v-else-if="messages.length === 0"
+      description="没有消息，公告、站内信与课程相关通知会出现在这里"
+    />
     <div v-else class="panel">
       <article
         v-for="message in messages"
@@ -26,12 +32,17 @@
         <span class="msg-dot" :class="{ read: message.read }" aria-hidden="true" />
         <div>
           <div class="mtitle">
-            <span v-if="!message.read" class="tag tag-sale" style="font-size: 10px; margin-right: 6px">
+            <el-tag v-if="!message.read" type="danger" size="small" style="margin-right: 6px">
               未读
-            </span>
-            <span class="tag" :class="kindTagClass(message.kind)" style="font-size: 10px; margin-right: 6px">
+            </el-tag>
+            <el-tag
+              :type="kindTagType(message.kind)"
+              size="small"
+              effect="plain"
+              style="margin-right: 6px"
+            >
               {{ kindLabel(message.kind) }}
-            </span>
+            </el-tag>
             {{ message.title }}
           </div>
           <div v-if="message.body" class="mbody">{{ message.body }}</div>
@@ -47,16 +58,16 @@
         </div>
         <div style="display: grid; gap: 8px; justify-items: end">
           <time class="when small muted">{{ message.created_at }}</time>
-          <button
+          <el-button
             v-if="!message.read"
-            type="button"
-            class="btn btn-ghost btn-sm"
+            size="small"
+            :icon="Check"
             :data-read-id="message.id"
-            :disabled="readingId === message.id"
+            :loading="readingId === message.id"
             @click="markRead(message.id)"
           >
             标记已读
-          </button>
+          </el-button>
         </div>
       </article>
     </div>
@@ -64,18 +75,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { LearnerNotificationDTO } from '@learn-site/contracts';
+import { Check } from '@element-plus/icons-vue';
 import { listNotifications, markNotificationRead } from '@/api/notifications';
+import { useNotificationStore } from '@/stores/notifications';
 
 defineOptions({ name: 'MessagesView' });
 
+const notificationStore = useNotificationStore();
 const messages = ref<LearnerNotificationDTO[]>([]);
 const loading = ref(true);
 const errorMessage = ref('');
 const readingId = ref<number | null>(null);
 
 const unreadCount = computed(() => messages.value.filter((message) => !message.read).length);
+
+async function loadMessages(): Promise<void> {
+  try {
+    messages.value = (await listNotifications()).items;
+    errorMessage.value = '';
+  } catch {
+    errorMessage.value = '消息加载失败，请稍后重试。';
+  }
+}
 
 function kindLabel(kind: LearnerNotificationDTO['kind']): string {
   return {
@@ -87,14 +110,20 @@ function kindLabel(kind: LearnerNotificationDTO['kind']): string {
   }[kind];
 }
 
-function kindTagClass(kind: LearnerNotificationDTO['kind']): string {
-  return {
-    question_update: 'tag-trial',
-    progress_reset: 'tag-free',
-    entitlement_revoked: 'tag-free',
-    announcement: 'tag-sale',
-    internal_message: 'tag-on',
-  }[kind];
+function kindTagType(
+  kind: LearnerNotificationDTO['kind'],
+): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
+  const types: Record<
+    LearnerNotificationDTO['kind'],
+    'primary' | 'success' | 'warning' | 'danger' | 'info'
+  > = {
+    question_update: 'warning',
+    progress_reset: 'success',
+    entitlement_revoked: 'danger',
+    announcement: 'primary',
+    internal_message: 'info',
+  };
+  return types[kind];
 }
 
 function resourcePath(message: LearnerNotificationDTO): string | null {
@@ -114,6 +143,7 @@ async function markRead(id: number): Promise<void> {
     await markNotificationRead(id);
     const target = messages.value.find((message) => message.id === id);
     if (target) target.read = true;
+    await notificationStore.refreshUnreadCount();
   } catch {
     errorMessage.value = '消息状态更新失败，请稍后重试。';
   } finally {
@@ -121,11 +151,17 @@ async function markRead(id: number): Promise<void> {
   }
 }
 
+watch(
+  () => notificationStore.inboxVersion,
+  () => {
+    void loadMessages();
+  },
+);
+
 onMounted(async () => {
+  notificationStore.init();
   try {
-    messages.value = (await listNotifications()).items;
-  } catch {
-    errorMessage.value = '消息加载失败，请稍后重试。';
+    await loadMessages();
   } finally {
     loading.value = false;
   }

@@ -3,63 +3,70 @@
     <slot />
   </template>
   <template v-else>
-    <button type="button" class="lock-trigger" :aria-label="actionLabel" @click="openDialog">
-      <svg class="lock-icon" viewBox="0 0 16 16" aria-hidden="true">
-        <path
-          d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2M3.5 7h9a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linejoin="round"
-        />
-      </svg>
-      <span>{{ actionLabel }}</span>
-    </button>
+    <el-button
+      plain
+      class="lock-trigger"
+      :icon="Lock"
+      :aria-label="actionLabel"
+      @click="openDialog"
+    >
+      {{ actionLabel }}
+    </el-button>
 
-    <dialog ref="dialogRef" class="gate-dialog" @cancel="onDialogCancel">
-      <form method="dialog" class="gate-sheet" @submit.prevent>
-        <header class="gate-header">
-          <p class="gate-kicker latin">访问验证</p>
-          <h2 class="gate-title display">{{ headline }}</h2>
-          <p class="gate-detail">{{ detail }}</p>
-        </header>
+    <el-dialog
+      v-model="dialogVisible"
+      class="gate-dialog"
+      width="440px"
+      :show-close="false"
+      append-to-body
+      @closed="onDialogClosed"
+    >
+      <header class="gate-header">
+        <p class="gate-kicker latin">访问验证</p>
+        <h2 class="gate-title display">{{ headline }}</h2>
+        <p class="gate-detail">{{ detail }}</p>
+      </header>
 
-        <p v-if="lessonTitle" class="gate-lesson">
-          <span class="gate-lesson-label">课节</span>
-          {{ lessonTitle }}
-        </p>
+      <p v-if="lessonTitle" class="gate-lesson">
+        <span class="gate-lesson-label">课节</span>
+        {{ lessonTitle }}
+      </p>
 
-        <p v-if="errorMessage" class="gate-error" role="alert">{{ errorMessage }}</p>
+      <el-alert
+        v-if="errorMessage"
+        class="gate-error"
+        :title="errorMessage"
+        type="error"
+        :closable="false"
+        show-icon
+      />
 
+      <template #footer>
         <footer class="gate-actions">
-          <button v-if="!authed" type="button" class="btn btn-primary" @click="goLogin">
-            登录后继续
-          </button>
-          <button
+          <el-button v-if="!authed" type="primary" @click="goLogin"> 登录后继续 </el-button>
+          <el-button
             v-else-if="priceMode === 'free'"
-            type="button"
-            class="btn btn-primary"
-            :disabled="busy"
+            type="primary"
+            :loading="busy"
             @click="startFree"
           >
-            {{ busy ? '授权中…' : canRejoin ? '再次加入课程' : '免费加入课程' }}
-          </button>
+            {{ canRejoin ? '再次加入课程' : '免费加入课程' }}
+          </el-button>
           <template v-else>
-            <button type="button" class="btn btn-primary" :disabled="busy" @click="buy">
-              {{ busy ? '下单中…' : '前往购买' }}
-            </button>
-            <button type="button" class="btn btn-ghost" @click="goOrders">查看订单</button>
+            <el-button type="primary" :loading="busy" @click="buy">前往购买</el-button>
+            <el-button @click="goOrders">查看订单</el-button>
           </template>
-          <button type="button" class="btn btn-ghost" @click="closeDialog">稍后再说</button>
+          <el-button @click="closeDialog">稍后再说</el-button>
         </footer>
-      </form>
-    </dialog>
+      </template>
+    </el-dialog>
   </template>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Lock } from '@element-plus/icons-vue';
 import { hasTokens } from '@/api/http';
 import { startCourse } from '@/api/learner';
 
@@ -79,7 +86,7 @@ const emit = defineEmits<{ (e: 'entitled'): void }>();
 const router = useRouter();
 const route = useRoute();
 
-const dialogRef = ref<HTMLDialogElement | null>(null);
+const dialogVisible = ref(false);
 const busy = ref(false);
 const errorMessage = ref('');
 
@@ -116,14 +123,14 @@ const actionLabel = computed(() => {
 
 function openDialog(): void {
   errorMessage.value = '';
-  dialogRef.value?.showModal();
+  dialogVisible.value = true;
 }
 
 function closeDialog(): void {
-  dialogRef.value?.close();
+  dialogVisible.value = false;
 }
 
-function onDialogCancel(): void {
+function onDialogClosed(): void {
   errorMessage.value = '';
 }
 
@@ -180,7 +187,7 @@ function buy(): void {
 </script>
 
 <style scoped>
-.lock-trigger {
+.lock-trigger.el-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -192,30 +199,21 @@ function buy(): void {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 600;
-  cursor: pointer;
+  margin-left: 0;
   transition:
     border-color 0.2s ease,
     color 0.2s ease,
     background-color 0.2s ease;
 }
 
-.lock-trigger:hover {
+.lock-trigger.el-button:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-deep);
 }
 
-.lock-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.gate-dialog {
-  width: min(440px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  margin: auto;
-  padding: 0;
+:deep(.gate-dialog) {
+  max-width: calc(100vw - 32px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -223,16 +221,13 @@ function buy(): void {
   color: var(--ink);
 }
 
-.gate-dialog::backdrop {
-  background: rgba(30, 41, 37, 0.42);
-  backdrop-filter: blur(3px);
+:deep(.gate-dialog .el-dialog__header) {
+  display: none;
 }
 
-.gate-sheet {
-  display: grid;
-  gap: 0;
+:deep(.gate-dialog .el-dialog__body),
+:deep(.gate-dialog .el-dialog__footer) {
   padding: 0;
-  margin: 0;
 }
 
 .gate-header {
@@ -293,8 +288,9 @@ function buy(): void {
   padding: 18px 22px 22px;
 }
 
-.gate-actions .btn {
+.gate-actions .el-button {
   flex: 1 1 auto;
   min-width: 120px;
+  margin-left: 0;
 }
 </style>

@@ -6,8 +6,8 @@
       <p class="lede">价格在提交瞬间再次确认，支付完成前不会开通课程访问权。</p>
     </header>
 
-    <p v-if="loading" class="notice">正在读取课程价格…</p>
-    <p v-else-if="error" class="notice error" role="alert">{{ error }}</p>
+    <el-skeleton v-if="loading" animated :rows="5" />
+    <el-alert v-else-if="error" :title="error" type="error" :closable="false" show-icon />
     <section v-else-if="course" class="checkout-layout">
       <article class="course-summary">
         <p class="eyebrow"><span class="eyebrow-rule" />购买内容</p>
@@ -26,9 +26,15 @@
         <template v-if="!order">
           <h2 class="panel-title">支付方式</h2>
           <p class="panel-copy">Fake 支付仅用于本地验收，订单仍由服务端异步结算。</p>
-          <button type="button" class="btn btn-primary" :disabled="submitting" @click="submitOrder">
-            {{ submitting ? '创建订单中…' : '创建支付订单' }}
-          </button>
+          <el-button
+            type="primary"
+            data-action="create-order"
+            :icon="ShoppingCart"
+            :loading="submitting"
+            @click="submitOrder"
+          >
+            创建支付订单
+          </el-button>
         </template>
         <template v-else>
           <h2 class="panel-title">{{ statusLabel(order.status) }}</h2>
@@ -51,15 +57,15 @@
             >
               进入课程
             </router-link>
-            <button
+            <el-button
               v-else
-              type="button"
-              class="btn btn-ghost"
-              :disabled="refreshing"
+              data-action="refresh-order"
+              :icon="Refresh"
+              :loading="refreshing"
               @click="refreshOrder"
             >
               刷新状态
-            </button>
+            </el-button>
             <router-link to="/me/orders" class="btn btn-link">查看订单记录</router-link>
           </div>
         </template>
@@ -71,6 +77,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { Refresh, ShoppingCart } from '@element-plus/icons-vue';
 import type {
   CreateOrderResponseDTO,
   OrderDTO,

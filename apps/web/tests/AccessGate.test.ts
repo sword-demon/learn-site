@@ -41,16 +41,56 @@ describe('AccessGate', () => {
         canRejoin: true,
         revokedReason: '误加入课程',
       },
+      global: { stubs: { teleport: true, transition: false } },
     });
 
     expect(wrapper.get('.lock-trigger').text()).toContain('再次加入后学习');
+    expect(wrapper.findComponent({ name: 'ElDialog' }).exists()).toBe(true);
+    await wrapper.get('.lock-trigger').trigger('click');
+    expect(wrapper.findComponent({ name: 'ElDialog' }).props('modelValue')).toBe(true);
     expect(wrapper.text()).toContain('访问权已被撤销');
     expect(wrapper.text()).toContain('误加入课程');
 
-    await wrapper.get('.gate-actions .btn-primary').trigger('click');
+    const rejoinButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('再次加入课程'));
+    await rejoinButton?.trigger('click');
     await flushPromises();
 
     expect(learnerApi.startCourse).toHaveBeenCalledWith(7);
     expect(routerApi.push).toHaveBeenCalledWith('/learn/7/12');
+    expect(wrapper.emitted('entitled')).toHaveLength(1);
+    expect(wrapper.findComponent({ name: 'ElDialog' }).props('modelValue')).toBe(false);
+  });
+
+  it('teleports the overlay outside the animated course page', async () => {
+    const host = document.createElement('div');
+    host.className = 'page';
+    document.body.append(host);
+
+    const wrapper = mount(AccessGate, {
+      attachTo: host,
+      props: {
+        locked: true,
+        viewerAuthorized: false,
+        priceMode: 'free',
+        courseId: 7,
+        lessonId: 12,
+        lessonTitle: '第一课',
+      },
+      global: { stubs: { transition: false } },
+    });
+
+    try {
+      await wrapper.get('.lock-trigger').trigger('click');
+      await flushPromises();
+
+      const overlay = document.querySelector('.el-overlay');
+      expect(overlay).not.toBeNull();
+      expect(host.contains(overlay)).toBe(false);
+    } finally {
+      wrapper.unmount();
+      host.remove();
+    }
   });
 });

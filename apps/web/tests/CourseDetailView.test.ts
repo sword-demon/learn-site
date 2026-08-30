@@ -1,27 +1,27 @@
 // @vitest-environment happy-dom
 
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PublicCourseDetailDTO } from '@learn-site/contracts'
+import { flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PublicCourseDetailDTO } from '@learn-site/contracts';
 
 const learnerApi = vi.hoisted(() => ({
   fetchCourseDetail: vi.fn(),
   startCourse: vi.fn(),
-}))
-const authApi = vi.hoisted(() => ({ hasTokens: vi.fn() }))
+}));
+const authApi = vi.hoisted(() => ({ hasTokens: vi.fn() }));
 const routerApi = vi.hoisted(() => ({
   push: vi.fn(),
   route: { params: { id: '9' }, fullPath: '/courses/9', query: {} },
-}))
+}));
 
-vi.mock('@/api/learner', () => learnerApi)
-vi.mock('@/api/http', () => authApi)
+vi.mock('@/api/learner', () => learnerApi);
+vi.mock('@/api/http', () => authApi);
 vi.mock('vue-router', () => ({
   useRoute: () => routerApi.route,
   useRouter: () => ({ push: routerApi.push }),
-}))
+}));
 
-import CourseDetailView from '@/views/catalog/CourseDetailView.vue'
+import CourseDetailView from '@/views/catalog/CourseDetailView.vue';
 
 const detail: PublicCourseDetailDTO = {
   course: {
@@ -46,36 +46,46 @@ const detail: PublicCourseDetailDTO = {
     learner_count: 12,
     created_at: '2026-08-28 10:00:00',
   },
-  chapters: [{
-    id: 3,
-    course_id: 9,
-    title: '基础',
-    sort: 0,
-    lessons: [{
-      id: 7,
-      title: '状态建模',
+  chapters: [
+    {
+      id: 3,
+      course_id: 9,
+      title: '基础',
       sort: 0,
-      content_type: 'markdown',
-      duration_seconds: 0,
-      is_preview: false,
-      locked: true,
-    }],
-  }],
-}
+      lessons: [
+        {
+          id: 7,
+          title: '状态建模',
+          sort: 0,
+          content_type: 'markdown',
+          duration_seconds: 0,
+          is_preview: false,
+          locked: true,
+        },
+      ],
+    },
+  ],
+};
 
 describe('CourseDetailView', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    authApi.hasTokens.mockReturnValue(true)
-    learnerApi.fetchCourseDetail.mockResolvedValue(detail)
+    vi.clearAllMocks();
+    detail.course.viewer_authorized = false;
+    detail.course.viewer_entitlement_status = null;
+    detail.course.viewer_entitlement_source = null;
+    detail.course.viewer_revoked_reason = null;
+    detail.course.viewer_can_rejoin = false;
+    detail.chapters[0]!.lessons[0]!.locked = true;
+    authApi.hasTokens.mockReturnValue(true);
+    learnerApi.fetchCourseDetail.mockResolvedValue(detail);
     learnerApi.startCourse.mockResolvedValue({
       course_id: 9,
       entitled: true,
       source: 'free',
       price_mode: 'free',
       first_lesson: { id: 7, title: '状态建模', content_type: 'markdown', is_preview: false },
-    })
-  })
+    });
+  });
 
   it('renders course facts, chapter summaries and the free start action', async () => {
     const wrapper = mount(CourseDetailView, {
@@ -87,19 +97,42 @@ describe('CourseDetailView', () => {
           ShareBar: true,
         },
       },
-    })
-    await flushPromises()
+    });
+    await flushPromises();
 
-    expect(wrapper.text()).toContain('Vue 组件设计')
-    expect(wrapper.text()).toContain('课程介绍')
-    expect(wrapper.text()).toContain('func main() {}')
-    expect(wrapper.text()).toContain('状态建模')
-    expect(wrapper.text()).toContain('开始学习')
-    expect(learnerApi.fetchCourseDetail).toHaveBeenCalledWith(9)
-  })
+    expect(wrapper.text()).toContain('Vue 组件设计');
+    expect(wrapper.text()).toContain('课程介绍');
+    expect(wrapper.text()).toContain('func main() {}');
+    await wrapper.findComponent({ name: 'ElTabs' }).setValue('catalog');
+    expect(wrapper.text()).toContain('状态建模');
+    expect(wrapper.text()).toContain('开始学习');
+    expect(learnerApi.fetchCourseDetail).toHaveBeenCalledWith(9);
+  });
 
-  it('redirects a visitor to learner login before starting a free course', async () => {
-    authApi.hasTokens.mockReturnValue(false)
+  it('navigates to a preview lesson from the catalog tab', async () => {
+    const previewDetail: PublicCourseDetailDTO = {
+      ...detail,
+      chapters: [
+        {
+          id: 3,
+          course_id: 9,
+          title: '基础',
+          sort: 0,
+          lessons: [
+            {
+              id: 8,
+              title: '试看课节',
+              sort: 0,
+              content_type: 'markdown',
+              duration_seconds: 60,
+              is_preview: true,
+              locked: false,
+            },
+          ],
+        },
+      ],
+    };
+    learnerApi.fetchCourseDetail.mockResolvedValue(previewDetail);
     const wrapper = mount(CourseDetailView, {
       global: {
         stubs: {
@@ -109,19 +142,60 @@ describe('CourseDetailView', () => {
           ShareBar: true,
         },
       },
-    })
-    await flushPromises()
+    });
+    await flushPromises();
 
-    await wrapper.get('.buy-panel .btn-primary').trigger('click')
+    await wrapper.findComponent({ name: 'ElTabs' }).setValue('catalog');
+    await wrapper.get('[data-action="open-lesson"]').trigger('click');
 
-    expect(routerApi.push).toHaveBeenCalledWith('/login?redirect=%2Fcourses%2F9')
-    expect(learnerApi.startCourse).not.toHaveBeenCalled()
-  })
+    expect(routerApi.push).toHaveBeenCalledWith('/learn/9/8');
+  });
+
+  it('unlocks catalog lessons after joining a free course', async () => {
+    const wrapper = mount(CourseDetailView, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
+          AccessGate: { template: '<div><slot /></div>' },
+          ReviewTree: true,
+          ShareBar: true,
+        },
+      },
+    });
+    await flushPromises();
+
+    await wrapper.get('[data-action="start-course"]').trigger('click');
+    await flushPromises();
+
+    expect(detail.course.viewer_authorized).toBe(true);
+    expect(detail.chapters[0]!.lessons[0]!.locked).toBe(false);
+    expect(routerApi.push).toHaveBeenCalledWith('/learn/9/7');
+  });
+
+  it('redirects a visitor to learner login before starting a free course', async () => {
+    authApi.hasTokens.mockReturnValue(false);
+    const wrapper = mount(CourseDetailView, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
+          AccessGate: { template: '<div><slot /></div>' },
+          ReviewTree: true,
+          ShareBar: true,
+        },
+      },
+    });
+    await flushPromises();
+
+    await wrapper.get('[data-action="start-course"]').trigger('click');
+
+    expect(routerApi.push).toHaveBeenCalledWith('/login?redirect=%2Fcourses%2F9');
+    expect(learnerApi.startCourse).not.toHaveBeenCalled();
+  });
 
   it('does not render stale course content after the public entry disappears', async () => {
     learnerApi.fetchCourseDetail.mockRejectedValueOnce({
       response: { data: { error: { code: 'NOT_FOUND', message: 'COURSE_NOT_FOUND' } } },
-    })
+    });
 
     const wrapper = mount(CourseDetailView, {
       global: {
@@ -132,11 +206,11 @@ describe('CourseDetailView', () => {
           ShareBar: true,
         },
       },
-    })
-    await flushPromises()
+    });
+    await flushPromises();
 
-    expect(wrapper.text()).toContain('课程暂时读不到，请稍后再试。')
-    expect(wrapper.text()).not.toContain('Vue 组件设计')
-    expect(learnerApi.fetchCourseDetail).toHaveBeenCalledWith(9)
-  })
-})
+    expect(wrapper.text()).toContain('课程暂时读不到，请稍后再试。');
+    expect(wrapper.text()).not.toContain('Vue 组件设计');
+    expect(learnerApi.fetchCourseDetail).toHaveBeenCalledWith(9);
+  });
+});

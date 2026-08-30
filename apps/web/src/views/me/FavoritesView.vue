@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { fetchFavorites, removeFavorite } from '@/api/learner';
 import type { FavoriteCourseDTO, FavoriteListDTO } from '@learn-site/contracts';
+import { Delete } from '@element-plus/icons-vue';
 
 defineOptions({ name: 'FavoritesView' });
 
@@ -61,8 +62,8 @@ onMounted(() => void reload());
       <span v-if="!loading && !errorMsg" class="cnt">{{ list?.total ?? 0 }} 门</span>
     </div>
 
-    <p v-if="loading" class="notice">收藏加载中…</p>
-    <p v-else-if="errorMsg" class="notice error">{{ errorMsg }}</p>
+    <el-skeleton v-if="loading" animated :rows="5" />
+    <el-alert v-else-if="errorMsg" :title="errorMsg" type="error" :closable="false" show-icon />
     <div v-else-if="list && list.items.length" class="entry-list">
       <article v-for="course in list.items" :key="course.course_id" class="rec">
         <router-link :to="`/courses/${course.course_id}`" class="cover" :style="coverStyle(course)">
@@ -75,26 +76,27 @@ onMounted(() => void reload());
           </h3>
           <div class="lmeta">
             {{ course.teacher_name }}
-            <span v-if="course.status !== 'published'"> · 暂不可用</span>
+            <el-tag v-if="course.status !== 'published'" type="info" size="small">暂不可用</el-tag>
           </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end">
-          <span v-if="course.price_mode === 'free'" class="tag tag-free">免费</span>
-          <span v-else class="price-now" style="font-size: 17px">¥ {{ formatPrice(course.list_price) }}</span>
-          <button
-            type="button"
-            class="btn-link"
-            :disabled="submittingId === course.course_id"
+          <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
+          <span v-else class="price-now" style="font-size: 17px"
+            >¥ {{ formatPrice(course.list_price) }}</span
+          >
+          <el-button
+            link
+            type="danger"
+            :icon="Delete"
+            :loading="submittingId === course.course_id"
+            data-action="remove-favorite"
             @click="unfavorite(course.course_id)"
           >
-            {{ submittingId === course.course_id ? '处理中…' : '取消收藏' }}
-          </button>
+            取消收藏
+          </el-button>
         </div>
       </article>
     </div>
-    <div v-else class="empty">
-      <span class="serif">收藏夹还是空的</span>
-      在课程卡片或详情页点 ♡ 收藏想稍后学的课
-    </div>
+    <el-empty v-else description="收藏夹还是空的，在课程卡片或详情页收藏想稍后学的课" />
   </main>
 </template>

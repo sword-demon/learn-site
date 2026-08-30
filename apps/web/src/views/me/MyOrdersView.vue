@@ -5,12 +5,18 @@
       <span v-if="!loading && !loadError" class="cnt">{{ items.length }} 笔</span>
     </div>
 
-    <p v-if="loading" class="notice">正在加载订单…</p>
-    <p v-else-if="loadError" class="notice error">订单暂时读不到，请稍后再试。</p>
-    <div v-else-if="items.length === 0" class="empty">
-      <span class="serif">还没有订单</span>
-      购买收费课程后，这里会保留价格快照
-    </div>
+    <el-skeleton v-if="loading" animated :rows="5" />
+    <el-alert
+      v-else-if="loadError"
+      title="订单暂时读不到，请稍后再试。"
+      type="error"
+      :closable="false"
+      show-icon
+    />
+    <el-empty
+      v-else-if="items.length === 0"
+      description="还没有订单，购买收费课程后这里会保留价格快照"
+    />
     <div v-else>
       <article v-for="order in items" :key="order.order_id" class="panel order-row">
         <div>
@@ -25,8 +31,10 @@
             · 实付 ¥{{ order.paid_amount.toFixed(2) }} · {{ formatDate(order.created_at) }}
           </div>
         </div>
-        <div class="pay-state" :class="payStateClass(order.status)">
-          {{ statusLabel(order.status) }}
+        <div class="pay-state">
+          <el-tag :type="statusTagType(order.status)" effect="plain">
+            {{ statusLabel(order.status) }}
+          </el-tag>
           <router-link
             v-if="canRetry(order.status)"
             :to="`/checkout/${order.course_id}`"
@@ -82,14 +90,17 @@ function statusLabel(status: OrderStatus): string {
   }
 }
 
-function payStateClass(status: OrderStatus): string {
-  if (status === 'succeeded') return 's-ok';
-  if (status === 'pending' || status === 'unknown') return 's-paying';
-  return '';
+function statusTagType(status: OrderStatus): 'success' | 'warning' | 'danger' | 'info' {
+  if (status === 'succeeded') return 'success';
+  if (status === 'pending' || status === 'unknown') return 'warning';
+  if (status === 'failed') return 'danger';
+  return 'info';
 }
 
 function canRetry(status: OrderStatus): boolean {
-  return status === 'pending' || status === 'failed' || status === 'cancelled' || status === 'unknown';
+  return (
+    status === 'pending' || status === 'failed' || status === 'cancelled' || status === 'unknown'
+  );
 }
 
 function formatDate(iso: string): string {

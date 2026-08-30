@@ -6,18 +6,21 @@
 FROM node:22.11.0-alpine@sha256:b64ced2e7cd0a4816699fe308ce6e8a08ccba463c757c00c14cd372e3d2c763e AS build
 
 WORKDIR /workspace
+
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm config set registry "${NPM_REGISTRY}" \
+ && npm install -g pnpm@9.12.0 \
+ && pnpm config set registry "${NPM_REGISTRY}"
+
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY apps/admin/package.json apps/admin/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+RUN pnpm install --frozen-lockfile
+
 COPY apps/admin apps/admin
 COPY packages/contracts packages/contracts
-
-# Cache-busting: touch a file to invalidate layer cache when source changes
-RUN date +%s > /workspace/.build-timestamp
-
-RUN corepack enable \
-    && corepack prepare pnpm@9.12.0 --activate \
-    && pnpm install --frozen-lockfile \
-    && pnpm --filter @learn-site/contracts build \
-    && pnpm --filter @learn-site/admin build
+RUN pnpm --filter @learn-site/contracts build \
+ && pnpm --filter @learn-site/admin build
 
 # ---- runtime stage ----
 FROM nginx:1.27.3-alpine@sha256:814a8e88df978ade80e584cc5b333144b9372a8e3c98872d07137dbf3b44d0e4 AS runtime

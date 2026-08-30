@@ -18,12 +18,14 @@
       <p class="teacher">讲师 · {{ course.teacher_name }}</p>
       <p class="summary">{{ course.summary || '讲师还没有写简介。' }}</p>
       <footer class="meta">
-        <span v-if="course.price_mode === 'free'" class="pill free">免费</span>
+        <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
         <template v-else>
           <span class="price-now">¥ {{ formatPrice(displayPrice) }}</span>
           <span v-if="onSale" class="price-was">¥ {{ formatPrice(course.list_price) }}</span>
         </template>
-        <span v-if="course.preview_available" class="pill preview">试看</span>
+        <el-tag v-if="course.preview_available" type="warning" size="small" effect="plain"
+          >试看</el-tag
+        >
         <span class="learners">{{ course.learner_count }} 位学员</span>
       </footer>
     </div>

@@ -44,20 +44,49 @@
   --serif: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
   --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
 
-  --el-color-primary: var(--indigo);
-  --el-color-primary-light-3: #5a7f94;
-  --el-color-primary-light-5: #8aa5b5;
-  --el-color-primary-light-9: var(--indigo-soft);
+  --el-color-primary: var(--seal);
+  --el-color-primary-dark-2: var(--seal-deep);
+  --el-color-primary-light-3: #c66f5f;
+  --el-color-primary-light-5: #d99c90;
+  --el-color-primary-light-7: #eac8c0;
+  --el-color-primary-light-8: #f0d8d2;
+  --el-color-primary-light-9: var(--seal-soft);
+  --el-color-success: var(--moss);
+  --el-color-warning: var(--gold);
+  --el-color-danger: var(--seal);
+  --el-color-error: var(--seal);
+  --el-color-info: var(--indigo);
   --el-border-radius-base: 3px;
   --el-border-radius-small: 3px;
   --el-border-radius-round: 999px;
   --el-bg-color: var(--card);
   --el-bg-color-page: var(--paper);
+  --el-bg-color-overlay: var(--card);
+  --el-fill-color: var(--paper-2);
+  --el-fill-color-light: var(--card-2);
+  --el-fill-color-lighter: var(--paper);
+  --el-fill-color-extra-light: var(--card);
+  --el-fill-color-dark: var(--line);
+  --el-fill-color-darker: var(--line-2);
   --el-fill-color-blank: var(--card);
   --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--paper-2);
+  --el-border-color-extra-light: var(--card-2);
+  --el-border-color-dark: var(--line-2);
+  --el-border-color-darker: var(--ink-3);
   --el-text-color-primary: var(--ink);
   --el-text-color-regular: var(--ink-2);
   --el-text-color-secondary: var(--ink-3);
+  --el-text-color-placeholder: var(--ink-3);
+  --el-text-color-disabled: var(--ink-3);
+  --el-disabled-bg-color: var(--paper-2);
+  --el-disabled-text-color: var(--ink-3);
+  --el-disabled-border-color: var(--line);
+  --el-mask-color: rgba(43, 38, 32, 0.42);
+  --el-mask-color-extra-light: rgba(43, 38, 32, 0.18);
+  --el-box-shadow-light: var(--shadow);
+  --el-box-shadow: var(--shadow-lg);
 }
 
 html[data-theme='night'] {
@@ -81,6 +110,21 @@ html[data-theme='night'] {
   --gold-soft: #3a3122;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --el-color-primary-light-3: #dc7965;
+  --el-color-primary-light-5: #ba7060;
+  --el-color-primary-light-7: #784a40;
+  --el-color-primary-light-8: #5d382f;
+  --el-color-primary-light-9: var(--seal-soft);
+  --el-bg-color-overlay: var(--card);
+  --el-fill-color: var(--paper-2);
+  --el-fill-color-light: var(--card-2);
+  --el-fill-color-lighter: var(--paper);
+  --el-fill-color-extra-light: var(--card);
+  --el-fill-color-dark: var(--line);
+  --el-fill-color-darker: var(--line-2);
+  --el-disabled-bg-color: var(--paper-2);
+  --el-mask-color: rgba(0, 0, 0, 0.62);
+  --el-mask-color-extra-light: rgba(0, 0, 0, 0.32);
 }
 
 * {
@@ -318,23 +362,24 @@ select:focus-visible {
   font-family: var(--serif);
 }
 
-.btn-night {
+.btn-night.el-button {
   border: 1px solid var(--line-2);
   background: var(--card-2);
   color: var(--ink-2);
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  cursor: pointer;
-  font-size: 15px;
+  margin-left: 0;
 }
 
-.btn-night:hover {
+.btn-night.el-button:hover,
+.btn-night.el-button:focus-visible {
   color: var(--seal);
   border-color: var(--seal);
+  background: var(--seal-soft);
 }
 
-.nav-toggle {
+.nav-toggle.el-button {
   display: none;
   min-height: 40px;
   padding: 0 12px;
@@ -342,7 +387,7 @@ select:focus-visible {
   border-radius: var(--r);
   background: var(--card-2);
   color: var(--ink);
-  cursor: pointer;
+  margin-left: 0;
 }
 
 .display,
@@ -650,21 +695,6 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.star-input {
-  display: flex;
-  gap: 6px;
-  font-size: 26px;
-  color: var(--line-2);
-  cursor: pointer;
-  border: 0;
-  background: none;
-  padding: 0;
-}
-
-.star-input span.on {
-  color: var(--gold);
 }
 
 .reply-toggle {
@@ -1028,40 +1058,6 @@ select:focus-visible {
   gap: 10px;
 }
 
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--line-2);
-  margin: 34px 0 26px;
-}
-
-.tabs button {
-  border: 0;
-  background: none;
-  cursor: pointer;
-  font-size: 15px;
-  color: var(--ink-2);
-  padding: 10px 20px;
-  position: relative;
-  font-family: var(--serif);
-  letter-spacing: 0.1em;
-}
-
-.tabs button.on {
-  color: var(--seal);
-  font-weight: 700;
-}
-
-.tabs button.on::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 3px;
-  background: var(--seal);
-}
-
 .rich {
   max-width: 720px;
 }
@@ -1365,7 +1361,7 @@ select:focus-visible {
   text-decoration: none;
 }
 
-.step-row button.sc {
+.step-row .sc.el-button {
   border: 0;
   background: none;
   padding: 0;
@@ -1616,6 +1612,23 @@ select:focus-visible {
   flex: 1;
 }
 
+.qa-panel {
+  margin-top: 30px;
+  padding: 22px 26px;
+}
+
+.qa-panel > h3,
+.qa-panel .qa-title-heading {
+  font-family: var(--serif);
+  font-size: 18px;
+  margin: 0 0 4px;
+  font-weight: 900;
+}
+
+.qa-list {
+  margin-top: 16px;
+}
+
 .sidecat {
   position: sticky;
   top: 20px;
@@ -1769,17 +1782,6 @@ select:focus-visible {
   margin-top: 4px;
 }
 
-.auth-card .el-button--primary {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.auth-card .el-button--primary:hover,
-.auth-card .el-button--primary:focus {
-  border-color: var(--accent-deep);
-  background: var(--accent-deep);
-}
-
 .auth-card .el-input__wrapper {
   background: var(--surface);
 }
@@ -1808,18 +1810,19 @@ select:focus-visible {
   gap: 10px;
 }
 
-.captcha-btn {
+.captcha-btn.el-button {
   min-height: 42px;
+  width: 100%;
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface);
   color: var(--muted);
-  cursor: pointer;
+  margin-left: 0;
 }
 
-.captcha-btn img {
+.captcha-btn.el-button img {
   display: block;
   width: 100%;
   height: 42px;
@@ -1908,7 +1911,7 @@ select:focus-visible {
     padding: 14px 16px 0;
   }
 
-  .nav-toggle {
+  .nav-toggle.el-button {
     display: inline-flex;
     margin-left: auto;
   }

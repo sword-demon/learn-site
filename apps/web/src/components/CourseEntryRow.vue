@@ -11,30 +11,36 @@
       <div class="meta">
         <b>{{ course.teacher_name }}</b>
         <span>{{ course.learner_count }} 人在学</span>
-        <span v-if="course.price_mode === 'free'" class="tag tag-free">免费</span>
-        <span v-else-if="onSale" class="tag tag-sale">限时 ¥{{ formatPrice(course.sale_price) }}</span>
-        <span v-if="course.preview_available" class="tag tag-trial">可试看</span>
+        <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
+        <el-tag v-else-if="onSale" type="danger" size="small"
+          >限时 ¥{{ formatPrice(course.sale_price) }}</el-tag
+        >
+        <el-tag v-if="course.preview_available" type="warning" size="small" effect="plain"
+          >可试看</el-tag
+        >
       </div>
     </div>
     <div class="entry-side" @click.stop>
       <div class="price-line">
-        <span v-if="course.price_mode === 'free'" class="tag tag-free">免费</span>
+        <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
         <template v-else>
           <span class="price-now" style="font-size: 17px">¥ {{ formatPrice(displayPrice) }}</span>
           <span v-if="onSale" class="price-std">¥ {{ formatPrice(course.list_price) }}</span>
         </template>
       </div>
-      <button
+      <el-button
         v-if="showFavorite"
-        type="button"
+        circle
+        text
         class="favbtn"
         :class="{ on: favorited }"
         :title="favorited ? '取消收藏' : '收藏'"
-        :disabled="favoriteBusy"
+        :aria-label="favorited ? '取消收藏' : '收藏'"
+        :icon="favorited ? StarFilled : Star"
+        :loading="favoriteBusy"
+        data-action="toggle-favorite"
         @click="toggleFavorite"
-      >
-        {{ favorited ? '♥' : '♡' }}
-      </button>
+      />
     </div>
   </article>
 </template>
@@ -42,6 +48,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Star, StarFilled } from '@element-plus/icons-vue';
 import type { CourseListItemDTO } from '@learn-site/contracts';
 import { addFavorite, removeFavorite } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
@@ -74,8 +81,7 @@ const displayPrice = computed(() =>
 );
 
 const onSale = computed(
-  () =>
-    props.course.price_mode !== 'free' && props.course.sale_price < props.course.list_price,
+  () => props.course.price_mode !== 'free' && props.course.sale_price < props.course.list_price,
 );
 
 function formatPrice(n: number): string {

@@ -11,9 +11,11 @@ COPY apps/admin/package.json apps/admin/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 
-RUN corepack enable \
-    && corepack prepare pnpm@9.12.0 --activate \
-    && pnpm install --frozen-lockfile
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm config set registry "${NPM_REGISTRY}" \
+ && npm install -g pnpm@9.12.0 \
+ && pnpm config set registry "${NPM_REGISTRY}" \
+ && pnpm install --frozen-lockfile
 
 COPY apps/admin/playwright.config.ts apps/admin/playwright.config.ts
 COPY apps/admin/tests/e2e apps/admin/tests/e2e

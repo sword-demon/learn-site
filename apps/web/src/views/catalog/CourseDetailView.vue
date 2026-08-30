@@ -1,7 +1,13 @@
 <template>
   <main class="page course-detail">
-    <p v-if="loading" class="notice">课程加载中…</p>
-    <p v-else-if="loadError" class="notice error">课程暂时读不到，请稍后再试。</p>
+    <el-skeleton v-if="loading" animated :rows="8" />
+    <el-alert
+      v-else-if="loadError"
+      title="课程暂时读不到，请稍后再试。"
+      type="error"
+      :closable="false"
+      show-icon
+    />
     <template v-else-if="detail">
       <nav class="crumbs" aria-label="面包屑">
         <router-link to="/">首页</router-link>
@@ -29,9 +35,15 @@
             {{ detail.course.summary || '讲师还没有写简介。' }}
           </p>
           <div class="course-stats">
-            <span>教师 <b>{{ detail.course.teacher_name }}</b></span>
-            <span><b>{{ detail.course.learner_count }}</b> 人在学</span>
-            <span>共 <b>{{ lessonCount }}</b> 节</span>
+            <span
+              >教师 <b>{{ detail.course.teacher_name }}</b></span
+            >
+            <span
+              ><b>{{ detail.course.learner_count }}</b> 位学员</span
+            >
+            <span
+              >共 <b>{{ lessonCount }}</b> 节</span
+            >
             <span v-if="previewAvailable">支持试看</span>
           </div>
         </div>
@@ -39,97 +51,85 @@
 
       <div class="course-body">
         <div>
-          <div class="tabs" role="tablist" aria-label="课程信息">
-            <button
-              type="button"
-              role="tab"
-              :class="{ on: activeTab === 'intro' }"
-              :aria-selected="activeTab === 'intro'"
-              @click="activeTab = 'intro'"
-            >
-              课程简介
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :class="{ on: activeTab === 'catalog' }"
-              :aria-selected="activeTab === 'catalog'"
-              @click="activeTab = 'catalog'"
-            >
-              目录（{{ lessonCount }}）
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :class="{ on: activeTab === 'reviews' }"
-              :aria-selected="activeTab === 'reviews'"
-              @click="activeTab = 'reviews'"
-            >
-              评价
-            </button>
-          </div>
-
-          <div v-if="activeTab === 'intro'" class="fade">
-            <div v-if="showIntro" class="rich">
-              <MarkdownRenderer :html="detail.course.intro_html" />
-            </div>
-            <div v-else class="empty">
-              <span class="serif">讲师还没有写详细介绍</span>
-              可以先从目录试看课节
-            </div>
-          </div>
-
-          <div v-else-if="activeTab === 'catalog'" class="fade">
-            <p v-if="chapters.length === 0" class="empty">讲师还没有发布课节。</p>
-            <div v-for="(chapter, chapterIndex) in chapters" :key="chapter.id" class="catalog-chapter">
-              <h4>
-                <span class="no">第 {{ chapterIndex + 1 }} 章</span>
-                {{ chapter.title }}
-              </h4>
-              <div
-                v-for="lesson in chapter.lessons"
-                :key="lesson.id"
-                class="lesson-row"
-                :class="{ cur: false }"
-              >
-                <span class="typechip" :class="typechipClass(lesson.content_type)">
-                  {{ kindLabel(lesson.content_type) }}
-                </span>
-                <div>
-                  <div class="l-title">
-                    {{ lesson.title }}
-                    <span v-if="lesson.is_preview" class="tag tag-trial">试看</span>
-                  </div>
-                  <div class="l-meta">{{ lessonMeta(lesson) }}</div>
+          <el-tabs v-model="activeTab" class="course-tabs" aria-label="课程信息">
+            <el-tab-pane label="课程简介" name="intro">
+              <div class="fade">
+                <div v-if="showIntro" class="rich">
+                  <MarkdownRenderer :html="detail.course.intro_html" />
                 </div>
-                <div>
-                  <AccessGate
-                    :locked="lesson.locked"
-                    :viewer-authorized="detail.course.viewer_authorized"
-                    :price-mode="detail.course.price_mode"
-                    :course-id="detail.course.id"
-                    :lesson-id="lesson.id"
-                    :lesson-title="lesson.title"
-                    :can-rejoin="detail.course.viewer_can_rejoin"
-                    :revoked-reason="detail.course.viewer_revoked_reason"
-                    @entitled="onEntitled"
+                <el-empty v-else description="讲师还没有写详细介绍，可以先从目录试看课节" />
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane :label="`目录（${lessonCount}）`" name="catalog">
+              <div class="fade">
+                <el-empty v-if="chapters.length === 0" description="讲师还没有发布课节。" />
+                <div
+                  v-for="(chapter, chapterIndex) in chapters"
+                  :key="chapter.id"
+                  class="catalog-chapter"
+                >
+                  <h4>
+                    <span class="no">第 {{ chapterIndex + 1 }} 章</span>
+                    {{ chapter.title }}
+                  </h4>
+                  <div
+                    v-for="lesson in chapter.lessons"
+                    :key="lesson.id"
+                    class="lesson-row"
+                    :class="{ cur: false }"
                   >
-                    <router-link
-                      :to="`/learn/${detail.course.id}/${lesson.id}`"
-                      class="btn btn-ghost btn-sm"
-                    >
-                      打开
-                    </router-link>
-                  </AccessGate>
-                  <span v-if="lesson.locked" class="l-lock" aria-hidden="true">🔒</span>
+                    <span class="typechip" :class="typechipClass(lesson.content_type)">
+                      {{ kindLabel(lesson.content_type) }}
+                    </span>
+                    <div>
+                      <div class="l-title">
+                        {{ lesson.title }}
+                        <el-tag v-if="lesson.is_preview" type="warning" size="small" effect="plain">
+                          试看
+                        </el-tag>
+                      </div>
+                      <div class="l-meta">{{ lessonMeta(lesson) }}</div>
+                    </div>
+                    <div>
+                      <AccessGate
+                        :locked="lesson.locked"
+                        :viewer-authorized="detail.course.viewer_authorized"
+                        :price-mode="detail.course.price_mode"
+                        :course-id="detail.course.id"
+                        :lesson-id="lesson.id"
+                        :lesson-title="lesson.title"
+                        :can-rejoin="detail.course.viewer_can_rejoin"
+                        :revoked-reason="detail.course.viewer_revoked_reason"
+                        @entitled="onEntitled"
+                      >
+                        <el-button
+                          size="small"
+                          data-action="open-lesson"
+                          :icon="VideoPlay"
+                          @click="openLesson(lesson)"
+                        >
+                          打开
+                        </el-button>
+                      </AccessGate>
+                      <el-icon v-if="lesson.locked" class="l-lock" aria-hidden="true"
+                        ><Lock
+                      /></el-icon>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </el-tab-pane>
 
-          <div v-else class="fade">
-            <ReviewTree :course-id="detail.course.id" :authorized="detail.course.viewer_authorized" />
-          </div>
+            <el-tab-pane label="评价" name="reviews">
+              <div class="fade">
+                <ReviewTree
+                  :course-id="detail.course.id"
+                  :authorized="detail.course.viewer_authorized"
+                />
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </div>
 
         <aside class="panel buy-panel">
@@ -143,7 +143,9 @@
             </span>
             <template v-else>
               <span class="price-now">¥ {{ formatPrice(displayPrice) }}</span>
-              <span v-if="onSale" class="price-std">¥ {{ formatPrice(detail.course.list_price) }}</span>
+              <span v-if="onSale" class="price-std"
+                >¥ {{ formatPrice(detail.course.list_price) }}</span
+              >
             </template>
           </div>
           <p v-if="saleWindowOpen" class="hint">
@@ -157,37 +159,43 @@
           </p>
 
           <div class="hero-actions">
-            <button
+            <el-button
               v-if="firstLesson && detail.course.viewer_authorized"
-              type="button"
-              class="btn btn-primary"
-              style="width: 100%"
+              type="primary"
+              data-action="continue-course"
+              :icon="VideoPlay"
               @click="openFirst"
             >
               继续学习
-            </button>
-            <button
+            </el-button>
+            <el-button
               v-else-if="firstLesson && detail.course.price_mode === 'free'"
-              type="button"
-              class="btn btn-primary"
-              style="width: 100%"
-              :disabled="starting"
+              type="primary"
+              data-action="start-course"
+              :icon="ArrowRight"
+              :loading="starting"
               @click="startFree"
             >
-              {{ starting ? '授权中…' : detail.course.viewer_can_rejoin ? '再次加入' : '开始学习' }}
-            </button>
-            <button
+              {{ detail.course.viewer_can_rejoin ? '再次加入' : '开始学习' }}
+            </el-button>
+            <el-button
               v-else-if="firstLesson"
-              type="button"
-              class="btn btn-primary"
-              style="width: 100%"
+              type="primary"
+              data-action="buy-course"
+              :icon="ShoppingCart"
               @click="buy"
             >
               立即购买
-            </button>
+            </el-button>
             <span v-else class="hint">这门课还没有可学习的课节。</span>
           </div>
-          <p v-if="startError" class="notice error">{{ startError }}</p>
+          <el-alert
+            v-if="startError"
+            :title="startError"
+            type="error"
+            :closable="false"
+            show-icon
+          />
 
           <ShareBar
             :course-id="detail.course.id"
@@ -203,6 +211,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowRight, Lock, ShoppingCart, VideoPlay } from '@element-plus/icons-vue';
 import type { LessonSummaryDTO, PublicCourseDetailDTO } from '@learn-site/contracts';
 import { hasTokens } from '@/api/http';
 import { fetchCourseDetail, startCourse } from '@/api/learner';
@@ -285,6 +294,7 @@ onMounted(async () => {
   }
   try {
     detail.value = await fetchCourseDetail(id);
+    unlockCatalogLessons();
   } catch {
     loadError.value = true;
   } finally {
@@ -292,9 +302,28 @@ onMounted(async () => {
   }
 });
 
+function unlockCatalogLessons(): void {
+  if (!detail.value?.course.viewer_authorized) return;
+  for (const chapter of detail.value.chapters) {
+    for (const lesson of chapter.lessons) {
+      lesson.locked = false;
+    }
+  }
+}
+
+async function openLesson(lesson: LessonSummaryDTO): Promise<void> {
+  if (!detail.value || lesson.locked) return;
+  const target = `/learn/${detail.value.course.id}/${lesson.id}`;
+  if (!hasTokens()) {
+    await router.push(loginPathFor(target));
+    return;
+  }
+  await router.push(target);
+}
+
 function openFirst(): void {
   const target = firstLesson.value;
-  if (target) router.push(`/learn/${target.courseId}/${target.id}`);
+  if (target) void router.push(`/learn/${target.courseId}/${target.id}`);
 }
 
 async function startFree(): Promise<void> {
@@ -312,8 +341,9 @@ async function startFree(): Promise<void> {
     detail.value.course.viewer_entitlement_source = result.source;
     detail.value.course.viewer_revoked_reason = null;
     detail.value.course.viewer_can_rejoin = false;
+    unlockCatalogLessons();
     if (result.first_lesson)
-      router.push(`/learn/${detail.value.course.id}/${result.first_lesson.id}`);
+      await router.push(`/learn/${detail.value.course.id}/${result.first_lesson.id}`);
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
     if (code === 'UNAUTHENTICATED') {
@@ -375,6 +405,7 @@ function onEntitled(): void {
     detail.value.course.viewer_entitlement_status = 'active';
     detail.value.course.viewer_revoked_reason = null;
     detail.value.course.viewer_can_rejoin = false;
+    unlockCatalogLessons();
   }
 }
 </script>
@@ -388,5 +419,25 @@ function onEntitled(): void {
 .hero-actions {
   display: grid;
   gap: 8px;
+}
+
+.hero-actions > .el-button {
+  width: 100%;
+  margin-left: 0;
+}
+
+.course-tabs :deep(.el-tabs__header) {
+  margin: 34px 0 26px;
+}
+
+.course-tabs :deep(.el-tabs__item) {
+  color: var(--ink-2);
+  font-family: var(--serif);
+  font-size: 15px;
+}
+
+.course-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--seal);
+  font-weight: 700;
 }
 </style>

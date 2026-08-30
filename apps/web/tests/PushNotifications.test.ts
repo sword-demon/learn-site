@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 
-import { createPinia, setActivePinia } from 'pinia';
+import { createPinia, disposePinia, setActivePinia, type Pinia } from 'pinia';
 import { flushPromises, mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
-const loggedIn = ref(false);
+let loggedIn = ref(false);
 const notificationsApi = vi.hoisted(() => ({
   fetchUnreadCount: vi.fn(),
 }));
@@ -28,6 +28,7 @@ vi.mock('@/utils/push', () => pushApi);
 vi.mock('@/api/http', () => httpApi);
 
 import { usePushNotifications } from '@/composables/usePushNotifications';
+import { useNotificationStore } from '@/stores/notifications';
 
 const TestHost = {
   template: '<div />',
@@ -38,10 +39,14 @@ const TestHost = {
 };
 
 describe('usePushNotifications', () => {
+  let pinia: Pinia;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    setActivePinia(createPinia());
-    loggedIn.value = false;
+    vi.useFakeTimers();
+    pinia = createPinia();
+    setActivePinia(pinia);
+    loggedIn = ref(false);
     notificationsApi.fetchUnreadCount.mockResolvedValue({ count: 2 });
     learnerApi.fetchLearnerProfile.mockResolvedValue({ account_id: 42 });
     httpApi.getAccessToken.mockReturnValue('token-abc');
@@ -51,6 +56,13 @@ describe('usePushNotifications', () => {
       })),
       disconnect: vi.fn(),
     });
+  });
+
+  afterEach(() => {
+    useNotificationStore().disconnect();
+    disposePinia(pinia);
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('loads unread count when logged in', async () => {
@@ -71,5 +83,19 @@ describe('usePushNotifications', () => {
     loggedIn.value = false;
     await flushPromises();
     expect(wrapper.vm.unreadCount).toBe(0);
+  });
+
+  it('polls unread count while logged in', async () => {
+    loggedIn.value = true;
+    mount(TestHost);
+    await flushPromises();
+    expect(notificationsApi.fetchUnreadCount).toHaveBeenCalledTimes(1);
+
+    notificationsApi.fetchUnreadCount.mockResolvedValueOnce({ count: 5 });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(notificationsApi.fetchUnreadCount).toHaveBeenCalledTimes(2);
+
+    const store = useNotificationStore();
+    expect(store.unreadCount).toBe(5);
   });
 });

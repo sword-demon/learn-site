@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import type { SharePosterDTO } from '@learn-site/contracts';
+import { Download } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -11,6 +12,10 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 const canvas = ref<HTMLCanvasElement | null>(null);
 const renderError = ref(false);
 const downloading = ref(false);
+const dialogVisible = computed({
+  get: () => props.modelValue && props.poster !== null,
+  set: (value: boolean) => emit('update:modelValue', value),
+});
 
 watch(
   () => [props.modelValue, props.poster] as const,
@@ -157,112 +162,60 @@ async function download(): Promise<void> {
 </script>
 
 <template>
-  <div v-if="modelValue && poster" class="poster-overlay" role="presentation" @click.self="close">
-    <section class="poster-dialog" role="dialog" aria-modal="true" aria-labelledby="poster-title">
-      <header class="poster-head">
-        <h2 id="poster-title">课程海报</h2>
-        <button type="button" class="icon-button" aria-label="关闭海报" title="关闭" @click="close">
-          ×
-        </button>
-      </header>
+  <el-dialog
+    v-model="dialogVisible"
+    class="poster-dialog"
+    title="课程海报"
+    align-center
+    append-to-body
+    width="min(440px, calc(100vw - 32px))"
+    style="
+      max-height: calc(100vh - 40px);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      box-shadow: 0 24px 70px rgba(16, 28, 23, 0.28);
+    "
+  >
+    <div v-if="poster" class="poster-body">
       <canvas ref="canvas" width="900" height="1200" aria-label="课程分享海报预览" />
-      <p v-if="renderError" class="poster-error">海报暂时无法导出，课程链接仍可正常分享。</p>
-      <footer class="poster-actions">
-        <button type="button" class="poster-button secondary" @click="close">关闭</button>
-        <button
-          type="button"
-          class="poster-button primary"
-          :disabled="downloading"
-          @click="download"
-        >
-          {{ downloading ? '导出中…' : '下载海报' }}
-        </button>
-      </footer>
-    </section>
-  </div>
+      <el-alert
+        v-if="renderError"
+        title="海报暂时无法导出，课程链接仍可正常分享。"
+        type="error"
+        :closable="false"
+        show-icon
+      />
+    </div>
+    <template #footer>
+      <div class="poster-actions">
+        <el-button @click="close">关闭</el-button>
+        <el-button type="primary" :icon="Download" :loading="downloading" @click="download">
+          下载海报
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
-.poster-overlay {
-  position: fixed;
-  z-index: 60;
-  inset: 0;
+.poster-body {
   display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(16, 28, 23, 0.62);
-}
-.poster-dialog {
-  width: min(440px, 100%);
-  max-height: calc(100vh - 40px);
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface);
-  box-shadow: 0 24px 70px rgba(16, 28, 23, 0.28);
-}
-.poster-head,
-.poster-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
-}
-.poster-head {
-  border-bottom: 1px solid var(--line);
-}
-.poster-head h2 {
-  margin: 0;
-  color: var(--pine-deep);
-  font-size: 1rem;
-}
-.icon-button {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
+  max-height: calc(100vh - 164px);
+  overflow: auto;
 }
 canvas {
   display: block;
-  width: calc(100% - 32px);
+  width: 100%;
   height: auto;
-  margin: 16px;
+  margin: 0;
   border: 1px solid var(--line);
 }
 .poster-actions {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
-  border-top: 1px solid var(--line);
-}
-.poster-button {
-  min-height: 38px;
-  padding: 8px 14px;
-  border-radius: 5px;
-  font: inherit;
-  cursor: pointer;
-}
-.poster-button.secondary {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--pine-deep);
-}
-.poster-button.primary {
-  border: 1px solid var(--pine);
-  background: var(--pine);
-  color: white;
-}
-.poster-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.poster-error {
-  margin: 0 16px 14px;
-  color: #9e3f2c;
-  font-size: 0.82rem;
+  gap: 8px;
 }
 </style>

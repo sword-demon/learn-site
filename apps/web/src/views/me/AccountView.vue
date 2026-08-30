@@ -8,26 +8,27 @@
       </div>
     </header>
 
-    <p v-if="loading" class="notice">正在加载资料…</p>
-    <p v-else-if="error" class="notice error">资料暂时读不到，请稍后再试。</p>
-    <form v-else class="profile-form" @submit.prevent="save">
-      <label class="field">
-        手机号
-        <input :value="profile?.phone" type="text" disabled />
-      </label>
-      <label class="field">
-        公开称呼
-        <input v-model="form.nickname" type="text" maxlength="32" autocomplete="nickname" />
-      </label>
-      <label class="toggle-field">
-        <input v-model="form.show_on_course" type="checkbox" />
-        <span>在课程页显示我的称呼</span>
-      </label>
-      <p v-if="saved" class="notice success">资料已更新。</p>
-      <button type="submit" class="btn btn-primary" :disabled="saving">
-        {{ saving ? '保存中…' : '保存资料' }}
-      </button>
-    </form>
+    <el-skeleton v-if="loading" animated :rows="4" />
+    <el-alert
+      v-else-if="error"
+      title="资料暂时读不到，请稍后再试。"
+      type="error"
+      :closable="false"
+      show-icon
+    />
+    <el-form v-else class="profile-form" :model="form" label-position="top" @submit.prevent="save">
+      <el-form-item label="手机号">
+        <el-input :model-value="profile?.phone ?? ''" disabled />
+      </el-form-item>
+      <el-form-item label="公开称呼">
+        <el-input v-model="form.nickname" maxlength="32" autocomplete="nickname" />
+      </el-form-item>
+      <el-form-item label="课程页公开显示">
+        <el-switch v-model="form.show_on_course" active-text="在课程页显示我的称呼" />
+      </el-form-item>
+      <el-alert v-if="saved" title="资料已更新。" type="success" :closable="false" show-icon />
+      <el-button type="primary" native-type="submit" :loading="saving">保存资料</el-button>
+    </el-form>
   </main>
 </template>
 
@@ -35,9 +36,12 @@
 import { onMounted, reactive, ref } from 'vue';
 import type { LearnerProfileDTO } from '@learn-site/contracts';
 import { fetchLearnerProfile, updateLearnerProfile } from '@/api/learner';
+import { useLearnerProfileStore } from '@/stores/learnerProfile';
 
 defineOptions({ name: 'AccountView' });
 
+const profileStore = useLearnerProfileStore();
+profileStore.ensureSessionWatch();
 const profile = ref<LearnerProfileDTO | null>(null);
 const loading = ref(true);
 const saving = ref(false);
@@ -66,6 +70,7 @@ async function save(): Promise<void> {
       nickname: form.nickname.trim() || null,
       show_on_course: form.show_on_course,
     });
+    profileStore.setProfile(profile.value);
     saved.value = true;
   } catch {
     error.value = true;
@@ -98,35 +103,15 @@ onMounted(() => void load());
   max-width: 520px;
   gap: 18px;
 }
-.field {
-  display: grid;
-  gap: 7px;
+.profile-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.profile-form :deep(.el-form-item__label) {
   color: var(--muted);
   font-size: 0.78rem;
+  font-weight: 700;
 }
-.field input {
-  width: 100%;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-}
-.field input:disabled {
-  background: var(--paper-deep);
-  color: var(--muted);
-}
-.toggle-field {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--ink);
-  font-size: 0.82rem;
-}
-.toggle-field input {
-  accent-color: var(--accent);
-}
-.success {
-  color: var(--pine-deep);
+.profile-form > .el-button {
+  justify-self: start;
 }
 </style>

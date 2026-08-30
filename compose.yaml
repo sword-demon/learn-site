@@ -123,6 +123,8 @@ services:
     build:
       context: .
       dockerfile: docker/admin/Dockerfile
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
     image: learn-site/admin:local
     restart: unless-stopped
     depends_on:
@@ -146,6 +148,10 @@ services:
     build:
       context: .
       dockerfile: docker/web/Dockerfile
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
+        VITE_PUSH_URL: ${VITE_PUSH_URL:-}
+        VITE_PUSH_APP_KEY: ${VITE_PUSH_APP_KEY:-}
     image: learn-site/web:local
     restart: unless-stopped
     depends_on:

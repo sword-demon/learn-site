@@ -27,34 +27,37 @@ function formattedAt(value: string): string {
     <article class="reply-body">
       <p class="meta">
         <strong>{{ authorLabel(node) }}</strong>
-        <span class="status">公开</span>
+        <el-tag size="small" type="success" effect="plain">公开</el-tag>
         <span v-if="node.edited">已编辑</span>
         <time :datetime="node.created_at">{{ formattedAt(node.created_at) }}</time>
       </p>
       <p class="body">{{ node.body }}</p>
-      <button
+      <el-button
         v-if="canReply && depth < 3"
-        type="button"
-        class="link"
+        link
+        type="primary"
+        size="small"
         @click="emit('reply', node.id)"
       >
         回复
-      </button>
+      </el-button>
     </article>
 
-    <details v-if="node.children.length" class="children" open>
-      <summary>{{ node.children.length }} 条回复</summary>
-      <ol>
-        <ReviewReplyBranch
-          v-for="child in node.children"
-          :key="child.id"
-          :node="child"
-          :depth="depth + 1"
-          :can-reply="canReply"
-          @reply="emit('reply', $event)"
-        />
-      </ol>
-    </details>
+    <el-collapse v-if="node.children.length" class="children" :model-value="['children']">
+      <el-collapse-item name="children">
+        <template #title>{{ node.children.length }} 条回复</template>
+        <ol>
+          <ReviewReplyBranch
+            v-for="child in node.children"
+            :key="child.id"
+            :node="child"
+            :depth="depth + 1"
+            :can-reply="canReply"
+            @reply="emit('reply', $event)"
+          />
+        </ol>
+      </el-collapse-item>
+    </el-collapse>
   </li>
 </template>
 
@@ -87,34 +90,22 @@ function formattedAt(value: string): string {
   color: var(--muted);
   font-size: 0.82rem;
 }
-.status {
-  padding: 2px 6px;
-  border: 1px solid #bad4c1;
-  border-radius: 999px;
-  color: var(--pine-deep);
-  background: #eef7f0;
-}
 .body {
   margin: 0;
   line-height: 1.6;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
-.link {
+.reply-body > .el-button {
   justify-self: start;
-  padding: 0;
-  border: 0;
-  color: var(--accent);
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
+  margin-left: 0;
 }
-.children summary {
-  width: fit-content;
-  margin-bottom: 8px;
+.children :deep(.el-collapse-item__header) {
+  min-height: 36px;
+  height: auto;
   color: var(--muted);
   font-size: 0.82rem;
-  cursor: pointer;
+  background: transparent;
 }
 .children ol {
   display: grid;

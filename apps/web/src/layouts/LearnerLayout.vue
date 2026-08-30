@@ -12,15 +12,15 @@
           </div>
         </router-link>
 
-        <button
-          type="button"
+        <el-button
           class="nav-toggle"
+          :icon="Menu"
           :aria-expanded="menuOpen"
           aria-controls="learner-navigation"
           @click="menuOpen = !menuOpen"
         >
           {{ menuOpen ? '收起' : '菜单' }}
-        </button>
+        </el-button>
 
         <nav
           id="learner-navigation"
@@ -44,21 +44,21 @@
         </nav>
 
         <div class="masthead-tools">
-          <button
-            type="button"
+          <el-button
+            circle
             class="btn-night"
+            :icon="isNight ? Sunny : Moon"
             :title="isNight ? '切换日间模式' : '夜读模式'"
+            :aria-label="isNight ? '切换日间模式' : '切换夜读模式'"
             :aria-pressed="isNight"
             @click="toggleNight"
-          >
-            {{ isNight ? '☀' : '☾' }}
-          </button>
+          />
           <template v-if="session.loggedIn">
             <router-link to="/me/account" class="chip-user">
               <span class="avatar">{{ userInitial }}</span>
               {{ displayName }}
             </router-link>
-            <button type="button" class="btn btn-ghost btn-sm" @click="onLogout">退出</button>
+            <el-button size="small" :icon="SwitchButton" @click="onLogout">退出</el-button>
           </template>
           <router-link v-else to="/login" class="btn btn-primary btn-sm">登录 / 注册</router-link>
         </div>
@@ -69,20 +69,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
+import { Menu, Moon, Sunny, SwitchButton } from '@element-plus/icons-vue';
 import { useLoginFamilyStore } from '@/api/login';
 import { usePushNotifications } from '@/composables/usePushNotifications';
 import { useTheme } from '@/composables/useTheme';
+import { useLearnerProfileStore } from '@/stores/learnerProfile';
 
 const session = useLoginFamilyStore();
 const router = useRouter();
 const menuOpen = ref(false);
 const { unreadCount } = usePushNotifications();
 const { isNight, toggleNight } = useTheme();
-
-const displayName = computed(() => '学员');
-const userInitial = computed(() => '学');
+const profileStore = useLearnerProfileStore();
+profileStore.ensureSessionWatch();
+const { displayName, userInitial } = storeToRefs(profileStore);
 
 async function onLogout(): Promise<void> {
   await session.signOut();

@@ -15,9 +15,15 @@
       </p>
     </header>
 
-    <p v-if="loading" class="notice">课程加载中…</p>
-    <p v-else-if="loadError" class="notice error">分类暂时读不到，请稍后再试。</p>
-    <p v-else-if="items.length === 0" class="empty">此分类下还没有公开课程。</p>
+    <el-skeleton v-if="loading" animated :rows="5" />
+    <el-alert
+      v-else-if="loadError"
+      title="分类暂时读不到，请稍后再试。"
+      type="error"
+      :closable="false"
+      show-icon
+    />
+    <el-empty v-else-if="items.length === 0" description="此分类下还没有公开课程。" />
     <ul v-else class="course-grid">
       <li v-for="(course, index) in items" :key="course.id" class="course-card">
         <router-link :to="`/courses/${course.id}`" class="cover">
@@ -36,7 +42,7 @@
           <p class="teacher">讲师 · {{ course.teacher_name }}</p>
           <p class="summary">{{ course.summary || '讲师还没有写简介。' }}</p>
           <p class="meta">
-            <span v-if="course.price_mode === 'free'" class="tag free">免费</span>
+            <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
             <template v-else>
               <span class="price-now"
                 >¥ {{ formatPrice(course.sale_price || course.list_price) }}</span
@@ -45,27 +51,25 @@
                 >¥ {{ formatPrice(course.list_price) }}</span
               >
             </template>
-            <span v-if="course.preview_available" class="tag preview">支持试看</span>
+            <el-tag v-if="course.preview_available" type="warning" size="small" effect="plain"
+              >支持试看</el-tag
+            >
             <span class="learners">{{ course.learner_count }} 位学员</span>
           </p>
         </div>
       </li>
     </ul>
 
-    <nav v-if="totalPages > 1" class="pager" aria-label="分页">
-      <button type="button" class="btn btn-ghost" :disabled="page <= 1" @click="goto(page - 1)">
-        上一页
-      </button>
-      <span class="page-indicator">第 {{ page }} / {{ totalPages }} 页</span>
-      <button
-        type="button"
-        class="btn btn-ghost"
-        :disabled="page >= totalPages"
-        @click="goto(page + 1)"
-      >
-        下一页
-      </button>
-    </nav>
+    <el-pagination
+      v-if="totalPages > 1"
+      class="pager"
+      :current-page="page"
+      :page-size="limit"
+      :total="total"
+      layout="prev, pager, next"
+      aria-label="分页"
+      @current-change="goto"
+    />
   </main>
 </template>
 

@@ -8,8 +8,8 @@ import path from 'node:path';
 export default defineConfig({
   plugins: [
     vue(),
-    AutoImport({ resolvers: [ElementPlusResolver()] }),
-    Components({ resolvers: [ElementPlusResolver()] }),
+    AutoImport({ resolvers: [ElementPlusResolver({ importStyle: false })] }),
+    Components({ resolvers: [ElementPlusResolver({ importStyle: false })] }),
   ],
   resolve: {
     alias: {
@@ -24,6 +24,15 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,
+      },
+      '/plugin': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+      },
+      '/app': {
+        target: 'http://127.0.0.1:3131',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

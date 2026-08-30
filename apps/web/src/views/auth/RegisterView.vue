@@ -12,15 +12,15 @@
           </div>
         </router-link>
         <div class="masthead-tools">
-          <button
-            type="button"
+          <el-button
+            circle
             class="btn-night"
+            :icon="isNight ? Sunny : Moon"
             :title="isNight ? '切换日间模式' : '夜读模式'"
+            :aria-label="isNight ? '切换日间模式' : '切换夜读模式'"
             :aria-pressed="isNight"
             @click="toggleNight"
-          >
-            {{ isNight ? '☀' : '☾' }}
-          </button>
+          />
         </div>
       </div>
     </header>
@@ -64,18 +64,18 @@
                 autocomplete="off"
                 placeholder="图中字符"
               />
-              <button
-                type="button"
+              <el-button
                 class="captcha-btn"
-                :disabled="loadingCaptcha"
-                @click="loadCaptcha"
+                :loading="loadingCaptcha"
+                aria-label="刷新图形验证码"
+                @click="() => loadCaptcha()"
               >
                 <img v-if="captcha.image" :src="captcha.image" alt="点击刷新验证码" />
                 <span v-else>加载验证码</span>
-              </button>
+              </el-button>
             </div>
           </label>
-          <p v-if="error" class="notice">{{ errorLabel }}</p>
+          <el-alert v-if="error" :title="errorLabel" type="error" :closable="false" show-icon />
           <el-button type="primary" native-type="submit" :loading="busy">注册并进入</el-button>
         </el-form>
         <p class="switch">
@@ -91,6 +91,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Moon, Sunny } from '@element-plus/icons-vue';
 import { fetchCaptcha, registerLearner } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
 import { useTheme } from '@/composables/useTheme';
@@ -112,7 +113,7 @@ const error = ref('');
 
 const errorLabel = computed(() => {
   const map: Record<string, string> = {
-    CAPTCHA_INVALID: '验证码无效, 请换一张再试',
+    CAPTCHA_INVALID: '验证码错误或已过期，请换一张再试',
     PHONE_TAKEN: '这个手机号已经注册',
     CONFLICT: '这个手机号已经注册',
     INVALID_PHONE: '请输入 11 位大陆手机号',
@@ -122,9 +123,11 @@ const errorLabel = computed(() => {
   return map[error.value] ?? '暂时无法注册';
 });
 
-async function loadCaptcha(): Promise<void> {
+async function loadCaptcha(options?: { preserveError?: boolean }): Promise<void> {
   loadingCaptcha.value = true;
-  error.value = '';
+  if (!options?.preserveError) {
+    error.value = '';
+  }
   try {
     const challenge = await fetchCaptcha();
     form.captcha_id = challenge.captcha_id;
@@ -145,8 +148,9 @@ async function onSubmit(): Promise<void> {
     session.signIn(pair);
     await router.replace('/');
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'INTERNAL';
-    await loadCaptcha();
+    const code = err instanceof Error ? err.message : 'INTERNAL';
+    await loadCaptcha({ preserveError: true });
+    error.value = code;
   } finally {
     busy.value = false;
   }

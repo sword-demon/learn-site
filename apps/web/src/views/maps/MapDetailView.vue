@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowRight, Refresh, VideoPlay } from '@element-plus/icons-vue';
 import { fetchLearningMap, startLearningMap } from '@/api/learner';
 import { hasTokens } from '@/api/http';
 import { loginPathFor } from '@/router/guards';
@@ -73,11 +74,11 @@ function stepStateLabel(step: MapCourseStepDTO): string {
   return '未获得访问权';
 }
 
-function stepStateTagClass(step: MapCourseStepDTO): string {
-  if (step.completed) return 'tag-free';
-  if (!step.available) return 'tag-lock';
-  if (step.viewer_authorized) return 'tag-on';
-  return 'tag-lock';
+function stepStateTagType(step: MapCourseStepDTO): 'success' | 'info' | 'warning' {
+  if (step.completed) return 'success';
+  if (!step.available) return 'info';
+  if (step.viewer_authorized) return 'warning';
+  return 'info';
 }
 
 function stepActionLabel(step: MapCourseStepDTO): string {
@@ -93,10 +94,10 @@ function goCourse(courseId: number): void {
 
 <template>
   <main class="page map-detail">
-    <p v-if="loading" class="notice">地图加载中…</p>
+    <el-skeleton v-if="loading" animated :rows="7" />
     <div v-else-if="loadError" class="notice error">
-      <p>地图暂时读不到，请稍后再试。</p>
-      <button type="button" class="btn btn-ghost" data-action="retry" @click="load">重新加载</button>
+      <el-alert title="地图暂时读不到，请稍后再试。" type="error" :closable="false" show-icon />
+      <el-button :icon="Refresh" data-action="retry" @click="load">重新加载</el-button>
     </div>
     <template v-else-if="detail">
       <nav class="crumbs" aria-label="面包屑">
@@ -107,17 +108,18 @@ function goCourse(courseId: number): void {
 
       <div class="list-head" style="margin-top: 12px">
         <h2>{{ detail.title }}</h2>
-        <button
+        <el-button
           v-if="!progress"
-          type="button"
-          class="btn btn-primary btn-sm"
+          type="primary"
+          size="small"
+          :icon="ArrowRight"
           data-action="start-map"
-          :disabled="enrolling"
+          :loading="enrolling"
           @click="enroll"
         >
-          {{ enrolling ? '加入中…' : '开始这条路径' }}
-        </button>
-        <button v-else type="button" class="btn btn-ghost btn-sm" disabled>已加入</button>
+          开始这条路径
+        </el-button>
+        <el-button v-else size="small" disabled>已加入</el-button>
       </div>
 
       <p class="muted" style="max-width: 680px; margin: 0">
@@ -127,15 +129,9 @@ function goCourse(courseId: number): void {
         适合：{{ detail.audience }}
       </p>
 
-      <div
-        v-if="progress"
-        class="learn-top"
-        style="border-bottom-width: 1px; margin-bottom: 20px"
-      >
+      <div v-if="progress" class="learn-top" style="border-bottom-width: 1px; margin-bottom: 20px">
         <div class="pbar">
-          <div class="mini-progress" style="flex: 1">
-            <i :style="{ width: `${progress.progress_percent}%` }" />
-          </div>
+          <el-progress style="flex: 1" :percentage="progress.progress_percent" :show-text="false" />
           <span
             >{{ progress.completed_courses }}/{{ progress.total_courses }} 门 ·
             {{ progress.progress_percent }}%</span
@@ -153,7 +149,13 @@ function goCourse(courseId: number): void {
         继续下一步 →
       </router-link>
 
-      <p v-if="enrollError" class="notice error">加入失败，请稍后再试。</p>
+      <el-alert
+        v-if="enrollError"
+        title="加入失败，请稍后再试。"
+        type="error"
+        :closable="false"
+        show-icon
+      />
       <p v-if="!progress" class="form-note">
         加入后开始记录你的路径进度；收费课程仍需单独购买，开始路径不会自动授予访问权。
       </p>
@@ -172,29 +174,26 @@ function goCourse(courseId: number): void {
             >
               <div>
                 <span class="sn">STEP</span>
-                <button
-                  v-if="step.available"
-                  type="button"
-                  class="sc"
-                  @click="goCourse(step.course_id)"
-                >
+                <el-button v-if="step.available" link class="sc" @click="goCourse(step.course_id)">
                   《{{ courseTitle(step) }}》
-                </button>
+                </el-button>
                 <span v-else class="sc">《{{ courseTitle(step) }}》</span>
                 <span v-if="isNextStep(step)" class="next-chip">建议下一步</span>
               </div>
               <div>
-                <span class="tag" :class="stepStateTagClass(step)">{{ stepStateLabel(step) }}</span>
+                <el-tag :type="stepStateTagType(step)" size="small" effect="plain">
+                  {{ stepStateLabel(step) }}
+                </el-tag>
               </div>
               <div>
-                <button
+                <el-button
                   v-if="step.available"
-                  type="button"
-                  class="btn btn-ghost btn-sm"
+                  size="small"
+                  :icon="VideoPlay"
                   @click="goCourse(step.course_id)"
                 >
                   {{ stepActionLabel(step) }}
-                </button>
+                </el-button>
                 <span v-else class="small muted">不可学习</span>
               </div>
             </div>

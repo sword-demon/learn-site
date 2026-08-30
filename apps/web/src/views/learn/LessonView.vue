@@ -1,82 +1,122 @@
 <template>
   <main class="page lesson-page">
-    <p v-if="loading" class="notice">课节加载中…</p>
-    <p v-else-if="loadError" class="notice error">
-      {{ errorMessage || '课节暂时读不到, 请稍后再试.' }}
-    </p>
+    <el-skeleton v-if="loading" animated :rows="9" />
+    <el-alert
+      v-else-if="loadError"
+      :title="errorMessage || '课节暂时读不到，请稍后再试。'"
+      type="error"
+      :closable="false"
+      show-icon
+    />
     <template v-else-if="delivery">
       <header class="learn-top">
         <h2>{{ courseTitle || deliveryTitle }}</h2>
         <div class="pbar">
-          <div class="mini-progress" style="flex: 1">
-            <i :style="{ width: `${positionPercent}%` }" />
-          </div>
+          <el-progress style="flex: 1" :percentage="positionPercent" :show-text="false" />
           <span>{{ positionLabel }}</span>
         </div>
-        <router-link :to="`/courses/${courseId}`" class="btn btn-ghost btn-sm">返回课程</router-link>
+        <router-link :to="`/courses/${courseId}`" class="btn btn-ghost btn-sm"
+          >返回课程</router-link
+        >
       </header>
 
       <div class="learn-grid">
-        <div class="panel stage">
-          <div class="stage-head">
-            <h3>{{ deliveryTitle }}</h3>
-            <span class="typechip" :class="typechipClass">{{ kindLabel }}</span>
-          </div>
-          <p class="stage-sub">{{ chapterLabel }}</p>
+        <div class="learn-main fade">
+          <div class="panel stage">
+            <div class="stage-head">
+              <h3>{{ deliveryTitle }}</h3>
+              <span class="typechip" :class="typechipClass">{{ kindLabel }}</span>
+            </div>
+            <p class="stage-sub">{{ chapterLabel }}</p>
 
-          <div v-if="delivery.kind === 'markdown'" class="article">
-            <MarkdownRenderer :html="delivery.html" />
-          </div>
-          <PdfViewer
-            v-else-if="delivery.kind === 'pdf'"
-            :url="mediaObjectUrl"
-            :status="delivery.status"
-            @open="openPdf"
-          />
-          <VideoPlayer
-            v-else-if="delivery.kind === 'video'"
-            :url="mediaObjectUrl"
-            :status="delivery.status"
-            @timeupdate="onVideoTimeUpdate"
-            @ended="onVideoEnded"
-          />
+            <div v-if="delivery.kind === 'markdown'" class="article">
+              <MarkdownRenderer :html="delivery.html" />
+            </div>
+            <PdfViewer
+              v-else-if="delivery.kind === 'pdf'"
+              :url="mediaObjectUrl"
+              :status="delivery.status"
+              @open="openPdf"
+            />
+            <VideoPlayer
+              v-else-if="delivery.kind === 'video'"
+              :url="mediaObjectUrl"
+              :status="delivery.status"
+              @timeupdate="onVideoTimeUpdate"
+              @ended="onVideoEnded"
+            />
 
-          <div
-            v-if="delivery.kind === 'markdown' || delivery.kind === 'pdf'"
-            class="stage-foot"
-            aria-live="polite"
-          >
-            <span class="muted small">{{ completed ? '本节已完成' : '阅读后请标记完成' }}</span>
-            <span class="spacer" />
-            <button v-if="prev" type="button" class="btn btn-ghost btn-sm" @click="goSibling(prev)">
-              ← 上一节
-            </button>
-            <button v-if="next" type="button" class="btn btn-ghost btn-sm" @click="goSibling(next)">
-              下一节 →
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :class="completed ? 'btn-ghost' : 'btn-primary'"
-              :disabled="completionPending || completed"
-              @click="completeLesson"
+            <div
+              v-if="delivery.kind === 'markdown' || delivery.kind === 'pdf'"
+              class="stage-foot"
+              aria-live="polite"
             >
-              {{ completionPending ? '提交中…' : completed ? '✓ 已完成' : '标记本节完成' }}
-            </button>
-            <p v-if="completionError" class="notice error">{{ completionError }}</p>
+              <el-tag v-if="completed" type="success" size="small" effect="plain"
+                >本节已完成</el-tag
+              >
+              <span v-else class="muted small">阅读后请标记完成</span>
+              <span class="spacer" />
+              <el-button
+                v-if="prev"
+                size="small"
+                :icon="ArrowLeft"
+                data-action="previous-lesson"
+                @click="goSibling(prev)"
+              >
+                上一节
+              </el-button>
+              <el-button
+                v-if="next"
+                size="small"
+                data-action="next-lesson"
+                @click="goSibling(next)"
+              >
+                下一节
+                <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+              </el-button>
+              <el-button
+                :type="completed ? 'success' : 'primary'"
+                :icon="Check"
+                data-action="complete-lesson"
+                :disabled="completionPending || completed"
+                :loading="completionPending"
+                @click="completeLesson"
+              >
+                {{ completed ? '已完成' : '标记本节完成' }}
+              </el-button>
+              <el-alert
+                v-if="completionError"
+                :title="completionError"
+                type="error"
+                :closable="false"
+                show-icon
+              />
+            </div>
+
+            <div v-else class="stage-foot">
+              <span class="spacer" />
+              <el-button
+                v-if="prev"
+                size="small"
+                :icon="ArrowLeft"
+                data-action="previous-lesson"
+                @click="goSibling(prev)"
+              >
+                上一节
+              </el-button>
+              <el-button
+                v-if="next"
+                size="small"
+                data-action="next-lesson"
+                @click="goSibling(next)"
+              >
+                下一节
+                <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+              </el-button>
+            </div>
           </div>
 
-          <div v-else class="stage-foot">
-            <span class="spacer" />
-            <button v-if="prev" type="button" class="btn btn-ghost btn-sm" @click="goSibling(prev)">
-              ← 上一节
-            </button>
-            <button v-if="next" type="button" class="btn btn-ghost btn-sm" @click="goSibling(next)">
-              下一节 →
-            </button>
-          </div>
-
-          <QuestionPanel :lesson-id="lessonId" />
+          <QuestionPanel :lesson-id="lessonId" :authorized="qaAuthorized" />
         </div>
 
         <aside class="panel sidecat" aria-label="课程目录">
@@ -92,11 +132,14 @@
             >
               <span>
                 {{ lesson.title }}
-                <span v-if="lesson.is_preview" class="tag tag-trial" style="font-size: 10px; padding: 0 5px">
+                <el-tag v-if="lesson.is_preview" type="warning" size="small" effect="plain">
                   试
-                </span>
+                </el-tag>
               </span>
-              <span class="st">{{ lesson.locked ? '🔒' : lesson.id === lessonId ? '·' : '' }}</span>
+              <span class="st">
+                <el-icon v-if="lesson.locked" aria-label="已锁定"><Lock /></el-icon>
+                <template v-else-if="lesson.id === lessonId">·</template>
+              </span>
             </router-link>
           </template>
         </aside>
@@ -106,8 +149,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft, ArrowRight, Check, Lock } from '@element-plus/icons-vue';
 import type {
   ChapterWithLessonSummariesDTO,
   LessonDeliveryDTO,
@@ -115,6 +159,7 @@ import type {
 } from '@learn-site/contracts';
 import { fetchCourseDetail, fetchLesson, fetchMediaObjectUrl } from '@/api/learner';
 import { useLearningProgress } from '@/composables/useLearningProgress';
+import { canParticipateInCourseQa } from '@/utils/courseAccess';
 import QuestionPanel from '@/views/learn/QuestionPanel.vue';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 import PdfViewer from '@/components/PdfViewer.vue';
@@ -132,6 +177,7 @@ const deliveryTitle = ref('');
 const courseTitle = ref('');
 const chapterLabel = ref('');
 const courseChapters = ref<ChapterWithLessonSummariesDTO[]>([]);
+const courseMeta = ref<PublicCourseDetailDTO['course'] | null>(null);
 const completionPending = ref(false);
 const completed = ref(false);
 const completionError = ref('');
@@ -197,6 +243,12 @@ const positionLabel = computed(() => {
   return `${index + 1}/${total} 节`;
 });
 
+const qaAuthorized = computed((): boolean => {
+  if (delivery.value) return true;
+  if (!courseMeta.value) return true;
+  return canParticipateInCourseQa(courseMeta.value);
+});
+
 interface Sibling {
   courseId: number;
   lessonId: number;
@@ -224,6 +276,7 @@ function goSibling(s: Sibling): void {
 async function loadCourseMeta(): Promise<void> {
   try {
     const detail: PublicCourseDetailDTO = await fetchCourseDetail(courseId.value);
+    courseMeta.value = detail.course;
     courseTitle.value = detail.course.title;
     courseChapters.value = detail.chapters;
     for (const ch of detail.chapters) {
@@ -355,12 +408,16 @@ function replaceMediaObjectUrl(next: string): void {
   mediaObjectUrl.value = next;
 }
 
-onMounted(async () => {
+async function bootstrapLesson(): Promise<void> {
+  markdownOpened = false;
+  completed.value = false;
+  completionError.value = '';
   await Promise.all([loadCourseMeta(), loadLesson()]);
+  const loaded = delivery.value;
   // For markdown lessons we record an open event so they can be marked
   // complete on a subsequent explicit "complete" report. The server
   // only accepts completed=true for md/pdf once opened_at is set.
-  if (delivery.value?.kind === 'markdown' && !markdownOpened) {
+  if (loaded?.kind === 'markdown' && !markdownOpened) {
     markdownOpened = true;
     try {
       const progress = await learningProgress.reportDocumentOpen('markdown');
@@ -369,7 +426,18 @@ onMounted(async () => {
       /* best-effort */
     }
   }
+}
+
+onMounted(() => {
+  void bootstrapLesson();
 });
+
+watch(
+  () => [route.params.courseId, route.params.lessonId],
+  () => {
+    void bootstrapLesson();
+  },
+);
 </script>
 
 <style scoped>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Link, Picture, Star, StarFilled } from '@element-plus/icons-vue';
 import type { SharePosterDTO } from '@learn-site/contracts';
 import { hasTokens } from '@/api/http';
 import { addFavorite } from '@/api/learner';
@@ -103,70 +104,79 @@ async function generatePoster(): Promise<void> {
   >
     <template v-if="variant === 'panel'">
       <div class="row">
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          style="flex: 1"
+        <el-button
+          class="panel-action"
           data-action="favorite"
-          :disabled="busyAction !== null || favorited"
+          :disabled="favorited"
+          :loading="busyAction === 'favorite'"
+          :icon="favorited ? StarFilled : Star"
           @click="favorite"
         >
-          {{ favorited ? '♥ 已收藏' : busyAction === 'favorite' ? '收藏中…' : '♡ 收藏' }}
-        </button>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          style="flex: 1"
+          {{ favorited ? '已收藏' : '收藏' }}
+        </el-button>
+        <el-button
+          class="panel-action"
           data-action="generate-poster"
           :disabled="busyAction !== null"
+          :loading="busyAction === 'poster'"
+          :icon="Picture"
           @click="generatePoster"
         >
-          {{ busyAction === 'poster' ? '生成中…' : '⤴ 分享海报' }}
-        </button>
+          分享海报
+        </el-button>
       </div>
-      <button
-        type="button"
-        class="btn-link"
+      <el-button
+        link
+        type="primary"
         data-action="copy-link"
         :disabled="busyAction !== null"
+        :loading="busyAction === 'link'"
+        :icon="Link"
         @click="copyLink"
       >
-        {{ busyAction === 'link' ? '复制中…' : copied ? '链接已复制' : '复制课程链接' }}
-      </button>
+        {{ copied ? '链接已复制' : '复制课程链接' }}
+      </el-button>
     </template>
     <template v-else>
       <span class="share-label">收藏与分享</span>
       <div class="share-actions">
-        <button
-          type="button"
-          class="share-button"
+        <el-button
           data-action="favorite"
-          :disabled="busyAction !== null || favorited"
+          :disabled="favorited"
+          :loading="busyAction === 'favorite'"
+          :icon="favorited ? StarFilled : Star"
           @click="favorite"
         >
-          {{ favorited ? '已收藏' : busyAction === 'favorite' ? '收藏中…' : '收藏课程' }}
-        </button>
-        <button
-          type="button"
-          class="share-button"
+          {{ favorited ? '已收藏' : '收藏课程' }}
+        </el-button>
+        <el-button
           data-action="copy-link"
           :disabled="busyAction !== null"
+          :loading="busyAction === 'link'"
+          :icon="Link"
           @click="copyLink"
         >
-          {{ busyAction === 'link' ? '复制中…' : copied ? '已复制' : '复制链接' }}
-        </button>
-        <button
-          type="button"
-          class="share-button primary"
+          {{ copied ? '已复制' : '复制链接' }}
+        </el-button>
+        <el-button
+          type="primary"
           data-action="generate-poster"
           :disabled="busyAction !== null"
+          :loading="busyAction === 'poster'"
+          :icon="Picture"
           @click="generatePoster"
         >
-          {{ busyAction === 'poster' ? '生成中…' : '生成海报' }}
-        </button>
+          生成海报
+        </el-button>
       </div>
     </template>
-    <p v-if="message" class="share-message">{{ message }}</p>
+    <el-alert
+      v-if="message"
+      class="share-message"
+      :title="message"
+      type="error"
+      :closable="false"
+    />
     <p v-if="stableLink && variant !== 'panel'" class="share-result">
       <a :href="stableLink">{{ stableLink }}</a>
     </p>
@@ -202,26 +212,9 @@ async function generatePoster(): Promise<void> {
   gap: 8px;
 }
 
-.share-button {
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  color: var(--pine-deep);
-  font: inherit;
-  cursor: pointer;
-}
-
-.share-button.primary {
-  border-color: var(--pine);
-  background: var(--pine);
-  color: white;
-}
-
-.share-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
+.panel-action {
+  flex: 1;
+  margin-left: 0;
 }
 
 .share-message,
@@ -232,6 +225,10 @@ async function generatePoster(): Promise<void> {
   color: var(--muted);
   font-size: 0.78rem;
   overflow-wrap: anywhere;
+}
+
+.share-message :deep(.el-alert__content) {
+  min-width: 0;
 }
 
 .share-bar--panel .share-message {

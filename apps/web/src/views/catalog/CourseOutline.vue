@@ -32,16 +32,18 @@ const emit = defineEmits<{ (event: 'select', lessonId: number): void }>();
             'is-preview': lesson.is_preview,
           }"
         >
-          <button type="button" class="outline-link" @click="emit('select', lesson.id)">
+          <el-button text class="outline-link" @click="emit('select', lesson.id)">
             <span class="lesson-index latin">{{ String(lesson.sort + 1).padStart(2, '0') }}</span>
             <span class="lesson-copy">
               <span class="lesson-name">{{ lesson.title }}</span>
               <span class="lesson-meta">
                 <span class="kind">{{ lesson.content_type }}</span>
-                <span v-if="lesson.is_preview" class="tag preview">试看</span>
+                <el-tag v-if="lesson.is_preview" type="warning" size="small" effect="plain"
+                  >试看</el-tag
+                >
               </span>
             </span>
-          </button>
+          </el-button>
         </li>
       </ol>
     </li>

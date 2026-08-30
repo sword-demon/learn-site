@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { ChatDotRound, ArrowRight, Position } from '@element-plus/icons-vue';
 import {
   askLessonQuestion,
   fetchLessonQuestions,
@@ -133,67 +134,109 @@ const authorLabel = (m: QuestionMessageDTO): string => {
 const formattedAt = (s: string): string => (s ? s.replace('T', ' ').slice(0, 16) : '');
 
 const filteredItems = computed(() => list.value.items);
+
+function setStatusFilter(value: '' | QuestionStatus): void {
+  if (statusFilter.value === value) return;
+  statusFilter.value = value;
+  void loadList();
+}
 </script>
 
 <template>
-  <section class="qa-panel" aria-label="课节问答">
+  <section class="panel qa-panel" aria-label="课节问答">
     <header class="qa-head">
-      <h2 class="display">课节问答</h2>
-      <div class="filter-row">
-        <label class="filter">
-          状态
-          <select v-model="statusFilter" @change="loadList">
-            <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
-        </label>
-        <button
+      <h3 class="qa-title-heading">课节问答</h3>
+      <div class="qa-toolbar">
+        <div class="status-filters">
+          <span class="status-filters-label">状态</span>
+          <el-segmented
+            :model-value="statusFilter"
+            :options="statusOptions"
+            aria-label="按状态筛选"
+            @update:model-value="setStatusFilter"
+          />
+        </div>
+        <el-button
           v-if="authorized !== false"
-          type="button"
-          class="btn btn-primary"
+          type="primary"
+          size="small"
+          :icon="ChatDotRound"
           @click="composing = !composing"
         >
           {{ composing ? '取消提问' : '我要提问' }}
-        </button>
+        </el-button>
       </div>
     </header>
 
-    <p v-if="authorized === false" class="notice">未购买该课程, 无法查看或发起问答.</p>
-    <p v-else-if="loading" class="notice">问答加载中…</p>
-    <p v-else-if="loadError" class="notice error">问答暂时读不到 ({{ loadError }}).</p>
+    <el-alert
+      v-if="authorized === false"
+      title="未取得课程学习资格，无法查看或发起问答。"
+      type="warning"
+      :closable="false"
+      show-icon
+    />
+    <el-skeleton v-else-if="loading" animated :rows="3" />
+    <el-alert
+      v-else-if="loadError"
+      :title="`问答暂时读不到（${loadError}）。`"
+      type="error"
+      :closable="false"
+      show-icon
+    />
 
-    <form v-if="composing && authorized !== false" class="composer" @submit.prevent="submitAsk">
-      <label>
-        标题
-        <input v-model="newTitle" type="text" maxlength="128" placeholder="一句话总结你的问题" />
-      </label>
-      <label>
-        正文
-        <textarea
+    <el-form
+      v-if="composing && authorized !== false"
+      class="composer"
+      label-position="top"
+      @submit.prevent="submitAsk"
+    >
+      <el-form-item label="标题">
+        <el-input v-model="newTitle" maxlength="128" placeholder="一句话总结你的问题" />
+      </el-form-item>
+      <el-form-item label="正文">
+        <el-input
           v-model="newBody"
-          rows="4"
+          type="textarea"
+          :rows="4"
           maxlength="4000"
+          show-word-limit
+          resize="vertical"
           placeholder="补充背景, 课节片段, 已尝试的方法"
         />
-      </label>
-      <p v-if="submitError" class="error">{{ submitError }}</p>
+      </el-form-item>
+      <el-alert v-if="submitError" :title="submitError" type="error" :closable="false" show-icon />
       <div class="row-end">
-        <button type="submit" class="btn btn-primary" :disabled="submitting">
-          {{ submitting ? '提交中…' : '提交问题' }}
-        </button>
+        <el-button type="primary" native-type="submit" :loading="submitting" :icon="Position">
+          提交问题
+        </el-button>
       </div>
-    </form>
+    </el-form>
 
     <ol v-if="filteredItems.length" class="thread-list">
-      <li v-for="q in filteredItems" :key="q.id" class="thread-summary">
-        <button type="button" class="thread-button" @click="openQuestion(q)">
-          <span class="title">{{ q.title }}</span>
-          <span class="meta">
-            <span class="badge" :data-status="q.status">{{ statusBadge(q.status) }}</span>
-            <time>{{ formattedAt(q.created_at) }}</time>
+      <li
+        v-for="q in filteredItems"
+        :key="q.id"
+        class="thread-summary"
+        :class="{ 'is-active': openThread?.question.id === q.id }"
+      >
+        <el-button text class="thread-button" @click="openQuestion(q)">
+          <span class="thread-main">
+            <span class="title">{{ q.title }}</span>
+            <span class="meta">
+              <el-tag
+                :type="
+                  q.status === 'answered' ? 'success' : q.status === 'pending' ? 'warning' : 'info'
+                "
+                size="small"
+                effect="plain"
+              >
+                {{ statusBadge(q.status) }}
+              </el-tag>
+              <time>{{ formattedAt(q.created_at) }}</time>
+            </span>
           </span>
-        </button>
+          <el-icon class="thread-chevron" aria-hidden="true"><ArrowRight /></el-icon>
+        </el-button>
       </li>
     </ol>
     <p v-else class="notice">暂无问答, 来提第一个问题吧.</p>
@@ -201,9 +244,18 @@ const filteredItems = computed(() => list.value.items);
     <article v-if="openThread" class="thread-detail">
       <header class="thread-head">
         <h3>{{ openThread.question.title }}</h3>
-        <span class="badge" :data-status="openThread.question.status">
+        <el-tag
+          :type="
+            openThread.question.status === 'answered'
+              ? 'success'
+              : openThread.question.status === 'pending'
+                ? 'warning'
+                : 'info'
+          "
+          size="small"
+        >
           {{ statusBadge(openThread.question.status) }}
-        </span>
+        </el-tag>
       </header>
       <ol class="messages">
         <li v-for="m in openThread.messages" :key="m.id" class="message" :data-kind="m.kind">
@@ -214,26 +266,34 @@ const filteredItems = computed(() => list.value.items);
           <p class="body">{{ m.body }}</p>
         </li>
       </ol>
-      <form
+      <el-form
         v-if="authorized !== false && openThread.question.status !== 'closed'"
         class="followup"
+        label-position="top"
         @submit.prevent="submitFollowup"
       >
-        <label>
-          追问
-          <textarea
+        <el-form-item label="追问">
+          <el-input
             v-model="followupBody"
-            rows="3"
+            type="textarea"
+            :rows="3"
             maxlength="4000"
+            show-word-limit
+            resize="vertical"
             placeholder="补充信息, 等待管理员回复"
           />
-        </label>
+        </el-form-item>
         <div class="row-end">
-          <button type="submit" class="btn btn-primary" :disabled="followupSubmitting">
-            {{ followupSubmitting ? '提交中…' : '追问' }}
-          </button>
+          <el-button
+            type="primary"
+            native-type="submit"
+            :loading="followupSubmitting"
+            :icon="Position"
+          >
+            追问
+          </el-button>
         </div>
-      </form>
+      </el-form>
       <p v-else-if="openThread.question.status === 'closed'" class="notice">
         该问答已关闭, 无法继续追问.
       </p>
@@ -245,62 +305,36 @@ const filteredItems = computed(() => list.value.items);
 .qa-panel {
   display: grid;
   gap: 18px;
-  padding: 24px 26px 28px;
-  border-top: 3px solid var(--pine);
-  border-bottom: 1px solid var(--line);
-  background: rgba(255, 254, 250, 0.68);
 }
 
 .qa-head,
 .thread-head {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.qa-toolbar {
+  display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 12px;
 }
 
-.display {
-  margin: 0;
-  color: var(--pine-deep);
-  font-size: 1.55rem;
-}
-
-.filter-row {
-  display: flex;
-  align-items: end;
-  flex-wrap: wrap;
+.status-filters {
+  display: inline-flex;
+  align-items: center;
   gap: 10px;
 }
 
-.filter {
-  display: grid;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
-.filter select,
-.composer input,
-.composer textarea,
-.followup textarea {
-  width: 100%;
-  min-height: 38px;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  outline: 0;
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-}
-
-.filter select:focus,
-.composer input:focus,
-.composer textarea:focus,
-.followup textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(201, 94, 67, 0.13);
+.status-filters-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  white-space: nowrap;
 }
 
 .composer,
@@ -312,19 +346,16 @@ const filteredItems = computed(() => list.value.items);
   background: var(--surface-muted);
 }
 
-.composer label,
-.followup label {
-  display: grid;
-  gap: 6px;
+.composer :deep(.el-form-item__label),
+.followup :deep(.el-form-item__label) {
   color: var(--pine-deep);
   font-size: 0.82rem;
   font-weight: 700;
 }
 
-.composer textarea,
-.followup textarea {
-  min-height: 96px;
-  resize: vertical;
+.composer :deep(.el-form-item),
+.followup :deep(.el-form-item) {
+  margin-bottom: 0;
 }
 
 .row-end {
@@ -334,36 +365,52 @@ const filteredItems = computed(() => list.value.items);
 
 .thread-list {
   display: grid;
-  gap: 2px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
 }
 
 .thread-summary {
   border-bottom: 1px solid var(--line);
 }
 
-.thread-button {
-  display: grid;
+.thread-summary:last-child {
+  border-bottom: 0;
+}
+
+.thread-button.el-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
   width: 100%;
-  gap: 7px;
-  padding: 13px 7px;
+  height: auto;
+  padding: 15px 16px;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    padding-left 0.2s ease;
+  margin-left: 0;
+  transition: background-color 0.2s ease;
 }
 
-.thread-button:hover {
-  padding-left: 12px;
+.thread-button.el-button:hover,
+.thread-summary.is-active .thread-button {
   background: var(--surface-muted);
+}
+
+.thread-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 
 .thread-button .title {
@@ -371,6 +418,8 @@ const filteredItems = computed(() => list.value.items);
   font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .thread-button .meta,
@@ -378,9 +427,29 @@ const filteredItems = computed(() => list.value.items);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.thread-button .meta time {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.thread-chevron {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: 14px;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
+}
+
+.thread-summary.is-active .thread-chevron {
+  transform: rotate(90deg);
+  color: var(--seal);
 }
 
 .badge {
@@ -471,13 +540,28 @@ const filteredItems = computed(() => list.value.items);
     padding: 20px 16px 23px;
   }
 
-  .filter-row,
-  .filter,
-  .filter select {
+  .qa-head {
+    align-items: flex-start;
+  }
+
+  .qa-toolbar {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .status-filters {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .status-filters :deep(.el-segmented) {
     width: 100%;
   }
 
-  .filter-row .btn {
+  .qa-toolbar > .el-button {
     width: 100%;
   }
 }

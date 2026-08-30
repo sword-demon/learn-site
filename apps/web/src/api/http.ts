@@ -5,6 +5,8 @@ import { ApiErr, parseTokenEnvelope, type TokenPair } from '@learn-site/contract
 const API_BASE = '/api/learner/v1';
 const REFRESH_PATH = '/auth/refresh';
 const retried = new WeakSet<object>();
+// 刷新页面后从这里恢复会话，避免只存在内存里导致退回登录页
+export const AUTH_STORAGE_KEY = 'learn-site.learner.auth';
 
 interface AuthState {
   access: string | null;
@@ -12,19 +14,60 @@ interface AuthState {
   mustChangePassword: boolean;
 }
 
-const state: AuthState = { access: null, refresh: null, mustChangePassword: false };
+function emptyAuth(): AuthState {
+  return { access: null, refresh: null, mustChangePassword: false };
+}
+
+function readPersistedAuth(): AuthState | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AuthState>;
+    if (typeof parsed.access !== 'string' || parsed.access.length === 0) return null;
+    if (typeof parsed.refresh !== 'string' || parsed.refresh.length === 0) return null;
+    return {
+      access: parsed.access,
+      refresh: parsed.refresh,
+      mustChangePassword: parsed.mustChangePassword === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistAuth(next: AuthState): void {
+  if (typeof localStorage === 'undefined') return;
+  if (!next.access || !next.refresh) {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return;
+  }
+  localStorage.setItem(
+    AUTH_STORAGE_KEY,
+    JSON.stringify({
+      access: next.access,
+      refresh: next.refresh,
+      mustChangePassword: next.mustChangePassword,
+    }),
+  );
+}
+
+// 模块加载即水合，路由守卫第一次执行时就能读到 hasTokens
+const state: AuthState = readPersistedAuth() ?? emptyAuth();
 let inflightRefresh: Promise<TokenPair | null> | null = null;
 
 export function setTokens(pair: TokenPair & { must_change_password?: boolean }): void {
   state.access = pair.access_token;
   state.refresh = pair.refresh_token;
   state.mustChangePassword = pair.must_change_password === true;
+  persistAuth(state);
 }
 
 export function clearTokens(): void {
   state.access = null;
   state.refresh = null;
   state.mustChangePassword = false;
+  persistAuth(state);
 }
 
 export function hasTokens(): boolean {

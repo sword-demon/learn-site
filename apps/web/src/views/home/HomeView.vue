@@ -1,33 +1,44 @@
 <template>
   <main class="page home-page">
-    <p v-if="loading" class="notice">正在整理课程目录…</p>
-    <p v-else-if="error" class="notice">目录暂时读不到，请稍后再试。</p>
+    <el-skeleton v-if="loading" animated :rows="6" />
+    <el-alert
+      v-else-if="error"
+      title="目录暂时读不到，请稍后再试。"
+      type="error"
+      :closable="false"
+      show-icon
+    />
 
     <div v-else class="home-grid">
       <aside class="tree-panel" aria-label="课程分类">
         <h3>分类目录</h3>
-        <ul class="tree">
-          <li>
-            <button
-              type="button"
-              class="tree-row"
-              :class="{ on: selectedId === null }"
-              @click="selectCategory(null)"
-            >
-              <span class="caret" style="visibility: hidden" aria-hidden="true">·</span>
-              全部分类
-              <span class="cnt">{{ allCourseTotal }}</span>
-            </button>
-          </li>
-          <CategoryBranch
-            v-for="node in categories"
-            :key="node.id"
-            :node="node"
-            :selected-id="selectedId"
-            :count-under="countUnder"
-            @select="selectCategory"
-          />
-        </ul>
+        <el-button
+          text
+          class="all-categories"
+          :class="{ on: selectedId === null }"
+          data-action="all-categories"
+          @click="selectCategory(null)"
+        >
+          <span>全部分类</span>
+          <span class="cnt">{{ allCourseTotal }}</span>
+        </el-button>
+        <el-tree
+          class="category-tree"
+          :data="categories"
+          node-key="id"
+          default-expand-all
+          highlight-current
+          :current-node-key="selectedId ?? undefined"
+          :expand-on-click-node="false"
+          @node-click="onCategoryNodeClick"
+        >
+          <template #default="{ data }">
+            <span class="category-node">
+              <span>{{ data.name }}</span>
+              <span class="cnt">{{ countUnder(data.id) }}</span>
+            </span>
+          </template>
+        </el-tree>
       </aside>
 
       <section aria-label="课程列表">
@@ -37,12 +48,18 @@
         </div>
         <div class="crumbs" style="margin-bottom: 6px">{{ breadcrumbText }}</div>
 
-        <p v-if="listLoading" class="notice">课程加载中…</p>
-        <p v-else-if="listError" class="notice error">课程列表暂时读不到。</p>
-        <div v-else-if="courses.length === 0" class="empty">
-          <span class="serif">这一类暂时还没有课程</span>
-          换个分类看看吧
-        </div>
+        <el-skeleton v-if="listLoading" animated :rows="5" />
+        <el-alert
+          v-else-if="listError"
+          title="课程列表暂时读不到。"
+          type="error"
+          :closable="false"
+          show-icon
+        />
+        <el-empty
+          v-else-if="courses.length === 0"
+          description="这一类暂时还没有课程，换个分类看看吧"
+        />
         <div v-else class="entry-list">
           <CourseEntryRow
             v-for="course in courses"
@@ -65,7 +82,6 @@ import { fetchCategoryCourses } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
 import { useHomeStore } from '@/stores/home';
 import CourseEntryRow from '@/components/CourseEntryRow.vue';
-import CategoryBranch from '@/views/home/CategoryBranch.vue';
 
 const homeStore = useHomeStore();
 const session = useLoginFamilyStore();
@@ -129,9 +145,7 @@ const listTitle = computed(() =>
 );
 
 const breadcrumbText = computed(() =>
-  selectedId.value != null
-    ? findPath(selectedId.value).join(' / ')
-    : '拾阶学社 · 分类浏览',
+  selectedId.value != null ? findPath(selectedId.value).join(' / ') : '拾阶学社 · 分类浏览',
 );
 
 function parseCatQuery(): number | null {
@@ -167,6 +181,10 @@ function selectCategory(id: number | null): void {
   void router.replace({ query });
 }
 
+function onCategoryNodeClick(node: CategoryNode): void {
+  selectCategory(node.id);
+}
+
 watch(
   () => route.query.cat,
   () => {
@@ -191,5 +209,45 @@ onMounted(async () => {
 .tree-panel {
   position: sticky;
   top: 20px;
+}
+
+.all-categories.el-button {
+  width: 100%;
+  min-height: 36px;
+  justify-content: space-between;
+  margin: 0 0 4px;
+  padding: 6px 10px 6px 26px;
+  color: var(--ink-2);
+}
+
+.all-categories.el-button.on {
+  color: var(--seal);
+  background: var(--seal-soft);
+}
+
+.category-tree {
+  color: var(--ink-2);
+  background: transparent;
+}
+
+.category-tree :deep(.el-tree-node__content) {
+  min-height: 36px;
+  border-radius: var(--r);
+}
+
+.category-tree :deep(.el-tree-node__content:hover),
+.category-tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
+  color: var(--seal);
+  background: var(--seal-soft);
+}
+
+.category-node {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-right: 10px;
 }
 </style>

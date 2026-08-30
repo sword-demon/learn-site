@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { ReviewDTO, ReviewListDTO, ReviewThreadDTO } from '@learn-site/contracts';
+import { ChatDotRound, Delete, EditPen } from '@element-plus/icons-vue';
 import {
   deleteCourseReview,
   fetchCourseReviews,
@@ -48,7 +49,6 @@ const deleting = ref(false);
 
 const ownReview = computed(() => list.value.viewer_review ?? findViewerReview(list.value.items));
 const replyForest = computed(() => buildReplyForest(openThread.value?.replies ?? []));
-const totalPages = computed(() => Math.max(1, Math.ceil(list.value.total / list.value.limit)));
 const reviewActionLabel = computed(() => (ownReview.value ? '编辑我的评价' : '我要评价'));
 const composerTitle = computed(() =>
   editingReviewId.value === null ? '发表评价' : '编辑我的评价',
@@ -276,48 +276,49 @@ watch(
         取得课程访问权并完成至少一个课节后，可以发表评价和参与讨论。
       </p>
       <p v-else class="form-note">完成至少一个课节后即可发表评价。</p>
-      <button v-if="authorized" type="button" class="btn btn-primary btn-sm" @click="beginCompose">
+      <el-button
+        v-if="authorized"
+        type="primary"
+        size="small"
+        :icon="EditPen"
+        @click="beginCompose"
+      >
         {{ reviewActionLabel }}
-      </button>
+      </el-button>
     </header>
 
-    <form v-if="composing && authorized" class="panel rv-form" @submit.prevent="submitReview">
+    <el-form
+      v-if="composing && authorized"
+      class="panel rv-form"
+      label-position="top"
+      @submit.prevent="submitReview"
+    >
       <h3 class="serif" style="margin: 0; font-size: 16px">{{ composerTitle }}</h3>
-      <label class="field">
-        评分
-        <span class="star-input" role="radiogroup" aria-label="评分">
-          <button
-            v-for="rating in [1, 2, 3, 4, 5]"
-            :key="rating"
-            type="button"
-            :class="{ on: newRating >= rating }"
-            :aria-label="`${rating} 星`"
-            @click="newRating = rating"
-          >
-            ★
-          </button>
-        </span>
-      </label>
-      <label class="field">
-        正文
-        <textarea
+      <el-form-item label="评分">
+        <el-rate v-model="newRating" aria-label="评分" />
+      </el-form-item>
+      <el-form-item label="正文">
+        <el-input
           v-model="newBody"
-          rows="4"
+          type="textarea"
+          :rows="4"
           maxlength="4000"
+          show-word-limit
+          resize="vertical"
           placeholder="分享课程内容、节奏或学习收获"
         />
-      </label>
-      <p v-if="submitError" class="notice error" role="alert">{{ submitError }}</p>
+      </el-form-item>
+      <el-alert v-if="submitError" :title="submitError" type="error" :closable="false" show-icon />
       <div class="review-actions">
-        <button type="button" class="btn btn-ghost btn-sm" @click="cancelCompose">取消</button>
-        <button type="submit" class="btn btn-primary btn-sm" :disabled="submitting">
-          {{ submitting ? '保存中…' : editingReviewId === null ? '提交评价' : '保存修改' }}
-        </button>
+        <el-button size="small" @click="cancelCompose">取消</el-button>
+        <el-button type="primary" size="small" native-type="submit" :loading="submitting">
+          {{ editingReviewId === null ? '提交评价' : '保存修改' }}
+        </el-button>
       </div>
-    </form>
+    </el-form>
 
-    <p v-if="loading" class="notice" aria-live="polite">评价加载中…</p>
-    <p v-else-if="loadError" class="notice error" role="alert">{{ loadError }}</p>
+    <el-skeleton v-if="loading" animated :rows="3" />
+    <el-alert v-else-if="loadError" :title="loadError" type="error" :closable="false" show-icon />
     <template v-else>
       <div v-if="list.items.length">
         <article
@@ -327,40 +328,49 @@ watch(
           :class="{ open: openThread?.review.id === review.id }"
         >
           <div class="review-head">
-            <span class="stars" :aria-label="`${review.rating} 星`">{{ ratingStars(review.rating) }}</span>
+            <span class="stars" :aria-label="`${review.rating} 星`">{{
+              ratingStars(review.rating)
+            }}</span>
             <span class="who">{{ authorLabel(review) }}</span>
-            <time class="when" :datetime="review.created_at">{{ formattedAt(review.created_at) }}</time>
+            <time class="when" :datetime="review.created_at">{{
+              formattedAt(review.created_at)
+            }}</time>
             <span v-if="review.edited" class="small muted">已编辑</span>
           </div>
           <div class="review-body">{{ review.body }}</div>
-          <button type="button" class="btn-link reply-toggle" @click="openReview(review.id)">
+          <el-button
+            link
+            type="primary"
+            class="reply-toggle"
+            :icon="ChatDotRound"
+            @click="openReview(review.id)"
+          >
             {{ openThread?.review.id === review.id ? '收起讨论' : '查看讨论' }}
-          </button>
+          </el-button>
 
           <div v-if="openThread?.review.id === review.id && !threadLoading" class="thread">
             <div v-if="openThread.review.viewer_owned" class="review-actions">
-              <button type="button" class="btn btn-ghost btn-sm" @click="beginEdit(openThread.review)">
+              <el-button size="small" :icon="EditPen" @click="beginEdit(openThread.review)">
                 编辑
-              </button>
-              <button type="button" class="btn btn-ghost btn-sm" @click="confirmingDelete = true">
+              </el-button>
+              <el-button
+                size="small"
+                type="danger"
+                plain
+                :icon="Delete"
+                @click="confirmingDelete = true"
+              >
                 删除
-              </button>
+              </el-button>
             </div>
 
             <div v-if="confirmingDelete" class="panel delete-confirm" role="alert">
               <p class="form-note">删除后评价及其全部回复都无法恢复。</p>
               <div class="review-actions">
-                <button type="button" class="btn btn-ghost btn-sm" @click="confirmingDelete = false">
-                  取消
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm"
-                  :disabled="deleting"
-                  @click="removeReview"
-                >
-                  {{ deleting ? '删除中…' : '确认删除' }}
-                </button>
+                <el-button size="small" @click="confirmingDelete = false"> 取消 </el-button>
+                <el-button type="danger" size="small" :loading="deleting" @click="removeReview">
+                  确认删除
+                </el-button>
               </div>
             </div>
 
@@ -378,49 +388,60 @@ watch(
             </div>
             <p v-else class="form-note">还没有回复。</p>
 
-            <form v-if="authorized" class="rv-form" @submit.prevent="submitReply">
+            <el-form
+              v-if="authorized"
+              class="rv-form"
+              label-position="top"
+              @submit.prevent="submitReply"
+            >
               <h4 class="serif" style="margin: 0; font-size: 15px">{{ replyTargetLabel }}</h4>
-              <label class="field">
-                回复内容
-                <textarea v-model="replyBody" rows="3" maxlength="4000" placeholder="留下你的看法" />
-              </label>
-              <p v-if="replyError" class="notice error" role="alert">{{ replyError }}</p>
+              <el-form-item label="回复内容">
+                <el-input
+                  v-model="replyBody"
+                  type="textarea"
+                  :rows="3"
+                  maxlength="4000"
+                  show-word-limit
+                  resize="vertical"
+                  placeholder="留下你的看法"
+                />
+              </el-form-item>
+              <el-alert
+                v-if="replyError"
+                :title="replyError"
+                type="error"
+                :closable="false"
+                show-icon
+              />
               <div class="review-actions">
-                <button
-                  v-if="replyTo !== null"
-                  type="button"
-                  class="btn btn-ghost btn-sm"
-                  @click="startReply(null)"
-                >
+                <el-button v-if="replyTo !== null" size="small" @click="startReply(null)">
                   取消定向回复
-                </button>
-                <button type="submit" class="btn btn-primary btn-sm" :disabled="replySubmitting">
-                  {{ replySubmitting ? '提交中…' : '提交回复' }}
-                </button>
+                </el-button>
+                <el-button
+                  type="primary"
+                  size="small"
+                  native-type="submit"
+                  :loading="replySubmitting"
+                >
+                  提交回复
+                </el-button>
               </div>
-            </form>
+            </el-form>
           </div>
         </article>
       </div>
-      <div v-else class="empty">
-        <span class="serif">还没有评价</span>
-        完成一个课节后，来写下第一条吧
-      </div>
+      <el-empty v-else description="还没有评价，完成一个课节后再来写下第一条吧" :image-size="72" />
 
-      <nav v-if="totalPages > 1" class="review-pagination" aria-label="评价分页">
-        <button type="button" class="btn btn-ghost btn-sm" :disabled="list.page <= 1" @click="loadList(list.page - 1)">
-          上一页
-        </button>
-        <span class="small muted">第 {{ list.page }} / {{ totalPages }} 页</span>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          :disabled="list.page >= totalPages"
-          @click="loadList(list.page + 1)"
-        >
-          下一页
-        </button>
-      </nav>
+      <el-pagination
+        v-if="list.total > list.limit"
+        class="review-pagination"
+        :current-page="list.page"
+        :page-size="list.limit"
+        :total="list.total"
+        layout="prev, pager, next"
+        aria-label="评价分页"
+        @current-change="loadList"
+      />
     </template>
 
     <p v-if="threadLoading" class="notice" aria-live="polite">讨论加载中…</p>
@@ -485,23 +506,13 @@ watch(
   color: #9e3f2c;
 }
 
-.rv-form .field textarea {
-  width: 100%;
-  min-height: 88px;
-  resize: vertical;
-  line-height: 1.7;
-  font-family: inherit;
-  font-size: 14px;
-  border: 1px solid var(--line-2);
-  border-radius: 3px;
-  background: var(--card);
-  color: var(--ink);
-  padding: 9px 12px;
+.rv-form :deep(.el-form-item) {
+  margin-bottom: 0;
 }
 
-.rv-form .field textarea:focus {
-  outline: 2px solid rgba(181, 64, 44, 0.25);
-  border-color: var(--seal);
+.rv-form :deep(.el-form-item__label) {
+  color: var(--ink-2);
+  font-weight: 700;
 }
 
 @media (max-width: 640px) {
@@ -510,7 +521,7 @@ watch(
     flex-direction: column;
   }
 
-  .review-toolbar .btn {
+  .review-toolbar .el-button {
     width: 100%;
   }
 }
