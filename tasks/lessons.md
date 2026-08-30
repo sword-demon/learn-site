@@ -4,6 +4,73 @@
 
 ---
 
+## Lesson 4: 多 tab 视图合并——path 派生 + Proxy Ref + 自带注销
+
+**What happened in the code:**
+`f4026df`（Commit 9, "StudentCenterView 6 me/* 合并"）把 6 个独立的视图（`MyLearningView` / `FavoritesView` / `MyOrdersView` / `MessagesView` / `CheckinListView` / `AccountView`，合计 783 行）合并成一个 1053 行的单文件 `StudentCenterView.vue`，顶部全局 STREAK + heatmap，`<el-tabs>` 切 6 个 inline `<section v-if="activeTab === 'X'">`。关键三段：
+
+```ts
+// ① H1 activeTab 由 route.path 单一守卫点派生
+const TAB_BY_PATH: Record<string, TabKey> = {
+  '/me/learning': 'learning',
+  '/me/favorites': 'favorites', /* … */
+};
+const activeTab = computed<TabKey>(
+  () => TAB_BY_PATH[route.path] ?? 'learning',
+);
+
+// ② el-tabs v-model 需要 writable ref，computed 不能直接 v-model
+const activeTabProxy = ref<TabKey>(activeTab.value);
+watch(activeTab, (v) => { activeTabProxy.value = v; });
+function onTabChange(name: TabPaneName): void {
+  if (typeof name === 'string') gotoTab(name as TabKey);
+}
+
+// ③ inject 拿到的 composable 自带注销
+let checkinUnsub: (() => void) | undefined;
+onMounted(() => {
+  if (checkinPrompt) {
+    checkinUnsub = checkinPrompt.afterSuccess(() => {
+      void loadCheckins();
+      void loadStreak();
+    });
+  }
+});
+onBeforeUnmount(() => { checkinUnsub?.(); });
+```
+
+6 个老 view 的 `data-action="rejoin"` / `data-action="remove-favorite"` / `data-read-id` 全部保留——这意味着 `ElementPlusControlsAudit` 跑过的所有 data-testid 仍然生效，老 router-link 调用点（`PageHeader` / `LearnerLayout` / `CheckoutView` / `AccessGate` 共 9 处）零修改。测试合并成单一 `StudentCenterView.test.ts`（385 行，11 个 `describe`），通过 `vi.hoisted` mock 4 个 API + 2 个 store + vue-router + push + login + MarkdownRenderer，并用一个 reactive `route` 触发 `computed` 重算，路径改变 → section 切换。
+
+**The principle at work:**
+**Single Source of Truth (H1)** + **Push instead of Pull (路由驱动 UI 状态)** + **Composable 注销契约 (H5)** + **Ponytail "Rule of Three 反应用"**。
+
+- `activeTab` 不存为本地 ref，而是从 `route.path` 派生——这是 Lesson 1 的延伸：URL 是最外层的 trust boundary，单一 guard `TAB_BY_PATH[route.path] ?? 'learning'` 让所有"切到哪个 tab"的语义都从同一行代码出发，避免组件内部 ref 和 URL 不同步。
+- `<el-tabs v-model>` 需要 writable ref，但 `activeTab` 是 computed——Proxy ref + watch 是这种"读派生的、写派生的"模式的通用解。ElMessageBox 的取消语义（Lesson 2）也用了同一招式：状态来自派生，副作用来自 callback。
+- `checkinUnsub` 在 `onBeforeUnmount` 调用，是 Lesson "短生命周期状态自带注销" 的强制版本——`afterSuccess` 必须成对出现"订阅 → 退订"，否则连续切 tab 会泄漏监听器。
+- Ponytail "Rule of Three 反应用"：6 个 view 都是"fetch + 状态 + empty + error + 列表"五段式，但是只出现一次使用方（这一个综合页），所以**不抽** `<TabSection>`、`<StreakBanner>`、`<EmptyState>`——YAGNI 优先于 DRY。
+
+**Why it matters:**
+不把 `activeTab` 派生自 `route.path`，就会出现"用户复制 URL 给朋友打开是 tab X，但页面显示 tab Y"的脱节；tab click 和 URL 改变需要两次 source-of-truth 同步，任何一处遗漏都会产生状态污染。`<el-tabs v-model>` 强写 ref 而 route 是 computed，直接 v-model 编译报错，proxy-ref 双层转发是这条技术债的标准偿付。`checkinUnsub` 不撤销：每次进入 `/me/checkins` 都会再挂一个监听器，切 6 次后 `loadCheckins` 被调用 6 次，loading 闪烁。**测试也得跟着合并**——5 个老 test 各自 stub 一遍 6 个 API 切 tab 是冗余的，单个 `vi.hoisted` mock + reactive route 一套搞定，5→11 测试覆盖更广、代码更少。
+
+**Takeaway for next time:**
+- **多 tab / 多步骤视图合并**：第一行永远是 `const activeTab = computed(() => MAP[route.path] ?? DEFAULT)`，写方法用 `router.replace(path)`，**而不是** 把 tab 状态存为本地 ref。
+- **`v-model` 与 `computed` 冲突**：永远先看能否 `v-model="ref"` + `watch(computed, sync)`，不要把 `computed` 改成 `ref` 然后用 `effect` 双写。
+- **inject 拿到的 composable 必须有退订路径**：`afterSuccess` / `subscribe` / `addEventListener` 一律存 unsub 在 `onMounted` 调、`onBeforeUnmount` 撤销。
+- **重复 ≥3 次之前不抽组件**：6 个 inline `<section>` 比 `<TabSection :data="...">` 更易读，前提是它们只在同一个文件里被消费。
+
+---
+
+## Also worth noting: 测试 fixture 共享 + `route.path` 改写触发 computed
+
+**In the code:**
+`StudentCenterView.test.ts` 把 5 个老 view 的 fixture 提到顶层（`learningFixture`、`favoritesFixture`、`ordersFixture`、`messagesFixture`、`emptyCheckinsFixture`、`profileFixture`），每次 `beforeEach` 给 mock 设同一组数据。`setPath('/me/messages')` 改 `routerApi.route.path` 后 `await flushPromises()`，`activeTab` computed 重算 → `<section v-if="messages">` 出现，比点 `<el-tab-pane>` 标签更确定（happy-dom 里 Element Plus 内部 click 事件不一定冒泡到外部 listener）。
+
+**The principle:** 测试 fixture 不在 `describe` 块内散布，提到模块顶层后被多次复用——这是 Ponytail "Code is read more than written" 的测试版本。
+
+**Takeaway:** 测多 tab 视图时，与其模拟 UI 点击触发 tab 切换，不如直接改 mock 的 `route.path` 让 computed 重算。简单、确定、不依赖 Element Plus 内部事件冒泡。
+
+---
+
 ## Lesson 1: Fail Fast — 在数据进入应用前就拒绝坏输入
 
 **What happened in the code:**

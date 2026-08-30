@@ -89,6 +89,13 @@
 - 弹窗/抽屉这类依赖 session 状态的 UI,放进 composable,挂载自动建立、卸载自动撤销
 - `v-if="session.loggedIn"` 与 composable 内部 `watch(loggedIn)` 必须同步
 
+### H6. 多 tab/多步骤视图:URL 派生 + Proxy Ref + inject 必退订
+- 多 tab 视图的 activeTab 永远 `computed(() => MAP[route.path] ?? DEFAULT)`,不存本地 ref;切 tab 用 `router.replace(path)`,URL 与 UI 单一真理
+- `<el-tabs v-model>` 需要 writable ref,computed 不能直接 v-model,用 `ref + watch(computed, sync)` 双层转发(不把 computed 改成 ref 然后 effect 双写)
+- `inject` 拿到的 composable 一律有退订路径:`afterSuccess`/`subscribe`/`addEventListener` 存 unsub 在 `onMounted` 调、`onBeforeUnmount` 撤销,否则连续切 tab 会泄漏监听器
+- 多 tab 测试:直接改 `route.path` 触发 computed 重算,不要模拟 `<el-tab-pane>` click(happy-dom 事件冒泡不稳定)
+- 重复 ≥3 次且只有单消费者之前不抽组件:6 个 inline `<section>` 比 `<TabSection :data="...">` 更易读
+
 ## 项目特定信息
 
 - **技术栈**: `apps/admin` Vue+Element Plus 管理端,`apps/web` Vue+Element Plus 学习端,`apps/api` PHP/ThinkPHP,`packages/contracts` 共享类型
