@@ -11,10 +11,14 @@ const courseStudentsApi = vi.hoisted(() => ({
   resetCourseStudentProgress: vi.fn(),
 }));
 const authApi = vi.hoisted(() => ({ hasPermission: vi.fn() }));
+type MockRoute = { name: string; params: Record<string, string | string[]> };
+const routerApi = vi.hoisted((): { route: MockRoute } => ({
+  route: { name: 'course-students', params: { id: '12' } },
+}));
 
 vi.mock('@/api/courseStudents', () => courseStudentsApi);
 vi.mock('@/api/http', () => authApi);
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '12' } }) }));
+vi.mock('vue-router', () => ({ useRoute: () => routerApi.route }));
 
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
 
@@ -38,6 +42,7 @@ const student = {
 describe('CourseStudentView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    routerApi.route = { name: 'course-students', params: { id: '12' } };
     authApi.hasPermission.mockReturnValue(true);
     courseStudentsApi.listCourseStudents.mockResolvedValue({
       items: [student],
@@ -109,5 +114,13 @@ describe('CourseStudentView', () => {
     await flushPromises();
 
     expect(courseStudentsApi.revokeCourseStudent).not.toHaveBeenCalled();
+  });
+
+  it('does not call the API when the route has no valid course id', async () => {
+    routerApi.route = { name: 'maps', params: {} };
+    mount(CourseStudentView, { global: { plugins: [installElementPlus] } });
+    await flushPromises();
+
+    expect(courseStudentsApi.listCourseStudents).not.toHaveBeenCalled();
   });
 });

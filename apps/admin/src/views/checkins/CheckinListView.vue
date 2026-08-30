@@ -75,6 +75,11 @@ async function confirmDelete(row: AdminCheckinListItemDTO): Promise<void> {
   }
 }
 
+function formatDateTime(value: string): string {
+  if (!value) return '—';
+  return value.replace('T', ' ').replace(/\+\d{2}:\d{2}$/, '').slice(0, 19);
+}
+
 onMounted(() => {
   void reload();
 });
@@ -116,7 +121,9 @@ onMounted(() => {
       <el-table-column prop="learner_display_name" label="学员" width="120" />
       <el-table-column prop="learner_phone_masked" label="手机号" width="140" />
       <el-table-column prop="plan_summary" label="计划摘要" min-width="220" show-overflow-tooltip />
-      <el-table-column prop="checked_in_at" label="签到时间" width="180" />
+      <el-table-column prop="checked_in_at" label="签到时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.checked_in_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row)">详情</el-button>

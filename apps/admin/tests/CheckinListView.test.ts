@@ -43,6 +43,7 @@ describe('Admin CheckinListView', () => {
     expect(wrapper.text()).toContain('签到管理');
     expect(wrapper.text()).toContain('小明');
     expect(wrapper.text()).toContain('今日计划');
+    expect(wrapper.text()).toContain('2026-08-30 09:00:00');
   });
 
   it('sends learner and date filters to the API', async () => {

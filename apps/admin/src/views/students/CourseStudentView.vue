@@ -14,7 +14,12 @@ import {
 defineOptions({ name: 'CourseStudentView' });
 
 const route = useRoute();
-const courseId = computed(() => Number(route.params.id));
+const courseId = computed(() => {
+  const raw = route.params.id;
+  if (raw === undefined || raw === null || Array.isArray(raw)) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
 
 const list = ref<CourseStudentListDTO | null>(null);
 const loading = ref(false);
@@ -37,6 +42,7 @@ const totalPages = computed(() =>
 );
 
 async function reload(): Promise<void> {
+  if (courseId.value === null) return;
   loading.value = true;
   errorMsg.value = null;
   try {
@@ -58,10 +64,14 @@ async function reload(): Promise<void> {
   }
 }
 
-watch(courseId, () => {
-  filters.value.page = 1;
-  void reload();
-});
+watch(
+  () => [route.name, route.params.id] as const,
+  () => {
+    if (route.name !== 'course-students' || courseId.value === null) return;
+    filters.value.page = 1;
+    void reload();
+  },
+);
 
 async function revoke(row: CourseStudentDTO): Promise<void> {
   if (submittingId.value !== null) return;
@@ -89,6 +99,7 @@ async function revoke(row: CourseStudentDTO): Promise<void> {
   }
   submittingId.value = row.account_id;
   try {
+    if (courseId.value === null) return;
     await revokeCourseStudent(courseId.value, row.account_id, reason);
     await reload();
   } catch (err) {
@@ -115,6 +126,7 @@ async function resetProgress(row: CourseStudentDTO): Promise<void> {
   }
   submittingId.value = row.account_id;
   try {
+    if (courseId.value === null) return;
     await resetCourseStudentProgress(courseId.value, row.account_id);
     await reload();
   } catch (err) {
@@ -157,7 +169,7 @@ function revokeErrorMessage(error: unknown): string {
 <template>
   <main class="page">
     <header class="head">
-      <h1 class="display">课程 {{ courseId }} · 学员名单</h1>
+      <h1 class="display">课程 {{ courseId ?? '—' }} · 学员名单</h1>
       <p class="muted">共 {{ total }} 人</p>
     </header>
 
