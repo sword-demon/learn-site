@@ -7,8 +7,10 @@
 - **课程与目录**：三级分类、富文本简介、章节与课节（Markdown / PDF / 视频）
 - **价格与访问**：免费 / 收费、标准价与限时优惠、购买订单与课程访问权
 - **学习体验**：学习进度、我的学习、学习地图、收藏与分享海报
+- **每日签到**：学员提交富文本「每日计划」（每自然日一次）；未签到时进入学习端自动弹窗提醒；独立签到历史页
 - **互动**：评价与树形回复、课节问答、站内消息
 - **组织与权限**：部门 / 岗位 / 角色 RBAC、数据范围、用户级授权
+- **运营后台**：通知管理、签到记录查询与删除、自动任务、审计日志
 - **安全鉴权**：图形验证码登录、不透明访问令牌 + 刷新令牌（Redis 吊销与轮换）
 
 ## 技术栈
@@ -140,6 +142,8 @@ pnpm test              # 全工作区单测
 | `apps/api/` | `api` | `make rebuild-api` |
 | `packages/contracts/` | `web` + `admin`（API 若引用新契约字段也需 `api`） | `make rebuild-all` 或分别重建 |
 
+拉取含**数据库迁移**的更新后，除重建 `api` 外还需执行 `make migrate`（可选 `make seed` 以写入新权限码，如 `checkin.manage`）。
+
 ```bash
 # 示例：改了学习端首页后
 make rebuild-web
@@ -158,7 +162,9 @@ make rebuild-api && make rebuild-web
 |------|------|------|
 | 领域词汇 | [`CONTEXT.md`](./CONTEXT.md) | 学员、后台用户、访问权等领域语言 |
 | 功能规格 | [`specs/001-personal-learning-site/spec.md`](./specs/001-personal-learning-site/spec.md) | 用户故事与功能需求 |
+| 每日签到 | [`specs/005-learner-daily-checkin/spec.md`](./specs/005-learner-daily-checkin/spec.md) | 学员签到、弹窗提醒与管理端记录 |
 | 快速验收 | [`specs/001-personal-learning-site/quickstart.md`](./specs/001-personal-learning-site/quickstart.md) | 从零启动与验收剧本 |
+| 签到验收 | [`specs/005-learner-daily-checkin/quickstart.md`](./specs/005-learner-daily-checkin/quickstart.md) | 签到功能端到端验证 |
 | API 契约 | [`specs/001-personal-learning-site/contracts/`](./specs/001-personal-learning-site/contracts/) | 学员端 / 管理端 REST 约定 |
 | 架构决策 | [`docs/adr/`](./docs/adr/) | ADR 记录 |
 | Agent 协作 | [`AGENTS.md`](./AGENTS.md) | Issue 跟踪与 triage 标签 |
