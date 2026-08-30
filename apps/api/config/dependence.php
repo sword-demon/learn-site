@@ -13,6 +13,7 @@
  */
 
 use App\service\SharePosterService;
+use App\service\CheckinService;
 use App\support\payment\FakePaymentAdapter;
 use App\support\payment\PaymentAdapter;
 use App\support\storage\ImageStorage;
@@ -29,4 +30,5 @@ return [
     // controllers stay the same.
     PaymentAdapter::class => new FakePaymentAdapter(),
     SharePosterService::class => new SharePosterService(),
+    CheckinService::class => new CheckinService(),
 ];

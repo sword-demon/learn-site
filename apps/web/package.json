@@ -16,6 +16,8 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@wangeditor/editor": "^5.1.23",
+    "@wangeditor/editor-for-vue": "^5.1.12",
     "@element-plus/icons-vue": "^2.3.2",
     "axios": "^1.7.7",
     "element-plus": "^2.8.4",

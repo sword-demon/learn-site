@@ -49,6 +49,7 @@ final class RoleController
         'audit.view' => '查看审计日志',
         'notification.manage' => '通知管理',
         'scheduled_task.manage' => '自动任务管理',
+        'checkin.manage' => '签到管理',
         'org.department' => '管理部门',
         'org.post' => '管理岗位',
         'org.role' => '管理角色',

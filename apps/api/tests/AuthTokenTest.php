@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\middleware\AdminAuth;
+use App\middleware\LearnerAuth;
 use App\middleware\OptionalLearnerAuth;
+use App\service\PermissionService;
 use App\support\ApiResponse;
 use PHPUnit\Framework\TestCase;
 use App\service\TokenService;
@@ -95,6 +98,52 @@ final class AuthTokenTest extends TestCase
         $this->assertSame(401, $rejected->getStatusCode());
         $payload = json_decode((string) $rejected->rawBody(), true);
         $this->assertSame(ApiResponse::TOKEN_EXPIRED, $payload['error']['code'] ?? null);
+    }
+
+    public function testAdminTokenCannotAccessLearnerCheckinEndpoint(): void
+    {
+        $pair = $this->tokens->issue('7', TokenService::KIND_STAFF);
+        $request = new Request(
+            "GET /api/learner/v1/checkins/today HTTP/1.1\r\n"
+            . "Host: test\r\nAuthorization: Bearer {$pair['access_token']}\r\n\r\n",
+        );
+        $called = false;
+
+        $response = (new LearnerAuth($this->tokens))->process(
+            $request,
+            static function () use (&$called): Response {
+                $called = true;
+                return ApiResponse::ok();
+            },
+        );
+
+        $this->assertFalse($called);
+        $this->assertSame(401, $response->getStatusCode());
+        $payload = json_decode((string) $response->rawBody(), true);
+        $this->assertSame(ApiResponse::TOKEN_EXPIRED, $payload['error']['code'] ?? null);
+    }
+
+    public function testLearnerTokenCannotAccessAdminCheckinEndpoint(): void
+    {
+        $pair = $this->tokens->issue('42', TokenService::KIND_LEARNER);
+        $request = new Request(
+            "GET /api/admin/v1/checkins HTTP/1.1\r\n"
+            . "Host: test\r\nAuthorization: Bearer {$pair['access_token']}\r\n\r\n",
+        );
+        $called = false;
+
+        $response = (new AdminAuth($this->tokens, new PermissionService()))->process(
+            $request,
+            static function () use (&$called): Response {
+                $called = true;
+                return ApiResponse::ok();
+            },
+        );
+
+        $this->assertFalse($called);
+        $this->assertSame(401, $response->getStatusCode());
+        $payload = json_decode((string) $response->rawBody(), true);
+        $this->assertSame(ApiResponse::UNAUTHENTICATED, $payload['error']['code'] ?? null);
     }
 
     public function testCaptchaOneTimeUseOnSuccess(): void

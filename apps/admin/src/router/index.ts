@@ -23,6 +23,7 @@ import CourseStudentView from '@/views/students/CourseStudentView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
 import NotificationListView from '@/views/notifications/NotificationListView.vue';
+import CheckinListView from '@/views/checkins/CheckinListView.vue';
 import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView.vue';
 import ScheduledTaskRunLogView from '@/views/scheduled-tasks/ScheduledTaskRunLogView.vue';
 import ForbiddenView from '@/views/errors/ForbiddenView.vue';
@@ -222,6 +223,12 @@ const routes: RouteRecordRaw[] = [
         name: 'notifications',
         component: NotificationListView,
         meta: { title: '通知管理', permission: 'notification.manage' },
+      },
+      {
+        path: 'checkins',
+        name: 'checkins',
+        component: CheckinListView,
+        meta: { title: '签到管理', permission: 'checkin.manage' },
       },
       {
         path: 'scheduled-tasks',

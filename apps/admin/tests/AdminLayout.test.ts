@@ -29,6 +29,7 @@ vi.mock('vue-router', () => ({
 }));
 
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { visibleEntries } from '@/layouts/AdminMenu';
 import { useTabsStore } from '@/stores/tabs';
 
 describe('AdminLayout', () => {
@@ -47,9 +48,15 @@ describe('AdminLayout', () => {
 
     const menuItems = wrapper.findAll('.el-menu-item');
     const submenuTitles = wrapper.findAll('.el-sub-menu__title');
+    const entries = visibleEntries(['*']);
+    const expectedMenuItems = entries.reduce(
+      (count, entry) => count + ('children' in entry ? entry.children.length : 1),
+      0,
+    );
+    const expectedSubmenus = entries.filter((entry) => 'children' in entry).length;
 
-    expect(menuItems).toHaveLength(15);
-    expect(submenuTitles).toHaveLength(1);
+    expect(menuItems).toHaveLength(expectedMenuItems);
+    expect(submenuTitles).toHaveLength(expectedSubmenus);
     expect(menuItems.every((item) => item.find('svg').exists())).toBe(true);
     expect(submenuTitles.every((title) => title.find('svg').exists())).toBe(true);
   });

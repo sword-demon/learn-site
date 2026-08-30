@@ -28,6 +28,8 @@ describe('envelope', () => {
       'LAST_SUPER_ADMIN',
       'CATEGORY_IN_USE',
       'PAYMENT_UNSETTLED',
+      'ACCOUNT_DISABLED',
+      'ALREADY_CHECKED_IN',
       'INTERNAL',
     ]);
   });

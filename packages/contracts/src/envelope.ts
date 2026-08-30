@@ -48,6 +48,8 @@ export const ErrorCode = z.enum([
   'LAST_SUPER_ADMIN',
   'CATEGORY_IN_USE',
   'PAYMENT_UNSETTLED',
+  'ACCOUNT_DISABLED',
+  'ALREADY_CHECKED_IN',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;

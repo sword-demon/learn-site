@@ -33,6 +33,7 @@ final class MigrationReleaseGateTest extends TestCase
         self::assertStringContainsString('learner_notifications', $source);
         self::assertStringContainsString('scheduled_tasks', $source);
         self::assertStringContainsString('scheduled_task_runs', $source);
+        self::assertStringContainsString('learner_daily_checkins', $source);
         self::assertStringContainsString('active_marker', $source);
         self::assertStringContainsString('uq_course_entitlements_active', $source);
         self::assertStringContainsString('duplicate_active', $source);

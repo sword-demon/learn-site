@@ -73,6 +73,12 @@ Route::group($learnerV1, function () {
     Route::get('/messages', [\App\controller\learner\NotificationController::class, 'index']);
     Route::get('/messages/unread-count', [\App\controller\learner\NotificationController::class, 'unreadCount']);
     Route::post('/messages/{id}/read', [\App\controller\learner\NotificationController::class, 'read']);
+
+    // 005-learner-daily-checkin — daily check-in and plan
+    Route::get('/checkins/today', [\App\controller\learner\CheckinController::class, 'today']);
+    Route::post('/checkins', [\App\controller\learner\CheckinController::class, 'store']);
+    Route::get('/checkins', [\App\controller\learner\CheckinController::class, 'index']);
+    Route::get('/checkins/{id}', [\App\controller\learner\CheckinController::class, 'show']);
 })->middleware([\App\middleware\LearnerAuth::class]);
 
 // The fake notify seam is test-only. Production settles through the delayed
@@ -246,6 +252,11 @@ Route::group($adminV1, function () {
     Route::get('/scheduled-tasks/{id}', [\App\controller\admin\ScheduledTaskController::class, 'show']);
     Route::patch('/scheduled-tasks/{id}', [\App\controller\admin\ScheduledTaskController::class, 'update']);
     Route::post('/scheduled-tasks/{id}/run', [\App\controller\admin\ScheduledTaskController::class, 'run']);
+
+    // 005-learner-daily-checkin — check-in records
+    Route::get('/checkins', [\App\controller\admin\CheckinController::class, 'index']);
+    Route::get('/checkins/{id}', [\App\controller\admin\CheckinController::class, 'show']);
+    Route::delete('/checkins/{id}', [\App\controller\admin\CheckinController::class, 'destroy']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,

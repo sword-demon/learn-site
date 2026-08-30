@@ -39,6 +39,8 @@ final class ApiResponse
     public const LAST_SUPER_ADMIN     = 'LAST_SUPER_ADMIN';
     public const CATEGORY_IN_USE      = 'CATEGORY_IN_USE';
     public const PAYMENT_UNSETTLED    = 'PAYMENT_UNSETTLED';
+    public const ACCOUNT_DISABLED     = 'ACCOUNT_DISABLED';
+    public const ALREADY_CHECKED_IN   = 'ALREADY_CHECKED_IN';
     public const INTERNAL             = 'INTERNAL';
 
     private const STATUS_BY_CODE = [
@@ -54,6 +56,8 @@ final class ApiResponse
         self::CONFLICT          => 409,
         self::CATEGORY_IN_USE   => 409,
         self::PAYMENT_UNSETTLED => 422,
+        self::ACCOUNT_DISABLED  => 403,
+        self::ALREADY_CHECKED_IN => 409,
         self::INTERNAL          => 500,
     ];
 

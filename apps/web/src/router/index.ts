@@ -62,6 +62,12 @@ const router = createRouter({
           component: () => import('@/views/me/MessagesView.vue'),
         },
         {
+          path: 'me/checkins',
+          name: 'checkins',
+          beforeEnter: requireLearnerAuth,
+          component: () => import('@/views/me/CheckinListView.vue'),
+        },
+        {
           path: 'me/account',
           name: 'account',
           beforeEnter: requireLearnerAuth,
