@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import type { DepartmentDTO } from '@learn-site/contracts';
+import { useRouter } from 'vue-router';
 import {
   kickLearner,
   listLearners,
@@ -8,12 +8,11 @@ import {
   type LearnerAccountDTO,
   type LearnerListDTO,
 } from '@/api/learners';
-import { listDepartments } from '@/api/org';
 
 defineOptions({ name: 'LearnerListView' });
 
+const router = useRouter();
 const list = ref<LearnerListDTO | null>(null);
-const departments = ref<DepartmentDTO[]>([]);
 const loading = ref(false);
 const errorMsg = ref<string | null>(null);
 const submittingId = ref<number | null>(null);
@@ -22,7 +21,6 @@ const resetDialog = ref<{ account: LearnerAccountDTO; newPassword: string } | nu
 const filters = ref({
   status: '' as '' | 'active' | 'disabled',
   search: '',
-  department_id: null as number | null,
   page: 1,
   limit: 20,
 });
@@ -32,6 +30,10 @@ const totalPages = computed(() =>
   list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
 );
 
+function statusLabel(status: LearnerAccountDTO['status']): string {
+  return status === 'active' ? '正常' : '已停用';
+}
+
 async function reload(): Promise<void> {
   loading.value = true;
   errorMsg.value = null;
@@ -39,13 +41,11 @@ async function reload(): Promise<void> {
     const params: {
       status?: 'active' | 'disabled';
       search?: string;
-      department_id?: number;
       page: number;
       limit: number;
     } = { page: filters.value.page, limit: filters.value.limit };
     if (filters.value.status) params.status = filters.value.status;
     if (filters.value.search) params.search = filters.value.search;
-    if (filters.value.department_id !== null) params.department_id = filters.value.department_id;
     list.value = await listLearners(params);
   } catch (err) {
     errorMsg.value = (err as Error).message || 'load_failed';
@@ -54,18 +54,12 @@ async function reload(): Promise<void> {
   }
 }
 
-async function loadDepartments(): Promise<void> {
-  try {
-    const result = await listDepartments();
-    departments.value = result.items;
-  } catch {
-    // Department options are auxiliary; a failure must not hide learner results.
-    departments.value = [];
-  }
+function goProgress(account: LearnerAccountDTO): void {
+  void router.push({ name: 'learner-progress', params: { id: String(account.account_id) } });
 }
 
-function departmentLabel(department: DepartmentDTO): string {
-  return `#${department.id} ${department.name}${department.status === 'disabled' ? '（已停用）' : ''}`;
+function goRecords(account: LearnerAccountDTO): void {
+  void router.push({ name: 'learner-records', params: { id: String(account.account_id) } });
 }
 
 async function doKick(account: LearnerAccountDTO): Promise<void> {
@@ -106,7 +100,7 @@ async function submitReset(): Promise<void> {
 }
 
 onMounted(() => {
-  void Promise.all([reload(), loadDepartments()]);
+  void reload();
 });
 </script>
 
@@ -141,26 +135,6 @@ onMounted(() => {
           @keyup.enter="((filters.page = 1), reload())"
         />
       </el-form-item>
-      <el-form-item label="部门">
-        <el-select
-          v-model="filters.department_id"
-          class="filter-control option-filter"
-          data-field="department_id"
-          filterable
-          clearable
-          placeholder="选择部门"
-          no-data-text="暂无部门"
-          no-match-text="无匹配部门"
-          :teleported="false"
-        >
-          <el-option
-            v-for="department in departments"
-            :key="department.id"
-            :label="departmentLabel(department)"
-            :value="department.id"
-          />
-        </el-select>
-      </el-form-item>
       <el-form-item>
         <el-button class="btn btn-primary" :disabled="loading" native-type="submit">
           查询
@@ -174,12 +148,9 @@ onMounted(() => {
     <el-table v-else v-loading="loading" :data="list?.items ?? []" stripe class="learner-table">
       <el-table-column prop="login" label="账号" min-width="140" />
       <el-table-column prop="display_name" label="姓名" min-width="120" />
-      <el-table-column label="部门" min-width="140">
-        <template #default="{ row }">{{ row.department_name || '—' }}</template>
-      </el-table-column>
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <span :data-status="row.status">{{ row.status }}</span>
+          <span :data-status="row.status">{{ statusLabel(row.status) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="学习摘要" min-width="170">
@@ -196,9 +167,15 @@ onMounted(() => {
         <template #default="{ row }">{{ row.last_login_at || '—' }}</template>
       </el-table-column>
       <el-table-column prop="created_at" label="创建时间" min-width="175" />
-      <el-table-column label="操作" min-width="170" fixed="right">
+      <el-table-column label="操作" min-width="320" fixed="right">
         <template #default="{ row }">
           <div class="actions">
+            <el-button link type="primary" @click="goProgress(row)">
+              学习进度
+            </el-button>
+            <el-button link type="primary" @click="goRecords(row)">
+              学习记录
+            </el-button>
             <el-button
               class="btn"
               :disabled="submittingId === row.account_id"
@@ -305,18 +282,11 @@ onMounted(() => {
 .filter-control--search {
   width: 200px;
 }
-.option-filter {
-  width: 260px;
-}
 .error {
   color: #b42318;
   margin: 0;
 }
 .notice {
-  color: var(--color-text-muted, #5b6472);
-  margin: 0;
-}
-.empty {
   color: var(--color-text-muted, #5b6472);
   margin: 0;
 }
@@ -333,6 +303,7 @@ onMounted(() => {
 .actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 .btn {
   padding: 4px 10px;
@@ -383,17 +354,6 @@ onMounted(() => {
   margin: 0;
   font-size: 1.1rem;
 }
-.modal label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.85rem;
-}
-.modal input {
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
-}
 .modal-actions {
   display: flex;
   gap: 8px;
@@ -412,8 +372,7 @@ onMounted(() => {
     gap: 8px;
   }
   .filter-control,
-  .filter-control--search,
-  .option-filter {
+  .filter-control--search {
     width: 100%;
   }
 }

@@ -34,3 +34,54 @@ export const LearnerPasswordResetDTO = z.object({
   reset: z.literal(true),
 })
 export type LearnerPasswordResetDTO = z.infer<typeof LearnerPasswordResetDTO>
+
+export const LearnerSummaryDTO = z.object({
+  account_id: z.number().int(),
+  login: z.string(),
+  display_name: z.string(),
+  status: z.enum(['active', 'disabled']),
+})
+export type LearnerSummaryDTO = z.infer<typeof LearnerSummaryDTO>
+
+export const LearnerCourseProgressDTO = z.object({
+  course_id: z.number().int(),
+  course_title: z.string(),
+  source: z.enum(['free', 'purchase']),
+  entitlement_status: z.enum(['active', 'revoked']),
+  progress_percent: z.number().int().min(0).max(100),
+  learning_status: z.enum(['not_started', 'in_progress', 'completed']),
+  last_learning_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  enrolled_at: z.string(),
+})
+export type LearnerCourseProgressDTO = z.infer<typeof LearnerCourseProgressDTO>
+
+export const LearnerCourseProgressListDTO = z.object({
+  learner: LearnerSummaryDTO,
+  items: z.array(LearnerCourseProgressDTO),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+})
+export type LearnerCourseProgressListDTO = z.infer<typeof LearnerCourseProgressListDTO>
+
+export const LearnerLessonRecordDTO = z.object({
+  course_id: z.number().int(),
+  course_title: z.string(),
+  lesson_id: z.number().int(),
+  lesson_title: z.string(),
+  opened_at: z.string().nullable(),
+  completed: z.boolean(),
+  completed_at: z.string().nullable(),
+  updated_at: z.string(),
+})
+export type LearnerLessonRecordDTO = z.infer<typeof LearnerLessonRecordDTO>
+
+export const LearnerLessonRecordListDTO = z.object({
+  learner: LearnerSummaryDTO,
+  items: z.array(LearnerLessonRecordDTO),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+})
+export type LearnerLessonRecordListDTO = z.infer<typeof LearnerLessonRecordListDTO>

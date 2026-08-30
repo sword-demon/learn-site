@@ -6,6 +6,7 @@ namespace Tests;
 
 use App\controller\admin\LearnerController;
 use App\service\DataScopeService;
+use App\service\LearnerDetailService;
 use App\service\TokenService;
 use PHPUnit\Framework\TestCase;
 use support\App;
@@ -49,7 +50,7 @@ final class LearnerControllerTest extends TestCase
         /** @phpstan-ignore-next-line */
         $request->account_id = $this->actorId;
 
-        $response = (new LearnerController(new TokenService(), new DataScopeService()))->index($request);
+        $response = $this->controller()->index($request);
         $payload = json_decode((string) $response->rawBody(), true);
 
         self::assertSame(200, $response->getStatusCode());
@@ -70,6 +71,53 @@ final class LearnerControllerTest extends TestCase
             'successful_order_count' => 1,
             'total_paid_amount' => 89,
         ], $payload['data']['items'][0] ?? null);
+    }
+
+    public function testLearningProgressReturnsLearnerCourseSummary(): void
+    {
+        $request = new Request(
+            "GET /api/admin/v1/learners/{$this->learnerId}/learning-progress?page=1&limit=20 HTTP/1.1\r\nHost: test\r\n\r\n",
+        );
+        /** @phpstan-ignore-next-line */
+        $request->account_id = $this->actorId;
+
+        $response = $this->controller()->learningProgress($request, (string) $this->learnerId);
+        $payload = json_decode((string) $response->rawBody(), true);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($payload['ok'] ?? false);
+        self::assertIsArray($payload['data'] ?? null);
+        self::assertSame($this->learnerId, $payload['data']['learner']['account_id'] ?? null);
+        self::assertSame(1, $payload['data']['total'] ?? null);
+        self::assertSame('completed', $payload['data']['items'][0]['learning_status'] ?? null);
+        self::assertSame(100, $payload['data']['items'][0]['progress_percent'] ?? null);
+    }
+
+    public function testLearningRecordsReturnsLessonRows(): void
+    {
+        $request = new Request(
+            "GET /api/admin/v1/learners/{$this->learnerId}/learning-records?page=1&limit=20 HTTP/1.1\r\nHost: test\r\n\r\n",
+        );
+        /** @phpstan-ignore-next-line */
+        $request->account_id = $this->actorId;
+
+        $response = $this->controller()->learningRecords($request, (string) $this->learnerId);
+        $payload = json_decode((string) $response->rawBody(), true);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($payload['ok'] ?? false);
+        self::assertSame(1, $payload['data']['total'] ?? null);
+        self::assertSame('第一课', $payload['data']['items'][0]['lesson_title'] ?? null);
+        self::assertTrue($payload['data']['items'][0]['completed'] ?? false);
+    }
+
+    private function controller(): LearnerController
+    {
+        return new LearnerController(
+            new TokenService(),
+            new DataScopeService(),
+            new LearnerDetailService(new DataScopeService()),
+        );
     }
 
     private function seedFixture(): void
@@ -159,6 +207,46 @@ final class LearnerControllerTest extends TestCase
             'last_position' => 0,
             'completed_at' => '2026-08-27 11:00:00',
             'created_at' => '2026-08-27 10:00:00',
+            'updated_at' => '2026-08-27 11:00:00',
+        ]);
+        Db::name('course_entitlements')->insert([
+            'learner_id' => $this->learnerId,
+            'course_id' => $courseId,
+            'source' => 'purchase',
+            'order_id' => null,
+            'status' => 'active',
+            'created_at' => '2026-08-27 10:00:00',
+            'updated_at' => '2026-08-27 10:00:00',
+        ]);
+        $chapterId = (int) Db::name('chapters')->insertGetId([
+            'course_id' => $courseId,
+            'title' => '第一章',
+            'sort' => 1,
+            'status' => 'enabled',
+            'created_at' => '2026-08-27 10:00:00',
+            'updated_at' => '2026-08-27 10:00:00',
+        ]);
+        $lessonId = (int) Db::name('lessons')->insertGetId([
+            'chapter_id' => $chapterId,
+            'title' => '第一课',
+            'sort' => 1,
+            'content_type' => 'markdown',
+            'body_markdown' => '# hello',
+            'asset_id' => null,
+            'duration_seconds' => 0,
+            'is_preview' => 0,
+            'status' => 'enabled',
+            'created_at' => '2026-08-27 10:00:00',
+            'updated_at' => '2026-08-27 10:00:00',
+        ]);
+        Db::name('lesson_progresses')->insert([
+            'learner_id' => $this->learnerId,
+            'lesson_id' => $lessonId,
+            'opened_at' => '2026-08-27 10:30:00',
+            'completed' => 1,
+            'completed_at' => '2026-08-27 11:00:00',
+            'position_seconds' => 1,
+            'created_at' => '2026-08-27 10:30:00',
             'updated_at' => '2026-08-27 11:00:00',
         ]);
         Db::name('orders')->insert([

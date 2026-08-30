@@ -207,6 +207,8 @@ Route::group($adminV1, function () {
 
     // Phase 18 / US8 — site-wide learner accounts + per-course student list (T091).
     Route::get('/learners', [\App\controller\admin\LearnerController::class, 'index']);
+    Route::get('/learners/{id}/learning-progress', [\App\controller\admin\LearnerController::class, 'learningProgress']);
+    Route::get('/learners/{id}/learning-records', [\App\controller\admin\LearnerController::class, 'learningRecords']);
     Route::get('/courses/{courseId}/students', [\App\controller\admin\CourseStudentController::class, 'index']);
     Route::post('/courses/{courseId}/students/{accountId}/progress/reset', [\App\controller\admin\CourseStudentController::class, 'resetProgress']);
     Route::post('/courses/{courseId}/students/{accountId}/revoke', [\App\controller\admin\CourseStudentController::class, 'revoke']);

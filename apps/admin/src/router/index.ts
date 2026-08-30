@@ -17,6 +17,8 @@ import MapEditorView from '@/views/maps/MapEditorView.vue';
 import OrderListView from '@/views/orders/OrderListView.vue';
 import StaffOverrideView from '@/views/org/StaffOverrideView.vue';
 import LearnerListView from '@/views/students/LearnerListView.vue';
+import LearnerProgressView from '@/views/students/LearnerProgressView.vue';
+import LearnerLearningRecordsView from '@/views/students/LearnerLearningRecordsView.vue';
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
@@ -181,6 +183,28 @@ const routes: RouteRecordRaw[] = [
         name: 'learners',
         component: LearnerListView,
         meta: { title: '学员账号', permission: 'learner.view' },
+      },
+      {
+        path: 'learners/:id/progress',
+        name: 'learner-progress',
+        component: LearnerProgressView,
+        props: true,
+        meta: {
+          title: '学员学习进度',
+          permission: 'learner.view',
+          breadcrumb: [{ title: '学员账号', path: '/learners' }, { title: '学习进度' }],
+        },
+      },
+      {
+        path: 'learners/:id/records',
+        name: 'learner-records',
+        component: LearnerLearningRecordsView,
+        props: true,
+        meta: {
+          title: '学员学习记录',
+          permission: 'learner.view',
+          breadcrumb: [{ title: '学员账号', path: '/learners' }, { title: '学习记录' }],
+        },
       },
       {
         path: 'courses/:id/students',

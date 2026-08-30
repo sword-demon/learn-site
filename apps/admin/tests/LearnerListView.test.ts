@@ -10,44 +10,24 @@ const learnersApi = vi.hoisted(() => ({
   resetLearnerPassword: vi.fn(),
 }));
 
-const orgApi = vi.hoisted(() => ({
-  listDepartments: vi.fn(),
+const routerApi = vi.hoisted(() => ({
+  push: vi.fn(),
 }));
 
 vi.mock('@/api/learners', () => learnersApi);
-vi.mock('@/api/org', () => orgApi);
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
+  return {
+    ...actual,
+    useRouter: () => routerApi,
+  };
+});
 
 import LearnerListView from '@/views/students/LearnerListView.vue';
 
 describe('LearnerListView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    orgApi.listDepartments.mockResolvedValue({
-      items: [
-        {
-          id: 3,
-          parent_id: 0,
-          name: '产品技术部',
-          path: '3',
-          depth: 1,
-          sort: 1,
-          status: 'enabled',
-          created_at: '2026-08-28 09:00:00',
-          updated_at: '2026-08-28 09:00:00',
-        },
-        {
-          id: 4,
-          parent_id: 0,
-          name: '市场运营部',
-          path: '4',
-          depth: 1,
-          sort: 2,
-          status: 'disabled',
-          created_at: '2026-08-28 09:00:00',
-          updated_at: '2026-08-28 09:00:00',
-        },
-      ],
-    });
     learnersApi.listLearners.mockResolvedValue({
       items: [
         {
@@ -76,39 +56,37 @@ describe('LearnerListView', () => {
     return mount(LearnerListView, { global: { plugins: [installElementPlus] } });
   }
 
-  it('renders learning and successful purchase summaries', async () => {
+  it('renders learning and successful purchase summaries with Chinese status labels', async () => {
     const wrapper = mountLearners();
     await flushPromises();
 
     expect(wrapper.find('.filter-control').exists()).toBe(true);
     expect(wrapper.text()).toContain('3 门 / 完成 1 门');
     expect(wrapper.text()).toContain('2 单 / ¥198.00');
+    expect(wrapper.text()).toContain('正常');
+    expect(wrapper.text()).not.toContain('active');
   });
 
-  it('loads department options and sends the selected department id when querying', async () => {
+  it('navigates to learner progress and learning record pages', async () => {
     const wrapper = mountLearners();
     await flushPromises();
 
-    expect(orgApi.listDepartments).toHaveBeenCalledOnce();
+    const buttons = wrapper.findAll('.actions .el-button');
+    const progressButton = buttons.find((button) => button.text().includes('学习进度'));
+    const recordsButton = buttons.find((button) => button.text().includes('学习记录'));
+    expect(progressButton).toBeDefined();
+    expect(recordsButton).toBeDefined();
 
-    const departmentField = wrapper.get('[data-field="department_id"]');
-    await departmentField.get('.el-select__wrapper').trigger('click');
-    await flushPromises();
+    await progressButton?.trigger('click');
+    expect(routerApi.push).toHaveBeenCalledWith({
+      name: 'learner-progress',
+      params: { id: '7' },
+    });
 
-    const departmentOption = departmentField
-      .findAll('.el-select-dropdown__item')
-      .find((item) => item.text().includes('产品技术部'));
-    expect(departmentOption).toBeDefined();
-    await departmentOption?.trigger('click');
-    await flushPromises();
-
-    await wrapper.get('form.filters').trigger('submit');
-    await flushPromises();
-
-    expect(learnersApi.listLearners).toHaveBeenLastCalledWith({
-      department_id: 3,
-      page: 1,
-      limit: 20,
+    await recordsButton?.trigger('click');
+    expect(routerApi.push).toHaveBeenCalledWith({
+      name: 'learner-records',
+      params: { id: '7' },
     });
   });
 

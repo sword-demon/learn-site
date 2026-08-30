@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace App\controller\admin;
 
 use App\model\Account;
+use App\service\BusinessException;
 use App\service\DataScopeService;
+use App\service\LearnerDetailService;
 use App\service\TokenService;
 use App\support\ApiResponse;
 use App\support\Logger;
@@ -16,11 +18,12 @@ final class LearnerController
     public function __construct(
         private readonly TokenService $tokens,
         private readonly DataScopeService $scope,
+        private readonly LearnerDetailService $details,
     ) {}
 
     /**
      * Site-wide learner accounts list (Phase 18 / US8 — T091).
-     * Filters: status (active|disabled|all), department_id, search.
+     * Filters: status (active|disabled|all), search.
      * Permission: `learner.view` (Authorize middleware).
      */
     public function index(Request $request): \support\Response
@@ -134,6 +137,32 @@ final class LearnerController
         });
     }
 
+    public function learningProgress(Request $request, string $id): \support\Response
+    {
+        return $this->wrapDetail(function () use ($request, $id) {
+            if (!ctype_digit($id)) {
+                throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
+            }
+            return $this->details->listCourseProgress($this->staffId($request), (int) $id, [
+                'page' => $request->get('page', 1),
+                'limit' => $request->get('limit', 20),
+            ]);
+        });
+    }
+
+    public function learningRecords(Request $request, string $id): \support\Response
+    {
+        return $this->wrapDetail(function () use ($request, $id) {
+            if (!ctype_digit($id)) {
+                throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
+            }
+            return $this->details->listLessonRecords($this->staffId($request), (int) $id, [
+                'page' => $request->get('page', 1),
+                'limit' => $request->get('limit', 20),
+            ]);
+        });
+    }
+
     public function kickLearner(Request $request, string $id): \support\Response
     {
         return $this->doKick($request, $id, 'learner');
@@ -225,6 +254,33 @@ final class LearnerController
             }
             throw $e;
         }
+    }
+
+    private function wrapDetail(callable $fn): \support\Response
+    {
+        try {
+            return ApiResponse::ok($fn());
+        } catch (BusinessException $e) {
+            return ApiResponse::fail($this->mapApiCode($e->apiCode), $e->getMessage());
+        } catch (\RuntimeException $e) {
+            $msg = $e->getMessage();
+            if ($msg === 'UNAUTHENTICATED') {
+                return ApiResponse::fail(ApiResponse::UNAUTHENTICATED, 'UNAUTHENTICATED');
+            }
+            throw $e;
+        }
+    }
+
+    private function mapApiCode(string $code): string
+    {
+        return match ($code) {
+            'UNAUTHENTICATED' => ApiResponse::UNAUTHENTICATED,
+            'NOT_FOUND' => ApiResponse::NOT_FOUND,
+            'FORBIDDEN' => ApiResponse::FORBIDDEN,
+            'VALIDATION_FAILED' => ApiResponse::VALIDATION_FAILED,
+            'CONFLICT' => ApiResponse::CONFLICT,
+            default => ApiResponse::VALIDATION_FAILED,
+        };
     }
 
     /** @return array<string, mixed> */
