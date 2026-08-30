@@ -17,6 +17,7 @@ import type {
   ReviewThreadDTO,
   ReviewVisibility,
 } from '@learn-site/contracts';
+import { ChatLineSquare } from '@element-plus/icons-vue';
 import ReviewReplyNode from './ReviewReplyNode.vue';
 import { buildReviewReplyTree } from './reviewTree';
 
@@ -208,8 +209,6 @@ const ratingStars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n)
 
 const formattedAt = (s: string): string => (s ? s.replace('T', ' ').slice(0, 16) : '');
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)));
-
 onMounted(loadCourses);
 </script>
 
@@ -265,46 +264,90 @@ onMounted(loadCourses);
       </el-form>
     </el-card>
 
-    <div class="layout">
-      <aside class="list-pane">
-        <p v-if="loading" class="notice">加载中…</p>
-        <p v-else-if="loadError" class="notice error">暂时读不到 ({{ loadError }}).</p>
-        <ol v-else-if="items.length" class="review-list">
+    <div class="reviews-layout">
+      <el-card class="inbox" shadow="never">
+        <template #header>
+          <div class="panel-heading">
+            <div>
+              <h2>评价列表</h2>
+              <p>按最近评价时间排列</p>
+            </div>
+            <el-tag type="info" effect="plain">{{ total }} 条</el-tag>
+          </div>
+        </template>
+        <el-skeleton v-if="loading" :rows="5" animated />
+        <el-alert
+          v-else-if="loadError"
+          title="评价暂时读不到"
+          :description="loadError"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+        <el-empty
+          v-else-if="items.length === 0"
+          description="该筛选下暂无评价。"
+          :image-size="88"
+        />
+        <ol v-else class="review-list">
           <li
             v-for="r in items"
             :key="r.review.id"
             class="review-item"
             :class="{ active: active && active.review.id === r.review.id }"
           >
-            <el-button class="review-button" @click="openReview(r.review.id)">
-              <span class="rating">{{ ratingStars(r.review.rating) }}</span>
-              <span class="author">{{ r.review.author_name }}</span>
-              <span class="body">{{ r.review.body }}</span>
+            <button type="button" class="review-button" @click="openReview(r.review.id)">
+              <span class="summary-line">
+                <span class="rating" aria-hidden="true">{{ ratingStars(r.review.rating) }}</span>
+                <span class="author" :title="r.review.author_name">{{ r.review.author_name }}</span>
+              </span>
               <span class="meta">
-                <span class="badge" :data-visibility="r.review.visibility">
+                <el-tag
+                  :type="r.review.visibility === 'hidden' ? 'info' : 'success'"
+                  effect="light"
+                  size="small"
+                >
                   {{ r.review.visibility === 'hidden' ? '已隐藏' : '正常' }}
-                </span>
+                </el-tag>
                 <time>{{ formattedAt(r.review.created_at) }}</time>
               </span>
-            </el-button>
+            </button>
           </li>
         </ol>
-        <p v-else class="notice">该筛选下暂无评价.</p>
-        <nav v-if="total > limit" class="pager">
-          <el-button class="btn" :disabled="page <= 1" @click="page--">上一页</el-button>
-          <span class="pager-info">{{ page }} / {{ totalPages }}</span>
-          <el-button class="btn" :disabled="page >= totalPages" @click="page++"> 下一页 </el-button>
-        </nav>
-      </aside>
+        <el-pagination
+          v-if="total > limit"
+          class="pager"
+          background
+          layout="prev, pager, next"
+          :total="total"
+          :page-size="limit"
+          :current-page="page"
+          :pager-count="5"
+          @current-change="(next: number) => (page = next)"
+        />
+      </el-card>
 
-      <article v-if="active" class="detail-pane">
+      <el-card v-if="active" class="thread-detail" shadow="never">
+        <template #header>
+          <div class="detail-heading">
+            <div class="detail-icon"><ChatLineSquare /></div>
+            <div>
+              <h2>评价详情</h2>
+              <p>查看回复并处理隐藏、恢复</p>
+            </div>
+          </div>
+        </template>
         <header class="detail-head">
           <span class="rating">{{ ratingStars(active.review.rating) }}</span>
           <strong>{{ active.review.author_name }}</strong>
           <span v-if="active.review.edited" class="edited">已编辑</span>
-          <span class="badge" :data-visibility="active.review.visibility">
+          <el-tag
+            :type="active.review.visibility === 'hidden' ? 'info' : 'success'"
+            effect="light"
+            size="small"
+          >
             {{ active.review.visibility === 'hidden' ? '已隐藏' : '正常' }}
-          </span>
+          </el-tag>
           <time>{{ formattedAt(active.review.created_at) }}</time>
         </header>
         <p class="body">{{ active.review.body }}</p>
@@ -382,10 +425,19 @@ onMounted(loadCourses);
           </el-form>
           <p v-if="actionError" class="error">{{ actionError }}</p>
         </section>
-      </article>
-      <article v-else class="detail-pane empty">
-        <p class="notice">从左侧选择一条评价查看详情.</p>
-      </article>
+      </el-card>
+      <el-card v-else class="thread-detail empty" shadow="never">
+        <template #header>
+          <div class="detail-heading">
+            <div class="detail-icon"><ChatLineSquare /></div>
+            <div>
+              <h2>评价详情</h2>
+              <p>从左侧选择一条评价查看详情</p>
+            </div>
+          </div>
+        </template>
+        <el-empty description="从左侧选择一条评价查看详情。" :image-size="110" />
+      </el-card>
     </div>
   </section>
 </template>
@@ -440,7 +492,9 @@ onMounted(loadCourses);
   font-size: 25px;
   line-height: 1.15;
 }
-.filter-panel {
+.filter-panel,
+.inbox,
+.thread-detail {
   --el-card-border-color: #dce6ef;
   --el-card-padding: 18px;
   min-width: 0;
@@ -472,116 +526,162 @@ onMounted(loadCourses);
 .filter-control--status {
   width: 168px;
 }
-.layout {
+.reviews-layout {
   display: grid;
   grid-template-columns: minmax(300px, 370px) minmax(0, 1fr);
   align-items: start;
   gap: 18px;
   min-width: 0;
 }
-@media (max-width: 900px) {
-  .head-metric {
-    margin-left: 0;
-  }
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 560px) {
-  .filter-form {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .filter-form :deep(.el-form-item) {
-    display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
-    align-items: center;
-  }
-  .filter-control--course,
-  .filter-control--status {
-    width: 100%;
-  }
-  .head-metric {
-    width: 100%;
-    padding: 10px 0 0;
-    border-top: 1px solid #d8e2eb;
-    border-left: 0;
-  }
-}
-.list-pane,
-.detail-pane {
-  min-width: 0;
-  border: 1px solid #dce6ef;
-  border-radius: 8px;
+.inbox :deep(.el-card__header),
+.thread-detail :deep(.el-card__header) {
   padding: 16px 18px;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(16, 42, 67, 0.04);
+}
+.inbox :deep(.el-card__body) {
+  min-width: 0;
+  overflow: hidden;
+}
+.panel-heading,
+.detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-heading h2,
+.detail-heading h2 {
+  margin: 0;
+  color: #102a43;
+  font-size: 15px;
+}
+.panel-heading p,
+.detail-heading p {
+  margin: 3px 0 0;
+  color: #829ab1;
+  font-size: 12px;
+}
+.detail-heading {
+  justify-content: flex-start;
+}
+.detail-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  color: #168da7;
+  background: #e7f6f8;
+  font-size: 19px;
 }
 .review-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 .review-item {
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
+  border: 1px solid #e4ebf1;
+  border-radius: 7px;
+  overflow: hidden;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
 }
 .review-item.active {
-  border-color: var(--color-primary, #2563eb);
+  border-color: #55b8c5;
+  background: #f1fafb;
 }
 .review-button {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  padding: 10px 12px;
-  cursor: pointer;
-  font: inherit;
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  justify-items: start;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 11px 12px;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  white-space: normal;
+}
+.review-button:hover {
+  color: #102a43;
+  background: transparent;
+}
+.review-button:focus-visible {
+  outline: 2px solid #55b8c5;
+  outline-offset: -2px;
+}
+.review-button .summary-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 .review-button .rating {
+  flex: 0 0 auto;
   color: #f59f00;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.review-button .author {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #243b53;
+  font-size: 13px;
+  font-weight: 600;
 }
 .review-button .meta {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: var(--color-text-muted, #5b6472);
-  font-size: 0.85rem;
+  width: 100%;
+  min-width: 0;
+  color: #829ab1;
+  font-size: 12px;
 }
-.badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg-soft, #f5f6fa);
-  border: 1px solid var(--color-border, #d0d4dc);
-  font-size: 0.78rem;
-}
-.badge[data-visibility='public'] {
-  background: #e7f7ee;
-  border-color: #2bb673;
-}
-.badge[data-visibility='hidden'] {
-  background: #f0f1f3;
-  border-color: #c5c8d0;
+.review-button .meta time {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .detail-head {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e6edf3;
 }
 .detail-head .rating {
   color: #f59f00;
 }
 .detail-head time {
-  color: var(--color-text-muted, #5b6472);
+  color: #829ab1;
   font-size: 0.85rem;
 }
-.detail-pane .body {
+.detail-head .edited {
+  color: #829ab1;
+  font-size: 0.85rem;
+}
+.thread-detail .body {
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
+  line-height: 1.65;
 }
 .reason {
   color: #b42318;
@@ -634,7 +734,7 @@ onMounted(loadCourses);
 .actions {
   display: grid;
   gap: 12px;
-  border-top: 1px solid var(--color-border, #d0d4dc);
+  border-top: 1px solid #e6edf3;
   padding-top: 12px;
 }
 .hide-form,
@@ -642,19 +742,14 @@ onMounted(loadCourses);
   display: grid;
   gap: 8px;
 }
-.hide-form label,
-.reply-form label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
+.hide-form :deep(.el-form-item),
+.reply-form :deep(.el-form-item) {
+  margin-bottom: 0;
 }
-.hide-form input,
-.reply-form textarea {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--color-border, #d0d4dc);
-  border-radius: 6px;
-  font: inherit;
+.hide-form :deep(.el-form-item__label),
+.reply-form :deep(.el-form-item__label) {
+  color: #52667a;
+  font-weight: 600;
 }
 .btn {
   padding: 6px 12px;
@@ -684,11 +779,8 @@ onMounted(loadCourses);
   gap: 8px;
 }
 .notice {
-  color: var(--color-text-muted, #5b6472);
+  color: #829ab1;
   margin: 0;
-}
-.notice.error {
-  color: #b42318;
 }
 .error {
   color: #b42318;
@@ -696,19 +788,49 @@ onMounted(loadCourses);
   margin: 0;
 }
 .pager {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-.pager-info {
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #5b6472);
-}
-.detail-pane.empty {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  min-height: 200px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #edf2f6;
+}
+.thread-detail.empty {
+  min-height: 360px;
+}
+.thread-detail :deep(.el-empty) {
+  min-height: 220px;
+  justify-content: center;
+}
+.inbox :deep(.el-empty) {
+  padding: 38px 0;
+}
+@media (max-width: 900px) {
+  .head-metric {
+    margin-left: 0;
+  }
+  .reviews-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .filter-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .filter-form :deep(.el-form-item) {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+  }
+  .filter-control--course,
+  .filter-control--status {
+    width: 100%;
+  }
+  .head-metric {
+    width: 100%;
+    padding: 10px 0 0;
+    border-top: 1px solid #d8e2eb;
+    border-left: 0;
+  }
 }
 </style>

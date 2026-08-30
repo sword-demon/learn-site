@@ -100,6 +100,25 @@ describe('ReviewModerateView', () => {
     catalogApi.listCourses.mockResolvedValue({ items: [course], total: 1, page: 1, limit: 100 });
   });
 
+  it('shows summary fields in the inbox without rendering review body', async () => {
+    const longBody = 'dwqdneir内容太少了'.repeat(20);
+    reviewApi.listForModeration.mockResolvedValue({
+      items: [{ ...review, body: longBody }],
+      viewer_review: null,
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    const wrapper = mount(ReviewModerateView, { global: { plugins: [installElementPlus] } });
+    await flushPromises();
+
+    const listButton = wrapper.get('.review-button');
+    expect(listButton.text()).toContain(review.author_name);
+    expect(listButton.text()).toContain('★');
+    expect(listButton.text()).not.toContain('dwqdneir');
+    expect(wrapper.find('.thread-detail .body').exists()).toBe(false);
+  });
+
   it('loads scoped course options without using the course management API', async () => {
     const wrapper = mount(ReviewModerateView, { global: { plugins: [installElementPlus] } });
     await flushPromises();
