@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { flushPromises, mount } from '@vue/test-utils';
+import { ElMessageBox } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installElementPlus } from '@/plugins/element-plus';
 
@@ -86,7 +87,7 @@ describe('CourseStudentView', () => {
   });
 
   it('requires and submits an explicit revoke reason', async () => {
-    vi.stubGlobal('prompt', vi.fn().mockReturnValue('误加入课程'));
+    vi.spyOn(ElMessageBox, 'prompt').mockResolvedValue({ value: '误加入课程' } as never);
     courseStudentsApi.revokeCourseStudent.mockResolvedValue({ revoked: true });
     const wrapper = mount(CourseStudentView, { global: { plugins: [installElementPlus] } });
     await flushPromises();
@@ -94,18 +95,19 @@ describe('CourseStudentView', () => {
     await wrapper.get('button[data-action="revoke"]').trigger('click');
     await flushPromises();
 
+    expect(ElMessageBox.prompt).toHaveBeenCalledOnce();
     expect(courseStudentsApi.revokeCourseStudent).toHaveBeenCalledWith(12, 8, '误加入课程');
     expect(courseStudentsApi.listCourseStudents).toHaveBeenCalledTimes(2);
   });
 
-  it('does not call the API when the revoke reason is blank', async () => {
-    vi.stubGlobal('prompt', vi.fn().mockReturnValue('   '));
+  it('does not call the API when revoke is cancelled', async () => {
+    vi.spyOn(ElMessageBox, 'prompt').mockRejectedValue('cancel' as never);
     const wrapper = mount(CourseStudentView, { global: { plugins: [installElementPlus] } });
     await flushPromises();
 
     await wrapper.get('button[data-action="revoke"]').trigger('click');
+    await flushPromises();
 
     expect(courseStudentsApi.revokeCourseStudent).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain('请填写撤销原因');
   });
 });

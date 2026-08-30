@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { ElMessageBox } from 'element-plus';
 import { hasPermission } from '@/api/http';
 import {
   listCourseStudents,
@@ -69,11 +70,21 @@ async function revoke(row: CourseStudentDTO): Promise<void> {
     errorMsg.value = '仅免费授权可在此撤销, 付费授权走退款流程.';
     return;
   }
-  const input = prompt(`撤销 ${row.login} 的免费授权，请填写原因：`);
-  if (input === null) return;
-  const reason = input.trim();
-  if (!reason) {
-    errorMsg.value = '请填写撤销原因。';
+  let reason = '';
+  try {
+    const out = await ElMessageBox.prompt(
+      `请填写撤销 ${row.login} 免费授权的原因`,
+      '撤销授权',
+      {
+        inputPlaceholder: '撤销原因',
+        inputValidator: (value) => (value.trim() ? true : '请填写撤销原因'),
+        confirmButtonText: '撤销',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    );
+    reason = out.value.trim();
+  } catch {
     return;
   }
   submittingId.value = row.account_id;
@@ -89,7 +100,19 @@ async function revoke(row: CourseStudentDTO): Promise<void> {
 
 async function resetProgress(row: CourseStudentDTO): Promise<void> {
   if (submittingId.value !== null) return;
-  if (!confirm(`确认重置 ${row.login} 在本课程的全部学习进度？`)) return;
+  try {
+    await ElMessageBox.confirm(
+      `确认重置 ${row.login} 在本课程的全部学习进度？`,
+      '重置进度',
+      {
+        type: 'warning',
+        confirmButtonText: '重置',
+        cancelButtonText: '取消',
+      },
+    );
+  } catch {
+    return;
+  }
   submittingId.value = row.account_id;
   try {
     await resetCourseStudentProgress(courseId.value, row.account_id);
