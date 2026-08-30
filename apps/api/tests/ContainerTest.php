@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\controller\admin\AuthController;
+use App\controller\admin\BannerImageController;
 use App\controller\learner\OrderController;
 use App\middleware\AdminAuth;
 use App\support\payment\PaymentAdapter;
@@ -66,5 +67,23 @@ final class ContainerTest extends TestCase
         $controller = $container->make(OrderController::class);
 
         self::assertInstanceOf(OrderController::class, $controller);
+    }
+
+    public function testMakeUsesConfiguredBannerImageControllerBinding(): void
+    {
+        $container = require dirname(__DIR__) . '/config/container.php';
+
+        $controller = $container->make(BannerImageController::class);
+
+        self::assertInstanceOf(BannerImageController::class, $controller);
+        $storage = (new \ReflectionClass($controller))
+            ->getParentClass()
+            ->getProperty('storage');
+        $storage->setAccessible(true);
+        $prefix = (new \ReflectionClass($storage->getValue($controller)))
+            ->getProperty('prefix');
+        $prefix->setAccessible(true);
+
+        self::assertSame('banners', $prefix->getValue($storage->getValue($controller)));
     }
 }

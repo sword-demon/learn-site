@@ -173,6 +173,14 @@ Route::group($adminV1, function () {
     Route::post('/assets', [\App\controller\admin\AssetController::class, 'upload']);
     Route::post('/course-covers', [\App\controller\admin\CourseCoverController::class, 'upload']);
     Route::post('/map-covers', [\App\controller\admin\CourseCoverController::class, 'upload']);
+    Route::post('/banner-images', [\App\controller\admin\BannerImageController::class, 'upload']);
+
+    // Site-wide home banners
+    Route::get('/banners', [\App\controller\admin\BannerController::class, 'index']);
+    Route::get('/banners/{id}', [\App\controller\admin\BannerController::class, 'show']);
+    Route::post('/banners', [\App\controller\admin\BannerController::class, 'store']);
+    Route::patch('/banners/{id}', [\App\controller\admin\BannerController::class, 'patch']);
+    Route::delete('/banners/{id}', [\App\controller\admin\BannerController::class, 'destroy']);
 
     // Phase 11 / US4 — Q&A admin inbox (qa.view / qa.answer)
     Route::get('/questions',           [\App\controller\admin\QuestionController::class, 'inbox']);

@@ -12,7 +12,15 @@ final class MigrationReleaseGateTest extends TestCase
     {
         $source = $this->readProjectFile('scripts/verify-images.sh');
 
-        foreach (['php:8.4-cli@sha256:', 'node:22.11.0-alpine@sha256:', 'nginx:1.27.3-alpine@sha256:', 'mysql:8.4.11@sha256:', 'redis:7.4.11@sha256:'] as $image) {
+        foreach (
+            [
+                'php:8.4-cli@sha256:',
+                'node:22.11.0-alpine@sha256:',
+                'nginx:1.27.3-alpine@sha256:',
+                'mysql:8.4.11@sha256:',
+                'redis:7.4.11@sha256:',
+            ] as $image
+        ) {
             self::assertStringContainsString($image, $source);
         }
         self::assertStringContainsString('imagetools inspect', $source);
@@ -34,6 +42,7 @@ final class MigrationReleaseGateTest extends TestCase
         self::assertStringContainsString('scheduled_tasks', $source);
         self::assertStringContainsString('scheduled_task_runs', $source);
         self::assertStringContainsString('learner_daily_checkins', $source);
+        self::assertStringContainsString('banners', $source);
         self::assertStringContainsString('active_marker', $source);
         self::assertStringContainsString('uq_course_entitlements_active', $source);
         self::assertStringContainsString('duplicate_active', $source);
@@ -45,9 +54,30 @@ final class MigrationReleaseGateTest extends TestCase
     {
         $makefile = $this->readProjectFile('Makefile');
 
-        foreach (['migrate.sh', 'backup.sh', 'restore.sh', 'rehearse-restore.sh', 'verify-images', 'verify-migrations', 'verify-runtime-boundaries'] as $target) {
+        foreach (
+            [
+                'migrate.sh',
+                'backup.sh',
+                'restore.sh',
+                'rehearse-restore.sh',
+                'verify-images',
+                'verify-migrations',
+                'verify-runtime-boundaries',
+            ] as $target
+        ) {
             self::assertStringContainsString($target, $makefile);
         }
+    }
+
+    public function testBannerMigrationDefinesTheSoftDeleteAndPublicListIndexes(): void
+    {
+        $path = dirname(__DIR__) . '/database/migrations/20260830000002_banners.php';
+        self::assertFileExists($path);
+        $source = (string) file_get_contents($path);
+        self::assertStringContainsString("\$this->table('banners'", $source);
+        self::assertStringContainsString("->addColumn('deleted_at'", $source);
+        self::assertStringContainsString("['deleted_at', 'is_enabled', 'sort_order']", $source);
+        self::assertStringContainsString("['deleted_at', 'sort_order']", $source);
     }
 
     private function readProjectFile(string $relativePath): string

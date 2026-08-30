@@ -9,66 +9,69 @@
       show-icon
     />
 
-    <div v-else class="home-grid">
-      <aside class="tree-panel" aria-label="课程分类">
-        <h3>分类目录</h3>
-        <el-button
-          text
-          class="all-categories"
-          :class="{ on: selectedId === null }"
-          data-action="all-categories"
-          @click="selectCategory(null)"
-        >
-          <span>全部分类</span>
-          <span class="cnt">{{ allCourseTotal }}</span>
-        </el-button>
-        <el-tree
-          class="category-tree"
-          :data="categories"
-          node-key="id"
-          default-expand-all
-          highlight-current
-          :current-node-key="selectedId ?? undefined"
-          :expand-on-click-node="false"
-          @node-click="onCategoryNodeClick"
-        >
-          <template #default="{ data }">
-            <span class="category-node">
-              <span>{{ data.name }}</span>
-              <span class="cnt">{{ countUnder(data.id) }}</span>
-            </span>
-          </template>
-        </el-tree>
-      </aside>
+    <div v-else>
+      <HomeBannerCarousel v-if="banners.length > 0" :banners="banners" />
+      <div class="home-grid">
+        <aside class="tree-panel" aria-label="课程分类">
+          <h3>分类目录</h3>
+          <el-button
+            text
+            class="all-categories"
+            :class="{ on: selectedId === null }"
+            data-action="all-categories"
+            @click="selectCategory(null)"
+          >
+            <span>全部分类</span>
+            <span class="cnt">{{ allCourseTotal }}</span>
+          </el-button>
+          <el-tree
+            class="category-tree"
+            :data="categories"
+            node-key="id"
+            default-expand-all
+            highlight-current
+            :current-node-key="selectedId ?? undefined"
+            :expand-on-click-node="false"
+            @node-click="onCategoryNodeClick"
+          >
+            <template #default="{ data }">
+              <span class="category-node">
+                <span>{{ data.name }}</span>
+                <span class="cnt">{{ countUnder(data.id) }}</span>
+              </span>
+            </template>
+          </el-tree>
+        </aside>
 
-      <section aria-label="课程列表">
-        <div class="list-head">
-          <h2>{{ listTitle }}</h2>
-          <span class="cnt">{{ courses.length }} 门课程</span>
-        </div>
-        <div class="crumbs" style="margin-bottom: 6px">{{ breadcrumbText }}</div>
+        <section aria-label="课程列表">
+          <div class="list-head">
+            <h2>{{ listTitle }}</h2>
+            <span class="cnt">{{ courses.length }} 门课程</span>
+          </div>
+          <div class="crumbs" style="margin-bottom: 6px">{{ breadcrumbText }}</div>
 
-        <el-skeleton v-if="listLoading" animated :rows="5" />
-        <el-alert
-          v-else-if="listError"
-          title="课程列表暂时读不到。"
-          type="error"
-          :closable="false"
-          show-icon
-        />
-        <el-empty
-          v-else-if="courses.length === 0"
-          description="这一类暂时还没有课程，换个分类看看吧"
-        />
-        <div v-else class="entry-list">
-          <CourseEntryRow
-            v-for="course in courses"
-            :key="course.id"
-            :course="course"
-            :show-favorite="session.loggedIn"
+          <el-skeleton v-if="listLoading" animated :rows="5" />
+          <el-alert
+            v-else-if="listError"
+            title="课程列表暂时读不到。"
+            type="error"
+            :closable="false"
+            show-icon
           />
-        </div>
-      </section>
+          <el-empty
+            v-else-if="courses.length === 0"
+            description="这一类暂时还没有课程，换个分类看看吧"
+          />
+          <div v-else class="entry-list">
+            <CourseEntryRow
+              v-for="course in courses"
+              :key="course.id"
+              :course="course"
+              :show-favorite="session.loggedIn"
+            />
+          </div>
+        </section>
+      </div>
     </div>
   </main>
 </template>
@@ -82,12 +85,13 @@ import { fetchCategoryCourses } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
 import { useHomeStore } from '@/stores/home';
 import CourseEntryRow from '@/components/CourseEntryRow.vue';
+import HomeBannerCarousel from '@/components/HomeBannerCarousel.vue';
 
 const homeStore = useHomeStore();
 const session = useLoginFamilyStore();
 const route = useRoute();
 const router = useRouter();
-const { categories, recentCourses, loading, error } = storeToRefs(homeStore);
+const { categories, recentCourses, banners, loading, error } = storeToRefs(homeStore);
 
 const selectedId = ref<number | null>(null);
 const courses = ref<CourseListItemDTO[]>([]);

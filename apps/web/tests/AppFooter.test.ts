@@ -22,6 +22,7 @@ const RouterLinkStub = {
 const homePayload: HomePayload = {
   categories: [],
   recent_courses: [],
+  banners: [],
   site_intro: {
     title: '把每一次学习，收进自己的课程档案',
     subtitle: '从一门课开始。',
@@ -63,7 +64,11 @@ describe('App footer', () => {
     const router = createRouter({
       history: createWebHistory(),
       routes: [
-        { path: '/login', meta: { hideFooter: true }, component: { template: '<main>登录</main>' } },
+        {
+          path: '/login',
+          meta: { hideFooter: true },
+          component: { template: '<main>登录</main>' },
+        },
         { path: '/', component: { template: '<main>首页</main>' } },
       ],
     });
@@ -92,9 +97,7 @@ describe('App footer', () => {
     expect(footer.text()).toContain('拾阶学社');
     expect(footer.get('nav[aria-label="页脚导航"] a[href="/"]').text()).toContain('首页');
     expect(footer.get('a[href="/maps"]').text()).toContain('学习地图');
-    expect(footer.get('a[href="mailto:courses@example.test"]').text()).toBe(
-      'courses@example.test',
-    );
+    expect(footer.get('a[href="mailto:courses@example.test"]').text()).toBe('courses@example.test');
   });
 
   it('keeps brand and navigation available when site metadata cannot be loaded', async () => {

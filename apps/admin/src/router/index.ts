@@ -26,6 +26,7 @@ import NotificationListView from '@/views/notifications/NotificationListView.vue
 import CheckinListView from '@/views/checkins/CheckinListView.vue';
 import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView.vue';
 import ScheduledTaskRunLogView from '@/views/scheduled-tasks/ScheduledTaskRunLogView.vue';
+import BannerListView from '@/views/banners/BannerListView.vue';
 import ForbiddenView from '@/views/errors/ForbiddenView.vue';
 import { hasTokens, mustChangePassword, permissionCodes } from '@/api/http';
 import { firstVisiblePath } from '@/layouts/AdminMenu';
@@ -241,6 +242,12 @@ const routes: RouteRecordRaw[] = [
         name: 'scheduled-task-runs',
         component: ScheduledTaskRunLogView,
         meta: { title: '执行日志', permission: 'scheduled_task.manage' },
+      },
+      {
+        path: 'banners',
+        name: 'banners',
+        component: BannerListView,
+        meta: { title: '轮播图管理', permission: 'banner.manage' },
       },
       {
         path: 'site/profile',
