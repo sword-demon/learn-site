@@ -9,7 +9,6 @@ const controlGroups: Record<string, string[]> = {
   'shell and forms': [
     'layouts/LearnerLayout.vue',
     'views/auth/LoginRegisterView.vue',
-    'views/me/AccountView.vue',
     'components/PdfViewer.vue',
   ],
   'reviews and questions': [
@@ -35,10 +34,7 @@ const controlGroups: Record<string, string[]> = {
   ],
   'learning and personal': [
     'views/learn/LessonView.vue',
-    'views/me/MyLearningView.vue',
-    'views/me/FavoritesView.vue',
-    'views/me/MyOrdersView.vue',
-    'views/me/MessagesView.vue',
+    'views/me/StudentCenterView.vue',
   ],
 };
 
