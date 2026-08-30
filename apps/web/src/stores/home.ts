@@ -1,11 +1,17 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { CategoryNode, CourseListItemDTO, SiteIntro } from '@learn-site/contracts';
+import type {
+  BannerPublicDTO,
+  CategoryNode,
+  CourseListItemDTO,
+  SiteIntro,
+} from '@learn-site/contracts';
 import { fetchHome } from '@/api/learner';
 
 export const useHomeStore = defineStore('home', () => {
   const categories = ref<CategoryNode[]>([]);
   const recentCourses = ref<CourseListItemDTO[]>([]);
+  const banners = ref<BannerPublicDTO[]>([]);
   const intro = ref<SiteIntro | null>(null);
   const loading = ref(false);
   const loaded = ref(false);
@@ -23,6 +29,7 @@ export const useHomeStore = defineStore('home', () => {
         const home = await fetchHome();
         categories.value = home.categories;
         recentCourses.value = home.recent_courses;
+        banners.value = home.banners;
         intro.value = home.site_intro;
         loaded.value = true;
       } catch {
@@ -36,5 +43,5 @@ export const useHomeStore = defineStore('home', () => {
     return inflight;
   }
 
-  return { categories, recentCourses, intro, loading, error, load };
+  return { categories, recentCourses, banners, intro, loading, error, load };
 });
