@@ -92,16 +92,41 @@
 
 ## 数据契约
 
-`packages/contracts/src/` 按需扩展点（如已有则扩展，否则新建）：
+**重要前提**：`packages/contracts/src/` 已存在 27 个 DTO 文件、`apps/web/src/api/` 已存在 33+ `fetch*` 函数（详见 `apps/web/src/views/*` 调用映射）。本次重写**优先复用现有契约**，仅在以下场景扩展：
 
-- `home.ts`（已存在）：扩 `HomeViewSchema`（banner + 地图 + 推荐 + 分类）
-- `map.ts`（如不存在则新建）：`MapListItemSchema / MapDetailSchema`
-- `course.ts`（如不存在则新建）：`CourseDetailSchema / LessonSummarySchema`
-- `lesson.ts`（如不存在则新建）：`LessonSchema`（含 PDF / 视频 / Markdown / QA）
-- `checkout.ts`（如不存在则新建）：`CheckoutSummarySchema`
-- `me.ts`（如不存在则新建）：`LearnerCenterSchema`（聚合 6 个 Tab）
+### 复用现有 DTO（不重写）
 
-不引入新包；Zod schema 复用现有基础设施。
+| Figma 页 | 现有 DTO |
+|---|---|
+| HomeView（含空/加载/有数据三态） | `HomePayload`（已有 categories / site_intro / recent_courses / banners） |
+| MapListView / MapDetailView | `LearnerMapListDTO` / `LearnerMapDetailDTO`（含 enrollment + next_step） |
+| CourseDetailView | `PublicCourseDetailDTO`（含 viewer_* 字段） |
+| LessonView | `LessonDeliveryDTO`（discriminatedUnion：markdown / pdf / video）+ `LessonProgressDTO` |
+| CheckoutView | `CreateOrderResponseDTO` + `PaymentEnvelopeDTO` + `OrderDTO` |
+| LoginRegisterView | `LearnerLoginInput` + `CaptchaChallenge` + `TokenPair` |
+| StudentCenterView | `MyLearningListDTO` + `FavoriteListDTO` + `OrderListDTO` + `LearnerNotificationListDTO` + `LearnerCheckinListDTO` + `LearnerProfileDTO` |
+| FavoritesView EmptyState | `FavoriteListDTO`（items=[] 时 v-if 分支） |
+
+### 扩展点（仅 1 处）
+
+`packages/contracts/src/home.ts` 的 `HomePayload` 增加 `recommended_maps` 字段（首页 1:1464 设计要求"推荐学习地图"3 卡网格），沿用 `LearnerMapListDTO.items` 中的元素 shape（`MapSummaryDTO & { enrollment: MapEnrollmentDTO.nullable }`）。后端 `HomeController` 同步返回该字段。
+
+**不新建任何 map/course/lesson/checkout/me DTO 文件**——这些字段已存在且被现有 fetch* 完整覆盖。
+
+### 不需要新增 DTO 的"看似缺字段"场景
+
+经排查，前端可通过以下方式从现有 DTO 派生/占位，无需新 DTO：
+
+- StudentCenterView 的 `STREAK` / 热力图 → 从 `MyLearningListDTO.items[].updated_at` 派生连续天数 + 从 `LearnerCheckinListDTO.items[].checkin_date` 派生最近 28 天热力图
+- 课程详情 `(45)` 评价数 → 走 `fetchCourseReviews` 第一页拿 `total`
+- 登录注册合并视图 → 复用 `LearnerLoginInput` 与 `LearnerRegisterInput` 同 shape（同为 phone/password/captcha_id/captcha_answer），加 Tab 视觉切换
+
+### 后端字段缺失（标记 ponytail，不阻塞）
+
+详见 `tasks/lessons.md` 的"figma-gap"小节。前端用以下策略：
+1. `// ponytail: backend gap: <字段名>` 注释在 store/view 数据加工处标注
+2. 用现有字段派生或常量占位
+3. 每页 commit 后追加到 `tasks/lessons.md`
 
 ## 后端字段缺失处理
 
