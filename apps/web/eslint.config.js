@@ -54,4 +54,16 @@ export default [
       'components.d.ts',
     ],
   },
+  {
+    // Tests run under vitest in Node — expose Node globals so test files
+    // can use process.cwd(), etc. without triggering no-undef.
+    files: ['tests/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+      },
+    },
+  },
 ];
