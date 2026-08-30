@@ -79,13 +79,13 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       meta: { hideFooter: true },
-      component: () => import('@/views/auth/LoginView.vue'),
+      component: () => import('@/views/auth/LoginRegisterView.vue'),
     },
     {
       path: '/register',
       name: 'register',
       meta: { hideFooter: true },
-      component: () => import('@/views/auth/RegisterView.vue'),
+      component: () => import('@/views/auth/LoginRegisterView.vue'),
     },
   ],
   scrollBehavior() {

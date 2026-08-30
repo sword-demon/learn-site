@@ -8,8 +8,7 @@ const forbidden = /<(button|input|select|textarea|dialog|details|summary)\b/g;
 const controlGroups: Record<string, string[]> = {
   'shell and forms': [
     'layouts/LearnerLayout.vue',
-    'views/auth/LoginView.vue',
-    'views/auth/RegisterView.vue',
+    'views/auth/LoginRegisterView.vue',
     'views/me/AccountView.vue',
     'components/PdfViewer.vue',
   ],
