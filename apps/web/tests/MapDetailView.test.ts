@@ -130,7 +130,7 @@ describe('MapDetailView', () => {
     learnerApi.startLearningMap.mockResolvedValue(detail);
   });
 
-  it('renders map metadata and step access/completion states', async () => {
+  it('renders the timeline with completed and active stages and step access states', async () => {
     const wrapper = mount(MapDetailView, { global: { stubs: { RouterLink: RouterLinkStub } } });
     await flushPromises();
 
@@ -142,6 +142,11 @@ describe('MapDetailView', () => {
     expect(wrapper.text()).toContain('已下架');
     expect(wrapper.get('[data-action="next-step"]').attributes('href')).toBe('/courses/12');
     expect(wrapper.text()).toContain('TypeScript 深入实践');
+
+    const completed = wrapper.get('.stage-node[data-stage-id="13"]');
+    expect(completed.attributes('data-state')).toBe('completed');
+    const active = wrapper.get('.stage-node[data-stage-id="14"]');
+    expect(active.attributes('data-state')).toBe('active');
   });
 
   it('redirects a visitor to learner login before starting a map', async () => {
