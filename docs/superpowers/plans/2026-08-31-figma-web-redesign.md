@@ -1,5 +1,11 @@
 # 学习端 Figma 全覆盖重写实施计划
 
+> ⚠️ **DEPRECATED 2026-08-31**: 此计划基于错误假设（"从零定义 contracts 和 API"），与现有 `packages/contracts/src/*` 28 个 DTO 和 `apps/web/src/api/*` 完整 fetch* 体系严重脱节。已废弃。重写版见同目录新文件。
+
+---
+
+# 学习端 Figma 全覆盖重写实施计划
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 按 Figma 设计稿全覆盖重写 `apps/web` 全部 11 个桌面级页面，分 10 个独立可回滚的 commit 完成。
