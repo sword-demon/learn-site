@@ -463,7 +463,7 @@ onUnmounted(stopPolling);
   border-color: var(--seal-soft, #c6e2ff);
 }
 
-.checkout-payment__method--active {
+.checkout-payment__method.el-radio--checked {
   border-color: var(--seal, #409eff);
   background: var(--seal-soft, #ecf5ff);
   box-shadow: 0 0 0 1px var(--seal, #409eff) inset;
