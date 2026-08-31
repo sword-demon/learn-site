@@ -67,7 +67,7 @@ services:
     command:
       - sh
       - -c
-      - corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @learn-site/contracts lint && pnpm --filter @learn-site/contracts test && pnpm --filter @learn-site/contracts build && pnpm --filter @learn-site/web exec prettier --check src && pnpm --filter @learn-site/admin exec prettier --check src && pnpm --filter @learn-site/web lint && pnpm --filter @learn-site/admin lint && pnpm --filter @learn-site/web typecheck && pnpm --filter @learn-site/admin typecheck && pnpm --filter @learn-site/web test && pnpm --filter @learn-site/admin test && pnpm --filter @learn-site/web build && pnpm --filter @learn-site/admin build
+      - corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @learn-site/contracts lint && pnpm --filter @learn-site/contracts test && pnpm --filter @learn-site/contracts build && pnpm --filter @learn-site/web exec prettier --check src tests && pnpm --filter @learn-site/admin exec prettier --check src tests && pnpm --filter @learn-site/web lint && pnpm --filter @learn-site/admin lint && pnpm --filter @learn-site/web typecheck && pnpm --filter @learn-site/admin typecheck && pnpm --filter @learn-site/web test && pnpm --filter @learn-site/admin test && pnpm --filter @learn-site/web build && pnpm --filter @learn-site/admin build
 
   e2e-fixture:
     profiles: ['test']

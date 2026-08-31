@@ -177,3 +177,38 @@ try {
 **The principle:** 测试不是"完成功能后补的作业"，而是"功能能否被声明完成"的判定条件。把测试和功能放进同一个 commit 才能让 `git revert` 一次回到干净状态。
 
 **Takeaway:** PR / commit 拆分的默认粒度是「一个可独立回滚的改动」，而不是「一个工作日」。当一个 commit 同时包含「功能代码」和「对应测试」，它就具备了独立回滚的能力；否则就要靠"配对的另一个 commit"来撤销。
+
+---
+
+## Lesson: 乐观锁必须严格 > 上次 updated_at，DATETIME 秒级精度会"同秒双写"踩坑
+
+**What happened in the code:**
+`d0419ce` 在 `BannerService` 加 `expected_updated_at` 乐观锁：`UPDATE ... WHERE id = ? AND deleted_at IS NULL AND updated_at = ?`。配合 `nextUpdatedAt()` 写入"下一时刻"——但第一版实现是 `max($now, $currentTime)`，当 wall clock 还停在同一秒，`format('Y-m-d H:i:s')` 返回的字符串与原值完全相同，DB 行 `updated_at` 也就没动；下一次 PATCH 用同一个 `expected_updated_at` 时 WHERE 子句永远命中，409 CONFLICT 永远不抛。`testStaleUpdateReturnsConflictWithoutChangingTheBanner` 在真实 PHPUnit 跑里直接翻红 2 个用例才暴露出来。
+
+**The principle at work:**
+**乐观锁的本质是"严格单调递增"**——版本字段必须 *strictly greater than* 上次值，不能 *equal* 上次值。而 DATETIME 列秒级精度天然只到秒，sub-second 写入会被截断，所以"now() vs currentTime"的简单比较不够，必须 `max($now, $currentTime + 1s)` 强制推进一秒。同类陷阱还有 TIMESTAMP 在 MySQL 5.6 之前的秒级精度、`updated_at` 被 `SET` 回旧值的 ETL 误操作。
+
+**Why it matters:**
+这种 bug 在本地开发（每条请求间隔数秒）几乎永远不触发，只在测试 fixture 连续写、或 CI 在同秒并发两条 PATCH 时才暴露。一旦上线，遇到的是"两个管理员同时改同一条轮播图，第二个人的修改静默成功覆盖第一人"——比乐观锁失败抛 409 危险得多。
+
+**Takeaway for next time:**
+任何依赖"严格大于"语义的版本字段（`updated_at` / `version` / `etag`）：
+1. 写入方法必须保证新值 **strictly greater than** 旧值（用 `max(now, old + δ)`，不要用 `now()`）；
+2. 测试必须包含「同秒双写」fixture：两条 PATCH 用同一个 `expected_updated_at`，第二条必须返回 409；
+3. 数据库列精度 ≤ 写入最小间隔时，把"最小间隔"写进 service 常量（`+1 second` / `+1 ms`），不要靠 wall clock 的偶然差。
+
+---
+
+## Lesson: 加 quality gate 前必须先把"被门控的资源"修干净
+
+**What happened in the code:**
+Commit 15 计划在 `compose.test.yaml` 加两条新 gate：(a) `composer validate --strict && composer lint` 到 api-test command；(b) `prettier --check src tests` 到 frontend-test command（从只 check `src` 扩到 `src tests`）。改动一行 YAML，看起来无伤大雅。落地前才验证：(a) 测试镜像 `FROM php-ext` 不 COPY composer binary，跑起来 `sh: composer: not found`；(b) 当前 `apps/web/tests` 有 27 个文件、`apps/admin/tests` 有 26 个文件不通过 prettier check。把这两条加上去不会"加强 CI"，只会"立刻让 CI 100% 红"。
+
+**The principle at work:**
+**门控的本质是「拒绝不达标状态」**。在大部分资源还不达标时打开门，要么门永远关着（CI 永远挂）、要么被无声 bypass（`|| true` / `--no-verify`），两者都让门控失去意义。打开门前必须满足：(1) 门控检查的工具在执行环境里存在；(2) 当前所有被门控的资源都已经达标，或者伴随的 commit 把它们都修干净；(3) 门控失败时的报错信息能定位到具体失败的文件/规则。
+
+**Why it matters:**
+"加一行配置就完事" 的 quality gate 是高风险 diff——它不会让既有功能坏掉（不碰业务逻辑），但会让 CI 立刻挂，且挂得很"对"（真的是不达标）。维护者看到红 build 第一反应是 revert 配置，于是这次 gate 就被悄悄回滚了。Prettier 在仓库首次大规模落地、lint baseline 重建、Docker 镜像缺工具，都是同一类"前置条件未达成"。
+
+**Takeaway for next time:**
+plan quality-gate commit 时三问：(1) 命令依赖的 binary 在目标 image 里装了吗？(2) 当前被门控的全部文件都已经合规吗？没有就先有一个独立的 "make resources compliant" commit。(3) 三个不要混在一起：先修 Dockerfile / 先跑 format / 再 flip gate——三个独立 commit，每个独立可回滚，符合 H4。
