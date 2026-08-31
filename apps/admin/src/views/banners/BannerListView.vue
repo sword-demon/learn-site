@@ -23,6 +23,7 @@ defineOptions({ name: 'BannerListView' });
 
 type Draft = {
   id: number | null;
+  expected_updated_at: string;
   image_url: string;
   link_url: string;
   sort_order: number;
@@ -50,6 +51,7 @@ const filters = reactive<{ is_enabled: '' | 'true' | 'false'; page: number; limi
 });
 const draft = reactive<Draft>({
   id: null,
+  expected_updated_at: '',
   image_url: '',
   link_url: '',
   sort_order: 0,
@@ -68,6 +70,7 @@ function readError(error: unknown, fallback: string): string {
   const response = error as { response?: { data?: { error?: { message?: string } } } };
   const message = response.response?.data?.error?.message ?? (error as Error).message ?? fallback;
   if (message === 'BANNER_IMAGE_PAIR_INVALID') return '轮播图片无效，请重新上传';
+  if (message === 'BANNER_VERSION_CONFLICT') return '轮播图已被其他管理员修改，请刷新后重试';
   if (message.includes('轮播图片上传响应无效')) return message;
   return message;
 }
@@ -90,6 +93,7 @@ async function reload(): Promise<void> {
 
 function resetDraft(): void {
   draft.id = null;
+  draft.expected_updated_at = '';
   draft.image_url = '';
   draft.link_url = '';
   draft.sort_order = 0;
@@ -103,6 +107,7 @@ function openCreate(): void {
 
 function openEdit(row: AdminBannerDTO): void {
   draft.id = row.id;
+  draft.expected_updated_at = row.updated_at;
   draft.image_url = row.image_url;
   draft.link_url = row.link_url ?? '';
   draft.sort_order = row.sort_order;
@@ -135,6 +140,7 @@ async function save(): Promise<void> {
       await createBanner(input);
     } else {
       const input: UpdateBannerInput = {
+        expected_updated_at: draft.expected_updated_at,
         image_url: image.image_url,
         image_key: image.image_key,
         link_url: linkUrl,
@@ -156,7 +162,10 @@ async function save(): Promise<void> {
 
 async function toggle(row: AdminBannerDTO): Promise<void> {
   try {
-    await updateBanner(row.id, { is_enabled: !row.is_enabled });
+    await updateBanner(row.id, {
+      expected_updated_at: row.updated_at,
+      is_enabled: !row.is_enabled,
+    });
     ElMessage.success(row.is_enabled ? '已禁用' : '已启用');
     await reload();
   } catch (error) {

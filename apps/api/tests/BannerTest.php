@@ -96,7 +96,10 @@ final class BannerTest extends TestCase
         $first = $this->service->create($this->input(20), $this->staffId);
         $disabled = $this->service->create($this->input(10), $this->staffId);
         $deleted = $this->service->create($this->input(0), $this->staffId);
-        $this->service->update($disabled['id'], ['is_enabled' => false], $this->staffId);
+        $this->service->update($disabled['id'], [
+            'expected_updated_at' => $disabled['updated_at'],
+            'is_enabled' => false,
+        ], $this->staffId);
         $this->service->softDelete($deleted['id'], $this->staffId);
 
         $public = $this->service->listPublic();
@@ -112,6 +115,7 @@ final class BannerTest extends TestCase
         $created = $this->service->create($this->input(), $this->staffId);
 
         $updated = $this->service->update($created['id'], [
+            'expected_updated_at' => $created['updated_at'],
             'link_url' => 'https://example.com/promo',
             'sort_order' => 3,
             'is_enabled' => false,
@@ -124,6 +128,34 @@ final class BannerTest extends TestCase
             1,
             Db::name('audit_log')->where('action', 'banner.update')->where('target_id', $created['id'])->count(),
         );
+    }
+
+    public function testStaleUpdateReturnsConflictWithoutChangingTheBanner(): void
+    {
+        $created = $this->service->create($this->input(), $this->staffId);
+        $this->service->update($created['id'], [
+            'expected_updated_at' => $created['updated_at'],
+            'link_url' => 'https://example.com/current',
+        ], $this->staffId);
+
+        try {
+            $this->service->update($created['id'], [
+                'expected_updated_at' => $created['updated_at'],
+                'image_url' => '/api/media/banners/2026/08/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.webp',
+                'image_key' => 'banners/2026/08/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.webp',
+                'sort_order' => 99,
+            ], $this->staffId);
+            self::fail('Expected stale banner update to be rejected');
+        } catch (BusinessException $exception) {
+            self::assertSame('CONFLICT', $exception->apiCode);
+            self::assertSame('BANNER_VERSION_CONFLICT', $exception->getMessage());
+        }
+
+        $stored = Db::name('banners')->where('id', $created['id'])->find();
+        self::assertIsArray($stored);
+        self::assertSame('/api/media/banners/2026/08/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webp', $stored['image_url']);
+        self::assertSame('https://example.com/current', $stored['link_url']);
+        self::assertSame(0, (int) $stored['sort_order']);
     }
 
     public function testSoftDeleteIsIdempotentAndKeepsTheDatabaseRow(): void
@@ -196,7 +228,10 @@ final class BannerTest extends TestCase
         $enabled = $this->service->create($this->input(20), $this->staffId);
         $disabled = $this->service->create($this->input(10), $this->staffId);
         $deleted = $this->service->create($this->input(30), $this->staffId);
-        $this->service->update($disabled['id'], ['is_enabled' => false], $this->staffId);
+        $this->service->update($disabled['id'], [
+            'expected_updated_at' => $disabled['updated_at'],
+            'is_enabled' => false,
+        ], $this->staffId);
         $this->service->softDelete($deleted['id'], $this->staffId);
 
         $onlyEnabled = $this->service->listForAdmin(['is_enabled' => true]);
@@ -234,12 +269,25 @@ final class BannerTest extends TestCase
         $id = (int) ($createdPayload['data']['id'] ?? 0);
         self::assertGreaterThan(0, $id);
 
-        $patch = $this->jsonRequest('PATCH', '/api/admin/v1/banners/' . $id, ['is_enabled' => false]);
+        $patch = $this->jsonRequest('PATCH', '/api/admin/v1/banners/' . $id, [
+            'expected_updated_at' => $createdPayload['data']['updated_at'],
+            'is_enabled' => false,
+        ]);
         $patch->account_id = $this->staffId;
         $patchedResponse = $controller->patch($patch, (string) $id);
         $patchedPayload = json_decode((string) $patchedResponse->rawBody(), true);
         self::assertSame(200, $patchedResponse->getStatusCode());
         self::assertFalse($patchedPayload['data']['is_enabled']);
+
+        $stalePatch = $this->jsonRequest('PATCH', '/api/admin/v1/banners/' . $id, [
+            'expected_updated_at' => $createdPayload['data']['updated_at'],
+            'sort_order' => 9,
+        ]);
+        $stalePatch->account_id = $this->staffId;
+        $staleResponse = $controller->patch($stalePatch, (string) $id);
+        $stalePayload = json_decode((string) $staleResponse->rawBody(), true);
+        self::assertSame(409, $staleResponse->getStatusCode());
+        self::assertSame('CONFLICT', $stalePayload['error']['code']);
 
         $delete = new Request("DELETE /api/admin/v1/banners/{$id} HTTP/1.1\r\nHost: test\r\n\r\n");
         $delete->account_id = $this->staffId;

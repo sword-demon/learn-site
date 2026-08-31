@@ -58,6 +58,13 @@ describe('banner contracts', () => {
 
   it('requires at least one update field and parses the admin list envelope', () => {
     expect(UpdateBannerInput.safeParse({}).success).toBe(false)
+    expect(UpdateBannerInput.safeParse({ is_enabled: false }).success).toBe(false)
+    expect(
+      UpdateBannerInput.safeParse({
+        expected_updated_at: '2026-08-30T10:00:00+08:00',
+        is_enabled: false,
+      }).success,
+    ).toBe(true)
     const list = AdminBannerListDTO.parse({
       items: [],
       total: 0,

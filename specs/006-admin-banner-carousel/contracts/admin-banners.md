@@ -118,10 +118,11 @@
 |------|------|------|
 | PATCH | `/banners/{id}` | 部分更新 |
 
-**Body**（至少一项）:
+**Body**（必须携带 `expected_updated_at`，且至少一项业务字段）:
 
 ```json
 {
+  "expected_updated_at": "2026-08-30T10:00:00+08:00",
   "link_url": "/",
   "sort_order": 0,
   "is_enabled": false
@@ -133,7 +134,8 @@
 **错误**:
 - `403 FORBIDDEN`
 - `404 NOT_FOUND`
-- `VALIDATION_FAILED`
+- `409 CONFLICT` — `BANNER_VERSION_CONFLICT`，`expected_updated_at` 已过期；服务端不修改记录或图片引用
+- `VALIDATION_FAILED` — 缺少或格式错误的 `expected_updated_at`、仅提交版本字段或字段校验失败
 
 ---
 

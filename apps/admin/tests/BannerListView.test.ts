@@ -100,7 +100,10 @@ describe('BannerListView', () => {
 
     await wrapper.get('[data-action="toggle"]').trigger('click');
     await flushPromises();
-    expect(bannersApi.updateBanner).toHaveBeenCalledWith(1, { is_enabled: false });
+    expect(bannersApi.updateBanner).toHaveBeenCalledWith(1, {
+      expected_updated_at: row.updated_at,
+      is_enabled: false,
+    });
 
     await wrapper.get('[data-action="delete"]').trigger('click');
     await flushPromises();

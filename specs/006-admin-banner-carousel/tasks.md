@@ -53,7 +53,7 @@ description: "Task list for admin banner carousel and learner home display"
 - [X] T009 [P] Register banner-prefixed `ImageStorage` binding in `apps/api/config/dependence.php` (factory or second `LocalImageStorage` instance for `banners/`)
 - [X] T010 [P] Create `apps/api/app/controller/admin/BannerImageController.php` reusing `CourseCoverController` upload validation with banner storage and `BANNER_*` error codes (or inject prefix into shared upload handler)
 - [X] T011 Create `apps/api/app/model/Banner.php` extending `support\think\Model` with `deleted_at` scope helpers per data-model
-- [X] T012 Implement `apps/api/app/service/BannerService.php` with `validateLink()`, `create()`, `update()`, `getForAdmin()`, `listForAdmin()`, `listPublic()`, `softDelete()` — including `audit_log` (`banner.create` / `banner.update` / `banner.delete`)
+- [ ] T012 Implement `apps/api/app/service/BannerService.php` with `validateLink()`, `create()`, `update()`, `getForAdmin()`, `listForAdmin()`, `listPublic()`, `softDelete()` — including `audit_log` (`banner.create` / `banner.update` / `banner.delete`) and `updated_at` optimistic locking with `BANNER_VERSION_CONFLICT`
 - [X] T013 Register `BannerService` in `apps/api/config/dependence.php`
 - [X] T014 Map `/api/admin/v1/banners` and `POST /api/admin/v1/banner-images` to `banner.manage` in `apps/api/app/middleware/Authorize.php`
 
@@ -90,9 +90,9 @@ description: "Task list for admin banner carousel and learner home display"
 
 - [X] T021 [US2] Implement `index()`, `show()`, and `patch()` in `apps/api/app/controller/admin/BannerController.php`
 - [X] T022 [US2] Register `GET /api/admin/v1/banners`, `GET /api/admin/v1/banners/{id}`, and `PATCH /api/admin/v1/banners/{id}` in `apps/api/app/route.php`
-- [X] T023 [P] [US2] Add `listBanners()`, `getBanner()`, and `updateBanner()` in `apps/admin/src/api/banners.ts`
-- [X] T024 [US2] Extend `BannerListView.vue` with `is_enabled` filter, edit dialog, inline enable/disable toggle, and sort-order editing in `apps/admin/src/views/banners/BannerListView.vue`
-- [X] T025 [P] [US2] Extend `apps/api/tests/BannerTest.php` for admin list filters, PATCH update, and `listPublic()` excluding disabled banners
+- [ ] T023 [P] [US2] Add `listBanners()`, `getBanner()`, and `updateBanner()` in `apps/admin/src/api/banners.ts`; require `expected_updated_at` for updates
+- [ ] T024 [US2] Extend `BannerListView.vue` with `is_enabled` filter, edit dialog, inline enable/disable toggle, sort-order editing, and the row `updated_at` version in `apps/admin/src/views/banners/BannerListView.vue`
+- [ ] T025 [P] [US2] Extend `apps/api/tests/BannerTest.php` for admin list filters, PATCH update, stale-version `409 CONFLICT` without data/image changes, and `listPublic()` excluding disabled banners
 
 **Checkpoint**: US2 验收场景 1–5 通过 API；与 US4 联调后验证学习端展示顺序与禁用
 
@@ -144,8 +144,8 @@ description: "Task list for admin banner carousel and learner home display"
 - [X] T039 [P] Extend `apps/api/tests/AuthorizeLeakTest.php` for admin banner routes and learner home cross-token isolation
 - [X] T040 [P] Extend `apps/api/tests/MigrationReleaseGateTest.php` for `20260830000002_banners.php`
 - [X] T041 [P] Extend `apps/api/tests/ImageStorageTest.php` for `banners/` prefix store and resolve
-- [X] T042 [P] Write `apps/admin/tests/BannerListView.test.ts` for list rendering, create/edit dialogs, enable toggle, and delete confirmation
-- [X] T043 Run validation scenarios in `specs/006-admin-banner-carousel/quickstart.md` and fix any gaps found
+- [ ] T042 [P] Write `apps/admin/tests/BannerListView.test.ts` for list rendering, create/edit dialogs with `expected_updated_at`, enable toggle, conflict feedback, and delete confirmation
+- [ ] T043 Run validation scenarios in `specs/006-admin-banner-carousel/quickstart.md`, including all Compose quality gates and runtime checks, and fix any gaps found
 
 ---
 

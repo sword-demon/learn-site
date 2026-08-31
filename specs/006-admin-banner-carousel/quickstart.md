@@ -15,27 +15,63 @@ docker compose exec api php vendor/bin/phinx seed:run
 - 管理端 `${ADMIN_PORT:-8081}`、学习端 `${WEB_PORT:-8080}` 可访问
 - 测试账号：超级管理员（或已授予 `banner.manage`）
 
-## 自动化门禁（实现后执行）
+## 自动化门禁（最终验收执行）
 
 ```bash
-# API
-docker compose exec api composer test
-docker compose exec api composer stan
+# API：在 Compose 测试镜像内校验依赖、Lint、PHPUnit 和 PHPStan
+make test-api
 
-# 契约
-pnpm --filter @learn-site/contracts test
+# PHP 语法检查
+make test-fmt
 
-# 管理端
-pnpm --filter @learn-site/admin lint
-pnpm --filter @learn-site/admin typecheck
-pnpm --filter @learn-site/admin test
-pnpm --filter @learn-site/admin build
+# 契约、管理端和学习端：在 Compose 测试容器内执行
+make test-web
+```
 
-# 学习端
+`make test-api` 必须通过 `composer validate --strict`、`composer lint`、PHPUnit 和 PHPStan；`make test-web` 必须通过契约 Lint/测试/构建、两个前端的 Prettier（`src` 与 `tests`）、ESLint、TypeScript、Vitest 和生产构建。
+
+## Compose 运行时验收
+
+从仓库根目录执行：
+
+```bash
+# 干净上下文重建应用镜像
+docker compose build --no-cache
+
+# 服务健康、依赖和端口状态
+docker compose up -d
+docker compose ps
+docker compose exec -T api php -r '$pdo = new PDO("mysql:host=" . getenv("DB_HOST") . ";dbname=" . getenv("DB_DATABASE"), getenv("DB_USER"), getenv("DB_PASSWORD")); $redis = new Redis(); $redis->connect((string) getenv("REDIS_HOST"), (int) getenv("REDIS_PORT")); exit($pdo->query("SELECT 1")->fetchColumn() === 1 && $redis->ping() === true ? 0 : 1);'
+
+# 迁移和接口数据已落盘后，重启 API 并确认仍可读取
+docker compose exec -T api php vendor/bin/phinx status -e runtime
+docker compose restart api
+curl -fsS "http://localhost:${WEB_PORT:-8080}/api/learner/v1/home" | jq '.data.banners'
+
+# 验证 API 可优雅停止，再恢复服务供后续人工验收
+docker compose stop api
+docker compose start api
+docker compose ps api
+```
+
+通过标准：`api`、`admin`、`web`、`mysql`、`redis` 均为健康状态；API 能通过 Compose 内网络访问 MySQL 和 Redis；重启 API 后首页仍能读取轮播数据；`docker compose stop api` 成功返回且服务可再次启动。不得以宿主机直接运行 PHP 或 Node 的结果替代上述证据。
+
+## 前端管理端门禁细节
+
+`make test-web` 已包含以下检查：
+
+```bash
+# 管理端和学习端命令由 compose.test.yaml 中的 frontend-test 在容器内串行执行
+pnpm --filter @learn-site/web exec prettier --check src tests
+pnpm --filter @learn-site/admin exec prettier --check src tests
 pnpm --filter @learn-site/web lint
+pnpm --filter @learn-site/admin lint
 pnpm --filter @learn-site/web typecheck
+pnpm --filter @learn-site/admin typecheck
 pnpm --filter @learn-site/web test
+pnpm --filter @learn-site/admin test
 pnpm --filter @learn-site/web build
+pnpm --filter @learn-site/admin build
 ```
 
 **预期新增测试**（实现阶段）:

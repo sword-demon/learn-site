@@ -8,7 +8,7 @@
 
 ## Summary
 
-为管理端提供**轮播图 CRUD**：上传图片、配置可选跳转地址、排序与启用/禁用；删除为 `deleted_at` 软删除。学习端**首页**在分类目录上方展示启用中的轮播（`el-carousel`），数据内嵌于 `GET /home` 的 `banners` 字段。权限码 `banner.manage`；图片存 `banners/YYYY/MM/` 前缀，与 `covers/` 分离。
+为管理端提供**轮播图 CRUD**：上传图片、配置可选跳转地址、排序与启用/禁用；删除为 `deleted_at` 软删除。编辑使用 `updated_at` 乐观锁，版本冲突返回 `409 CONFLICT`。学习端**首页**在分类目录上方展示启用中的轮播（`el-carousel`，默认间隔 5000ms），数据内嵌于 `GET /api/learner/v1/home` 的 `banners` 字段。权限码 `banner.manage`；图片存 `banners/YYYY/MM/` 前缀，与 `covers/` 分离。
 
 ## Technical Context
 
@@ -34,6 +34,7 @@
 - 宪章：think-orm 唯一 ORM；令牌隔离；Redis 本功能不使用
 - 图片 JPEG/PNG/WebP、5 MiB，与课程封面一致
 - 软删除 `deleted_at`；管理端默认列表不展示已删项
+- 编辑请求携带 `expected_updated_at`；版本不一致返回 `409 CONFLICT`，不修改记录或图片引用
 - 首版无回收站、定时上下线、点击统计
 
 **Scale/Scope**: 4 个用户故事、16 条功能需求；预计新增/修改 ~30 源文件；1 张新表
@@ -48,12 +49,12 @@
 | II. 稳定兼容且可复现 | PASS | 无新 Composer/npm 依赖 |
 | III. 契约优先与端到端类型安全 | PASS | `packages/contracts/src/banner.ts`；扩展 `HomePayload` Zod |
 | IV. 数据变更安全可追溯 | PASS | Phinx 迁移 + `banners` 表；`audit_log` |
-| V. 质量、安全与可运维性内建 | PASS | PHPUnit + Vitest；链接 scheme 校验 |
+| V. 质量、安全与可运维性内建 | PASS | Compose 内执行 Composer 校验/Lint、PHPUnit/PHPStan、Prettier、ESLint、TypeScript、Vitest 与生产构建；链接 scheme 校验 |
 | VI. 令牌鉴权 | PASS | 管理端 `banner.manage`；学习端 home 公开读 |
 | Redis 使用边界 | PASS | 不使用 Redis |
 | 双前端独立构建 | PASS | admin/web 各自构建；contracts 共享类型 |
 
-**Phase 1 复查**: 未引入并行 ORM、消息队列；`ImageStorage` 扩展为前缀参数化，非新存储栈。
+**Phase 1 复查**: 未引入并行 ORM、消息队列；`ImageStorage` 扩展为前缀参数化，非新存储栈；最终验收补充 Compose 健康、网络、持久化和优雅停机检查。
 
 ## Project Structure
 
@@ -132,7 +133,7 @@ packages/contracts/src/
 
 - 表 `banners` + `deleted_at` 软删除
 - `banners/` 图片前缀；扩展 `LocalImageStorage` 与 `/api/media/{key}`
-- `GET /home` 内嵌 `banners`，不单开公开列表 API
+- `GET /api/learner/v1/home` 内嵌 `banners`，不单开公开列表 API
 - `link_url` 可选；站内 `/...` 与站外 `http(s)://`
 - `sort_order ASC`；`is_enabled` 布尔
 - `banner.manage` + `audit_log`
@@ -149,16 +150,16 @@ packages/contracts/src/
 ### API 面
 
 **学习端**（公开）:
-- `GET /home` — 响应增加 `banners[]`
+- `GET /api/learner/v1/home` — 响应增加 `banners[]`
 - `GET /api/media/banners/...` — 图片读取
 
 **管理端** (`banner.manage`):
-- `POST /banner-images` — 上传
-- `GET /banners`
-- `GET /banners/{id}`
-- `POST /banners`
-- `PATCH /banners/{id}`
-- `DELETE /banners/{id}` — 软删除
+- `POST /api/admin/v1/banner-images` — 上传
+- `GET /api/admin/v1/banners`
+- `GET /api/admin/v1/banners/{id}`
+- `POST /api/admin/v1/banners`
+- `PATCH /api/admin/v1/banners/{id}` — 必须携带 `expected_updated_at`
+- `DELETE /api/admin/v1/banners/{id}` — 软删除
 
 ### 前端
 
@@ -179,10 +180,10 @@ packages/contracts/src/
 5. **HomeService**: 调用 `BannerService::listPublic()` 填入 home 响应
 6. **contracts**: `BannerPublicDTO`、`AdminBannerDTO`、`CreateBannerInput`、`UpdateBannerInput`；`HomePayload.banners`
 7. **admin**: `uploadCover('/banner-images', ...)`；`CourseCoverUpload` 直接复用
-8. **web**: 站内 `router.push`；站外 `window.open(..., 'noopener,noreferrer')`；`link_url` 空不加点击
+8. **web**: 站内 `router.push`；站外 `window.open(..., 'noopener,noreferrer')`；`link_url` 空不加点击；自动轮播间隔 5000ms
 9. **权限**: `PermissionSeeder` + `Authorize` + `AdminMenu` + 路由 `meta.permission`
 10. **测试**: 软删除过滤、禁用过滤、跨权限 403、home 不含管理字段、图片上传校验
 
 ## Next Step
 
-执行 `/speckit-tasks` 生成可执行任务清单 `tasks.md`。
+执行 `quickstart.md` 中的最终质量门禁、Compose 验收和人工验收；完成后将规格状态更新为已验收。

@@ -37,6 +37,7 @@ export const UpdateBannerInput = z
     link_url: z.string().max(2048).nullable().optional(),
     sort_order: z.number().int().min(0).max(9999).optional(),
     is_enabled: z.boolean().optional(),
+    expected_updated_at: z.string().datetime({ offset: true }),
   })
   .refine((value) => Object.keys(value).length > 0, '至少填写一项修改内容')
 export type UpdateBannerInput = z.infer<typeof UpdateBannerInput>

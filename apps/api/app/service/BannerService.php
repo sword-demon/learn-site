@@ -60,6 +60,7 @@ final class BannerService
         if ($row === null) {
             throw new BusinessException('NOT_FOUND', 'BANNER_NOT_FOUND');
         }
+        $expectedUpdatedAt = $this->validateExpectedUpdatedAt($input['expected_updated_at'] ?? null);
 
         $updates = [];
         if (array_key_exists('image_url', $input) || array_key_exists('image_key', $input)) {
@@ -83,8 +84,15 @@ final class BannerService
             throw new BusinessException('VALIDATION_FAILED', 'EMPTY_UPDATE');
         }
 
-        $updates['updated_at'] = $this->nowDatetime();
-        Db::name('banners')->where('id', $id)->whereNull('deleted_at')->update($updates);
+        $updates['updated_at'] = $this->nextUpdatedAt((string) $row['updated_at']);
+        $updated = Db::name('banners')
+            ->where('id', $id)
+            ->whereNull('deleted_at')
+            ->where('updated_at', $expectedUpdatedAt)
+            ->update($updates);
+        if ($updated !== 1) {
+            throw new BusinessException('CONFLICT', 'BANNER_VERSION_CONFLICT');
+        }
         $this->writeAudit($staffId, 'banner.update', $id, $updates);
 
         return $this->getForAdmin($id);
@@ -246,6 +254,43 @@ final class BannerService
             return $value === '1';
         }
         throw new BusinessException('VALIDATION_FAILED', $message);
+    }
+
+    private function validateExpectedUpdatedAt(mixed $value): string
+    {
+        if (
+            !is_string($value)
+            || preg_match(
+                '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/D',
+                $value,
+            ) !== 1
+        ) {
+            throw new BusinessException('VALIDATION_FAILED', 'BANNER_VERSION_REQUIRED');
+        }
+
+        try {
+            return (new \DateTimeImmutable($value))
+                ->setTimezone(new \DateTimeZone(self::TIMEZONE))
+                ->format('Y-m-d H:i:s');
+        } catch (\Exception) {
+            throw new BusinessException('VALIDATION_FAILED', 'BANNER_VERSION_INVALID');
+        }
+    }
+
+    private function nextUpdatedAt(string $current): string
+    {
+        $timezone = new \DateTimeZone(self::TIMEZONE);
+        $now = new \DateTimeImmutable('now', $timezone);
+        $currentTime = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $current, $timezone);
+        // ponytail: optimistic lock requires updated_at (stored as DATETIME second
+        // precision) to strictly increase each write — otherwise two writes inside the
+        // same wall-clock second produce an identical stored value and the WHERE clause
+        // matches a stale expected_updated_at. Always advance past currentTime + 1s.
+        $candidate = $now;
+        if ($currentTime instanceof \DateTimeImmutable) {
+            $candidate = max($candidate, $currentTime->modify('+1 second'));
+        }
+        return $candidate->format('Y-m-d H:i:s');
     }
 
     /**

@@ -105,6 +105,7 @@ final class BannerController
         $code = match ($exception->apiCode) {
             ApiResponse::UNAUTHENTICATED => ApiResponse::UNAUTHENTICATED,
             ApiResponse::NOT_FOUND => ApiResponse::NOT_FOUND,
+            ApiResponse::CONFLICT => ApiResponse::CONFLICT,
             default => ApiResponse::VALIDATION_FAILED,
         };
         return ApiResponse::fail($code, $exception->getMessage(), $request->request_id ?? null);

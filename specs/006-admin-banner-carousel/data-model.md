@@ -91,8 +91,9 @@ banners (独立运营表)
 | link_url | string \| null | 可选 |
 | sort_order | number | 可选 |
 | is_enabled | boolean | 可选 |
+| expected_updated_at | string | 必填；最近一次 DTO 返回的 ISO8601 `updated_at`；仅用于更新请求，不落库 |
 
-至少一个字段；全空 body → `VALIDATION_FAILED`。
+`expected_updated_at` 必填，使用最近一次管理端 DTO 返回的 `updated_at`（ISO8601）；至少一个业务字段；仅提交版本字段或缺少版本字段 → `VALIDATION_FAILED`。
 
 ---
 
@@ -114,8 +115,10 @@ banners (独立运营表)
 [PATCH /banners/{id} + banner.manage]
   --> SELECT WHERE id AND deleted_at IS NULL
   --> 404 if missing or soft-deleted
+  --> 校验 expected_updated_at 格式
   --> 校验变更字段
-  --> UPDATE
+  --> UPDATE WHERE id AND deleted_at IS NULL AND updated_at = expected_updated_at
+  --> 409 if affected rows = 0; 不修改任何字段或图片引用
   --> INSERT audit_log (banner.update)
   --> 返回 AdminBannerDTO
 ```
