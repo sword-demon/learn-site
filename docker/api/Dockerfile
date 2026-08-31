@@ -67,6 +67,7 @@ CMD ["php", "start.php", "start"]
 # ---- test image: same runtime + dev vendor ----
 FROM php-ext AS test
 
+COPY --from=vendor /usr/local/bin/composer /usr/local/bin/composer
 COPY --from=vendor-dev /app/vendor /app/vendor
 COPY apps/api /app
 COPY ops /workspace/ops
