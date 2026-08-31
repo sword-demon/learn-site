@@ -23,7 +23,7 @@ function makeMap(
       title: `stage-${idx}`,
       summary: null,
       sort_order: idx,
-      courses: s.courses.map(c => ({
+      courses: s.courses.map((c) => ({
         map_stage_course_id: c.id,
         course_id: c.id,
         sort_order: 0,
@@ -46,21 +46,25 @@ describe('useMapLearningState', () => {
   });
 
   it('returns [completed, completed, active] when first two stages fully completed', () => {
-    const m = ref(makeMap([
-      { id: 1, courses: [{ id: 1, completed: true }] },
-      { id: 2, courses: [{ id: 2, completed: true }] },
-      { id: 3, courses: [{ id: 3, completed: false }] },
-    ]));
+    const m = ref(
+      makeMap([
+        { id: 1, courses: [{ id: 1, completed: true }] },
+        { id: 2, courses: [{ id: 2, completed: true }] },
+        { id: 3, courses: [{ id: 3, completed: false }] },
+      ]),
+    );
     const { stageStates } = useMapLearningState(m);
     expect(stageStates.value).toEqual(['completed', 'completed', 'active']);
   });
 
   it('returns [active, active, active] when nothing completed', () => {
-    const m = ref(makeMap([
-      { id: 1, courses: [{ id: 1, completed: false }] },
-      { id: 2, courses: [{ id: 2, completed: false }] },
-      { id: 3, courses: [{ id: 3, completed: false }] },
-    ]));
+    const m = ref(
+      makeMap([
+        { id: 1, courses: [{ id: 1, completed: false }] },
+        { id: 2, courses: [{ id: 2, completed: false }] },
+        { id: 3, courses: [{ id: 3, completed: false }] },
+      ]),
+    );
     const { stageStates } = useMapLearningState(m);
     expect(stageStates.value).toEqual(['active', 'active', 'active']);
   });

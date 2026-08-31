@@ -32,10 +32,7 @@ const controlGroups: Record<string, string[]> = {
     'views/maps/MapListView.vue',
     'views/maps/MapDetailView.vue',
   ],
-  'learning and personal': [
-    'views/learn/LessonView.vue',
-    'views/me/StudentCenterView.vue',
-  ],
+  'learning and personal': ['views/learn/LessonView.vue', 'views/me/StudentCenterView.vue'],
 };
 
 function violations(relativePath: string): string[] {

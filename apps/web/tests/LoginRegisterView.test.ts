@@ -11,7 +11,9 @@ const learnerApi = vi.hoisted(() => ({
   registerLearner: vi.fn(),
 }));
 const routerApi = vi.hoisted(() => ({
-  route: null as unknown as ReturnType<typeof reactive<{ path: string; query: Record<string, unknown>; fullPath: string }>>,
+  route: null as unknown as ReturnType<
+    typeof reactive<{ path: string; query: Record<string, unknown>; fullPath: string }>
+  >,
   replace: vi.fn(),
 }));
 const sessionApi = vi.hoisted(() => ({

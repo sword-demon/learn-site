@@ -22,7 +22,9 @@ const notificationsApi = vi.hoisted(() => ({
 const checkinsApi = vi.hoisted(() => ({ listCheckins: vi.fn() }));
 const pushApi = vi.hoisted(() => ({ createPushConnection: vi.fn() }));
 const routerApi = vi.hoisted(() => ({
-  route: null as unknown as ReturnType<typeof reactive<{ path: string; query: Record<string, unknown>; fullPath: string }>>,
+  route: null as unknown as ReturnType<
+    typeof reactive<{ path: string; query: Record<string, unknown>; fullPath: string }>
+  >,
   push: vi.fn(),
   replace: vi.fn(),
 }));

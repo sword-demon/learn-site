@@ -282,7 +282,9 @@ describe('MapEditorView', () => {
     await stage.get('[data-action="add-course"]').trigger('click');
     const courseSelect = wrapper.get('[data-field="course_id"]');
     await courseSelect.get('.el-select__wrapper').trigger('click');
-    const options = courseSelect.findAll('.el-select-dropdown__item').map((option) => option.text());
+    const options = courseSelect
+      .findAll('.el-select-dropdown__item')
+      .map((option) => option.text());
 
     expect(options).not.toContain(course.title);
     expect(options).toContain(otherCourse.title);

@@ -12,7 +12,12 @@ const authApi = vi.hoisted(() => ({
 }));
 
 const routerApi = vi.hoisted(() => ({
-  route: { path: '/', fullPath: '/', meta: { title: '工作台', affix: true }, matched: [{ path: '/' }, { path: '' }] },
+  route: {
+    path: '/',
+    fullPath: '/',
+    meta: { title: '工作台', affix: true },
+    matched: [{ path: '/' }, { path: '' }],
+  },
   push: vi.fn(),
 }));
 

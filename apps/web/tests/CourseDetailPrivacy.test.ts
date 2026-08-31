@@ -1,17 +1,17 @@
 // @vitest-environment happy-dom
 
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const learnerApi = vi.hoisted(() => ({ fetchCourseDetail: vi.fn(), startCourse: vi.fn() }))
+const learnerApi = vi.hoisted(() => ({ fetchCourseDetail: vi.fn(), startCourse: vi.fn() }));
 
-vi.mock('@/api/learner', () => learnerApi)
+vi.mock('@/api/learner', () => learnerApi);
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { id: '9' }, fullPath: '/courses/9', query: {} }),
   useRouter: () => ({ push: vi.fn() }),
-}))
+}));
 
-import CourseDetailView from '@/views/catalog/CourseDetailView.vue'
+import CourseDetailView from '@/views/catalog/CourseDetailView.vue';
 
 describe('CourseDetailView learner privacy', () => {
   beforeEach(() => {
@@ -39,8 +39,8 @@ describe('CourseDetailView learner privacy', () => {
         created_at: '2026-08-28 10:00:00',
       },
       chapters: [],
-    })
-  })
+    });
+  });
 
   it('renders only the aggregate count without private learner facts', async () => {
     const wrapper = mount(CourseDetailView, {
@@ -52,12 +52,12 @@ describe('CourseDetailView learner privacy', () => {
           ShareBar: true,
         },
       },
-    })
-    await flushPromises()
+    });
+    await flushPromises();
 
-    expect(wrapper.text()).toContain('23 位学员')
-    expect(wrapper.text()).not.toMatch(/1[3-9]\d{9}/)
-    expect(wrapper.text()).not.toContain('学习进度')
-    expect(wrapper.text()).not.toContain('购买金额')
-  })
-})
+    expect(wrapper.text()).toContain('23 位学员');
+    expect(wrapper.text()).not.toMatch(/1[3-9]\d{9}/);
+    expect(wrapper.text()).not.toContain('学习进度');
+    expect(wrapper.text()).not.toContain('购买金额');
+  });
+});

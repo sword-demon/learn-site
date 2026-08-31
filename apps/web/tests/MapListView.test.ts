@@ -17,7 +17,9 @@ const RouterLinkStub = {
   template: '<a :href="String(to)"><slot /></a>',
 };
 
-function enrolledMap(overrides: Partial<LearnerMapListDTO['items'][number]> = {}): LearnerMapListDTO['items'][number] {
+function enrolledMap(
+  overrides: Partial<LearnerMapListDTO['items'][number]> = {},
+): LearnerMapListDTO['items'][number] {
   return {
     id: 7,
     department_id: 3,
@@ -40,7 +42,9 @@ function enrolledMap(overrides: Partial<LearnerMapListDTO['items'][number]> = {}
   };
 }
 
-function unjoinedMap(overrides: Partial<LearnerMapListDTO['items'][number]> = {}): LearnerMapListDTO['items'][number] {
+function unjoinedMap(
+  overrides: Partial<LearnerMapListDTO['items'][number]> = {},
+): LearnerMapListDTO['items'][number] {
   return {
     ...enrolledMap(overrides),
     id: 9,

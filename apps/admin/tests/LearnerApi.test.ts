@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockHttp = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
-}))
+}));
 
-vi.mock('@/api/http', () => ({ default: mockHttp, http: mockHttp }))
+vi.mock('@/api/http', () => ({ default: mockHttp, http: mockHttp }));
 
-import { listLearners } from '@/api/learners'
+import { listLearners } from '@/api/learners';
 
 const account = {
   account_id: 1,
@@ -23,12 +23,12 @@ const account = {
   completed_course_count: 1,
   successful_order_count: 2,
   total_paid_amount: 198,
-}
+};
 
 describe('learner API boundary (repro)', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   it('listLearners: parses a well-formed ok envelope', async () => {
     mockHttp.get.mockResolvedValueOnce({
@@ -36,19 +36,26 @@ describe('learner API boundary (repro)', () => {
         ok: true,
         data: { items: [account], total: 1, page: 1, limit: 20 },
       },
-    })
+    });
     await expect(listLearners({ page: 1, limit: 20 })).resolves.toEqual({
-      items: [account], total: 1, page: 1, limit: 20,
-    })
-    expect(mockHttp.get).toHaveBeenCalledWith('/learners', { params: { page: 1, limit: 20 } })
-  })
+      items: [account],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    expect(mockHttp.get).toHaveBeenCalledWith('/learners', { params: { page: 1, limit: 20 } });
+  });
 
   it('listLearners: reproduces reported union error on empty/odd response', async () => {
-    mockHttp.get.mockResolvedValueOnce({ data: {} })
-    let caught: unknown
-    try { await listLearners() } catch (e) { caught = e }
-    expect(caught).toBeInstanceOf(Error)
-  })
+    mockHttp.get.mockResolvedValueOnce({ data: {} });
+    let caught: unknown;
+    try {
+      await listLearners();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+  });
 
   it('listLearners: parses a real UNAUTHENTICATED error envelope', async () => {
     mockHttp.get.mockResolvedValueOnce({
@@ -58,9 +65,9 @@ describe('learner API boundary (repro)', () => {
         error: { code: 'UNAUTHENTICATED', message: 'UNAUTHENTICATED' },
         meta: { request_id: 'abc' },
       },
-    })
-    await expect(listLearners()).rejects.toThrow(/UNAUTHENTICATED/)
-  })
+    });
+    await expect(listLearners()).rejects.toThrow(/UNAUTHENTICATED/);
+  });
 
   it('listLearners: parses real ok envelope with request_id meta', async () => {
     mockHttp.get.mockResolvedValueOnce({
@@ -69,9 +76,12 @@ describe('learner API boundary (repro)', () => {
         data: { items: [account], total: 1, page: 1, limit: 20 },
         meta: { request_id: 'abc' },
       },
-    })
+    });
     await expect(listLearners({ page: 1, limit: 20 })).resolves.toEqual({
-      items: [account], total: 1, page: 1, limit: 20,
-    })
-  })
-})
+      items: [account],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+  });
+});

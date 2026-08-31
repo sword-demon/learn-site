@@ -41,13 +41,15 @@ describe('admin Q&A API boundary', () => {
       data: { ok: true, data: inbox },
     });
 
-    await expect(fetchInbox({
-      status: 'answered',
-      course_id: 12,
-      lesson_id: 34,
-      page: 2,
-      limit: 20,
-    })).resolves.toEqual(inbox);
+    await expect(
+      fetchInbox({
+        status: 'answered',
+        course_id: 12,
+        lesson_id: 34,
+        page: 2,
+        limit: 20,
+      }),
+    ).resolves.toEqual(inbox);
 
     expect(mockHttp.get).toHaveBeenCalledWith('/questions', {
       params: {

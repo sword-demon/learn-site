@@ -29,7 +29,12 @@ const permissions: PermissionDTO[] = [
   { id: 7, code: 'asset.upload', module: 'catalog', description: '上传 PDF 或视频资源' },
   { id: 8, code: 'course_student.view', module: 'course_student', description: '查看课程学员名单' },
   { id: 9, code: 'course_student.reset', module: 'course_student', description: '重置学员进度' },
-  { id: 10, code: 'course_student.revoke_free', module: 'course_student', description: '撤销免费课程访问权' },
+  {
+    id: 10,
+    code: 'course_student.revoke_free',
+    module: 'course_student',
+    description: '撤销免费课程访问权',
+  },
   { id: 11, code: 'org.department', module: 'org', description: '管理部门' },
   { id: 12, code: 'org.post', module: 'org', description: '管理岗位' },
 ];

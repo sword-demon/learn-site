@@ -30,15 +30,8 @@ describe('resolveAdminBreadcrumb', () => {
   });
 
   it('adds module and page title for deep course route', () => {
-    const crumbs = resolveAdminBreadcrumb(
-      '/courses/12/edit',
-      { title: '编辑课程' },
-      menuEntries,
-    );
-    expect(crumbs).toEqual([
-      { title: '课程管理', path: '/courses' },
-      { title: '编辑课程' },
-    ]);
+    const crumbs = resolveAdminBreadcrumb('/courses/12/edit', { title: '编辑课程' }, menuEntries);
+    expect(crumbs).toEqual([{ title: '课程管理', path: '/courses' }, { title: '编辑课程' }]);
   });
 
   it('respects meta.breadcrumb override', () => {
@@ -46,16 +39,10 @@ describe('resolveAdminBreadcrumb', () => {
       '/courses/new',
       {
         title: '新建课程',
-        breadcrumb: [
-          { title: '课程管理', path: '/courses' },
-          { title: '新建课程' },
-        ],
+        breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '新建课程' }],
       },
       menuEntries,
     );
-    expect(crumbs).toEqual([
-      { title: '课程管理', path: '/courses' },
-      { title: '新建课程' },
-    ]);
+    expect(crumbs).toEqual([{ title: '课程管理', path: '/courses' }, { title: '新建课程' }]);
   });
 });
