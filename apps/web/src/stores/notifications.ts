@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useLoginFamilyStore } from '@/api/login';
 import { fetchLearnerProfile } from '@/api/learner';
 import { fetchUnreadCount } from '@/api/notifications';
-import { getAccessToken } from '@/api/http';
+import { getAccessToken, hasTokens } from '@/api/http';
 import { createPushConnection } from '@/utils/push';
 
 const POLL_INTERVAL_MS = 30_000;
@@ -81,7 +81,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     await refreshUnreadCount();
 
     const session = useLoginFamilyStore();
-    if (!session.loggedIn) {
+    if (!session.loggedIn || !hasTokens()) {
       unreadCount.value = 0;
       return;
     }
@@ -96,11 +96,22 @@ export const useNotificationStore = defineStore('notifications', () => {
     try {
       const profile = await fetchLearnerProfile();
       const access = getAccessToken();
+      if (!access) {
+        startPolling();
+        return;
+      }
       connection = await createPushConnection({
         url: pushUrl,
         appKey,
         auth: '/plugin/webman/push/auth',
-        ...(access !== null ? { authHeader: { Authorization: `Bearer ${access}` } } : {}),
+        getAuthHeader: () => {
+          const token = getAccessToken();
+          return token ? { Authorization: `Bearer ${token}` } : null;
+        },
+        getAuthData: () => {
+          const token = getAccessToken();
+          return token ? { access_token: token } : {};
+        },
       });
       if (!connection) {
         startPolling();

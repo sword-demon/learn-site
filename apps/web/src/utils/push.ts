@@ -12,7 +12,10 @@ type PushConstructor = new (options: {
   url: string;
   app_key: string;
   auth: string;
-  authHeader?: Record<string, string>;
+  authHeader?: Record<string, string> | null;
+  authData?: Record<string, string>;
+  getAuthHeader?: () => Record<string, string> | null;
+  getAuthData?: () => Record<string, string>;
 }) => PushClient;
 
 declare global {
@@ -48,7 +51,10 @@ export async function createPushConnection(options: {
   url: string;
   appKey: string;
   auth: string;
-  authHeader?: Record<string, string>;
+  authHeader?: Record<string, string> | null;
+  authData?: Record<string, string>;
+  getAuthHeader?: () => Record<string, string> | null;
+  getAuthData?: () => Record<string, string>;
 }): Promise<PushClient | null> {
   try {
     await loadPushScript();
@@ -59,7 +65,10 @@ export async function createPushConnection(options: {
       url: options.url,
       app_key: options.appKey,
       auth: options.auth,
+      ...(options.getAuthHeader ? { getAuthHeader: options.getAuthHeader } : {}),
+      ...(options.getAuthData ? { getAuthData: options.getAuthData } : {}),
       ...(options.authHeader ? { authHeader: options.authHeader } : {}),
+      ...(options.authData ? { authData: options.authData } : {}),
     });
   } catch {
     return null;

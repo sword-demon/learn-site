@@ -1,27 +1,25 @@
 <?php
 
-use App\service\PushNotificationService;
-use App\service\TokenService;
+use App\support\PushAuthGuard;
+use App\support\PushClientScript;
 use support\Request;
 use Webman\Route;
 use Webman\Push\Api;
 
 Route::get('/plugin/webman/push/push.js', function (Request $request) {
-    return response()->file(base_path() . '/vendor/webman/push/src/push.js');
+    return response(PushClientScript::load())
+        ->withHeader('Content-Type', 'application/javascript')
+        ->withHeader('Cache-Control', 'no-cache');
 });
 
 Route::post(config('plugin.webman.push.app.auth'), function (Request $request) {
-    $header = (string) $request->header('authorization', '');
-    if (!preg_match('/^Bearer\s+(.+)$/i', $header, $matches)) {
-        return response('Forbidden', 403);
-    }
-    $info = (new TokenService())->verifyAccess(trim($matches[1]));
-    if ($info === null || $info['kind'] !== TokenService::KIND_LEARNER) {
-        return response('Forbidden', 403);
-    }
     $channelName = (string) $request->post('channel_name', '');
-    $learnerId = (new PushNotificationService())->learnerIdFromChannel($channelName);
-    if ($learnerId === null || $learnerId !== (int) $info['account_id']) {
+    $auth = (new PushAuthGuard())->authorize(
+        (string) $request->header('authorization', ''),
+        $request->post('access_token'),
+        $channelName,
+    );
+    if ($auth === null) {
         return response('Forbidden', 403);
     }
     $pusher = new Api(

@@ -17,6 +17,7 @@ const pushApi = vi.hoisted(() => ({
 }));
 const httpApi = vi.hoisted(() => ({
   getAccessToken: vi.fn(),
+  hasTokens: vi.fn(),
 }));
 
 vi.mock('@/api/login', () => ({
@@ -50,6 +51,7 @@ describe('usePushNotifications', () => {
     notificationsApi.fetchUnreadCount.mockResolvedValue({ count: 2 });
     learnerApi.fetchLearnerProfile.mockResolvedValue({ account_id: 42 });
     httpApi.getAccessToken.mockReturnValue('token-abc');
+    httpApi.hasTokens.mockReturnValue(true);
     pushApi.createPushConnection.mockResolvedValue({
       subscribe: vi.fn(() => ({
         on: vi.fn(),
@@ -72,6 +74,24 @@ describe('usePushNotifications', () => {
 
     expect(notificationsApi.fetchUnreadCount).toHaveBeenCalled();
     expect(wrapper.vm.unreadCount).toBe(2);
+    expect(pushApi.createPushConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: '/plugin/webman/push/auth',
+        getAuthHeader: expect.any(Function),
+        getAuthData: expect.any(Function),
+      }),
+    );
+  });
+
+  it('skips push when there is no access token', async () => {
+    httpApi.hasTokens.mockReturnValue(true);
+    httpApi.getAccessToken.mockReturnValue(null);
+    loggedIn.value = true;
+    mount(TestHost);
+    await flushPromises();
+
+    expect(pushApi.createPushConnection).not.toHaveBeenCalled();
+    expect(notificationsApi.fetchUnreadCount).toHaveBeenCalled();
   });
 
   it('clears unread count on logout', async () => {
