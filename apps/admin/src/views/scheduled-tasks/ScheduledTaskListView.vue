@@ -89,7 +89,7 @@ onMounted(() => {
 
     <el-alert v-if="errorMessage" type="error" :title="errorMessage" show-icon class="mb-4" />
 
-    <el-card shadow="never" v-loading="loading">
+    <el-card v-loading="loading" shadow="never">
       <el-table :data="items" row-key="id" empty-text="暂无自动任务">
         <el-table-column prop="name" label="任务名称" min-width="180" />
         <el-table-column prop="handler_code" label="类型" min-width="160" />

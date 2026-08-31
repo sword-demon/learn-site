@@ -108,7 +108,7 @@ onMounted(async () => {
 
     <el-alert v-if="errorMessage" type="error" :title="errorMessage" show-icon class="mb-4" />
 
-    <el-card shadow="never" v-loading="loading">
+    <el-card v-loading="loading" shadow="never">
       <div class="filters">
         <el-select v-model="filters.task_id" clearable placeholder="全部任务" style="width: 220px">
           <el-option v-for="task in tasks" :key="task.id" :label="task.name" :value="task.id" />
