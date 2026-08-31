@@ -2,7 +2,7 @@
 
 import { flushPromises, mount } from '@vue/test-utils';
 import { h } from 'vue';
-import { ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installElementPlus } from '@/plugins/element-plus';
 
@@ -139,5 +139,69 @@ describe('BannerListView', () => {
       sort_order: 0,
       is_enabled: true,
     });
+  });
+
+  it('shows a friendly message when the jump link format is invalid', async () => {
+    const warning = vi.spyOn(ElMessage, 'warning').mockImplementation(() => undefined as never);
+    const wrapper = mount(BannerListView, {
+      global: {
+        plugins: [installElementPlus],
+        stubs: {
+          'el-upload': UploadStub,
+          'el-image': { props: ['src'], template: '<img data-role="banner-preview" :src="src">' },
+        },
+      },
+    });
+    await flushPromises();
+
+    await wrapper.get('[data-action="create"]').trigger('click');
+    await wrapper.get('[data-role="choose-banner"]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-field="link"]').setValue('www.example.com');
+
+    await wrapper.get('[data-action="save"]').trigger('click');
+    await flushPromises();
+
+    expect(bannersApi.createBanner).not.toHaveBeenCalled();
+    expect(warning).toHaveBeenCalledWith(
+      '跳转地址格式不正确。请填写站内路径（如 /courses/1）或完整的 http(s) 链接，留空表示不跳转。',
+    );
+    expect(wrapper.text()).toContain('跳转地址格式不正确');
+  });
+
+  it('maps BANNER_LINK_INVALID from the API to a friendly message', async () => {
+    const error = vi.spyOn(ElMessage, 'error').mockImplementation(() => undefined as never);
+    bannersApi.createBanner.mockRejectedValueOnce({
+      response: {
+        data: {
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'BANNER_LINK_INVALID',
+          },
+        },
+      },
+    });
+    const wrapper = mount(BannerListView, {
+      global: {
+        plugins: [installElementPlus],
+        stubs: {
+          'el-upload': UploadStub,
+          'el-image': { props: ['src'], template: '<img data-role="banner-preview" :src="src">' },
+        },
+      },
+    });
+    await flushPromises();
+
+    await wrapper.get('[data-action="create"]').trigger('click');
+    await wrapper.get('[data-role="choose-banner"]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-field="link"]').setValue('/courses/1');
+
+    await wrapper.get('[data-action="save"]').trigger('click');
+    await flushPromises();
+
+    expect(error).toHaveBeenCalledWith(
+      '跳转地址格式不正确。请填写站内路径（如 /courses/1）或完整的 http(s) 链接，留空表示不跳转。',
+    );
   });
 });

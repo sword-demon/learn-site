@@ -58,6 +58,62 @@ const draft = reactive<Draft>({
   is_enabled: true,
 });
 
+const BANNER_ERROR_MESSAGES: Record<string, string> = {
+  BANNER_LINK_INVALID:
+    '跳转地址格式不正确。请填写站内路径（如 /courses/1）或完整的 http(s) 链接，留空表示不跳转。',
+  BANNER_IMAGE_INVALID: '轮播图片无效，请重新上传',
+  BANNER_IMAGE_REQUIRED: '请先上传轮播图片',
+  BANNER_IMAGE_PAIR_REQUIRED: '轮播图片数据不完整，请重新上传',
+  BANNER_IMAGE_PAIR_INVALID: '轮播图片无效，请重新上传',
+  BANNER_SORT_INVALID: '排序必须在 0～9999 之间',
+  BANNER_STATUS_INVALID: '启用状态无效',
+  BANNER_VERSION_REQUIRED: '请刷新页面后重试',
+  BANNER_VERSION_INVALID: '版本信息无效，请刷新后重试',
+  BANNER_VERSION_CONFLICT: '轮播图已被其他管理员修改，请刷新后重试',
+  BANNER_NOT_FOUND: '轮播图不存在或已删除',
+};
+
+function bannerLinkInvalidMessage(): string {
+  return (
+    BANNER_ERROR_MESSAGES.BANNER_LINK_INVALID ??
+    '跳转地址格式不正确。请填写站内路径（如 /courses/1）或完整的 http(s) 链接，留空表示不跳转。'
+  );
+}
+
+function mapBannerErrorMessage(message: string | undefined): string | null {
+  if (!message) return null;
+  return BANNER_ERROR_MESSAGES[message] ?? null;
+}
+
+function hasControlChars(value: string): boolean {
+  for (const ch of value) {
+    const code = ch.charCodeAt(0);
+    if (code < 32 || code === 127) return true;
+  }
+  return false;
+}
+
+function validateLinkUrl(value: string): string | null {
+  const link = value.trim();
+  if (link === '') return null;
+  if (link.length > 2048 || hasControlChars(link)) {
+    return bannerLinkInvalidMessage();
+  }
+  if (link.startsWith('/') && !link.startsWith('//')) {
+    if (link.length > 512) return bannerLinkInvalidMessage();
+    return null;
+  }
+  try {
+    const url = new URL(link);
+    if (!['http:', 'https:'].includes(url.protocol) || url.hostname === '') {
+      return bannerLinkInvalidMessage();
+    }
+    return null;
+  } catch {
+    return bannerLinkInvalidMessage();
+  }
+}
+
 const dialogTitle = () => (draft.id === null ? '新增轮播图' : '编辑轮播图');
 
 function readError(error: unknown, fallback: string): string {
@@ -67,12 +123,15 @@ function readError(error: unknown, fallback: string): string {
     );
     if (badImage) return '轮播图片无效，请重新上传';
   }
-  const response = error as { response?: { data?: { error?: { message?: string } } } };
-  const message = response.response?.data?.error?.message ?? (error as Error).message ?? fallback;
-  if (message === 'BANNER_IMAGE_PAIR_INVALID') return '轮播图片无效，请重新上传';
-  if (message === 'BANNER_VERSION_CONFLICT') return '轮播图已被其他管理员修改，请刷新后重试';
+  const response = error as {
+    response?: { data?: { error?: { code?: string; message?: string } } };
+  };
+  const apiError = response.response?.data?.error;
+  const message = apiError?.message ?? (error as Error).message;
+  const mapped = mapBannerErrorMessage(message);
+  if (mapped) return mapped;
   if (message.includes('轮播图片上传响应无效')) return message;
-  return message;
+  return fallback;
 }
 
 async function reload(): Promise<void> {
@@ -129,6 +188,12 @@ async function save(): Promise<void> {
   errorMessage.value = '';
   try {
     const linkUrl = draft.link_url.trim() === '' ? null : draft.link_url.trim();
+    const linkError = linkUrl === null ? null : validateLinkUrl(linkUrl);
+    if (linkError) {
+      errorMessage.value = linkError;
+      ElMessage.warning(linkError);
+      return;
+    }
     if (draft.id === null) {
       const input: CreateBannerInput = {
         image_url: image.image_url,
@@ -296,8 +361,9 @@ onMounted(() => void reload());
             data-field="link"
             clearable
             maxlength="2048"
-            placeholder="站内路径或 http(s) URL，可留空"
+            placeholder="站内路径（如 /courses/1）或 http(s) 链接，可留空"
           />
+          <p class="field-hint">站内路径须以 / 开头；站外链接须以 http:// 或 https:// 开头。</p>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="draft.sort_order" data-field="sort" :min="0" :max="9999" />
@@ -352,5 +418,11 @@ onMounted(() => void reload());
 }
 .pager {
   justify-content: flex-end;
+}
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
 }
 </style>
