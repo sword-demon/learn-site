@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { AdminScheduledTaskDTO } from '@learn-site/contracts';
-import {
-  updateScheduledTask,
-  validateScheduleExpression,
-} from '@/api/scheduledTasks';
+import { updateScheduledTask, validateScheduleExpression } from '@/api/scheduledTasks';
 
 const props = defineProps<{
   task: AdminScheduledTaskDTO;
@@ -79,7 +76,13 @@ async function save(): Promise<void> {
 
 <template>
   <el-dialog v-model="open" :title="`编辑任务：${task.name}`" width="560px" destroy-on-close>
-    <el-alert v-if="readonly" type="warning" title="该任务处理器不可用，仅可查看。" show-icon class="mb-4" />
+    <el-alert
+      v-if="readonly"
+      type="warning"
+      title="该任务处理器不可用，仅可查看。"
+      show-icon
+      class="mb-4"
+    />
     <el-alert v-if="formError" type="error" :title="formError" show-icon class="mb-4" />
 
     <el-form label-width="120px">
@@ -104,7 +107,9 @@ async function save(): Promise<void> {
 
     <template #footer>
       <el-button @click="open = false">取消</el-button>
-      <el-button type="primary" :loading="saving" :disabled="readonly" @click="save">保存</el-button>
+      <el-button type="primary" :loading="saving" :disabled="readonly" @click="save"
+        >保存</el-button
+      >
     </template>
   </el-dialog>
 </template>

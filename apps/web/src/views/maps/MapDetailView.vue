@@ -51,7 +51,13 @@ async function enroll(): Promise<void> {
   }
 }
 
-watch(id, () => { void load(); }, { immediate: true });
+watch(
+  id,
+  () => {
+    void load();
+  },
+  { immediate: true },
+);
 
 const progress = computed(() => detail.value?.enrollment ?? null);
 const nextStep = computed(() => detail.value?.next_step ?? null);
@@ -120,7 +126,9 @@ function goCourse(courseId: number): void {
       <header class="map-detail__hero">
         <div>
           <h1 class="map-detail__title">{{ detail.title }}</h1>
-          <p class="map-detail__lede">{{ detail.objective || detail.summary || '按阶段推进学习路径。' }}</p>
+          <p class="map-detail__lede">
+            {{ detail.objective || detail.summary || '按阶段推进学习路径。' }}
+          </p>
           <p v-if="detail.audience" class="map-detail__audience">适合：{{ detail.audience }}</p>
         </div>
         <div class="map-detail__hero-cta">
@@ -140,7 +148,8 @@ function goCourse(courseId: number): void {
       <section v-if="progress" class="map-detail__progress">
         <el-progress :percentage="progress.progress_percent" :show-text="false" :stroke-width="6" />
         <span class="map-detail__progress-label">
-          {{ progress.completed_courses }}/{{ progress.total_courses }} 门 · {{ progress.progress_percent }}%
+          {{ progress.completed_courses }}/{{ progress.total_courses }} 门 ·
+          {{ progress.progress_percent }}%
         </span>
       </section>
 
@@ -218,7 +227,15 @@ function goCourse(courseId: number): void {
                 v-for="step in stage.courses"
                 :key="step.map_stage_course_id"
                 class="course-row"
-                :data-state="step.completed ? 'done' : step.viewer_authorized ? 'active' : step.available ? 'available' : 'unavailable'"
+                :data-state="
+                  step.completed
+                    ? 'done'
+                    : step.viewer_authorized
+                      ? 'active'
+                      : step.available
+                        ? 'available'
+                        : 'unavailable'
+                "
                 :data-step-id="step.map_stage_course_id"
               >
                 <div class="course-row__title">
@@ -237,11 +254,7 @@ function goCourse(courseId: number): void {
                 <el-tag :type="stepStateTagType(step)" size="small" effect="plain">
                   {{ stepStateLabel(step) }}
                 </el-tag>
-                <el-button
-                  v-if="step.available"
-                  size="small"
-                  @click="goCourse(step.course_id)"
-                >
+                <el-button v-if="step.available" size="small" @click="goCourse(step.course_id)">
                   {{ stepActionLabel(step) }}
                 </el-button>
                 <span v-else class="course-row__locked">不可学习</span>
@@ -403,13 +416,13 @@ function goCourse(courseId: number): void {
   border: 2px solid var(--line, #ebeef5);
 }
 
-.stage-node[data-state="completed"] .stage-dot {
+.stage-node[data-state='completed'] .stage-dot {
   background: var(--success, #67c23a);
   border-color: var(--success, #67c23a);
   color: #fff;
 }
 
-.stage-node[data-state="active"] .stage-dot {
+.stage-node[data-state='active'] .stage-dot {
   background: var(--warning, #e6a23c);
   border-color: var(--warning, #e6a23c);
   color: #fff;
@@ -480,11 +493,11 @@ function goCourse(courseId: number): void {
   background: #fff;
 }
 
-.course-row[data-state="done"] {
+.course-row[data-state='done'] {
   background: var(--success-soft, #f0f9eb);
 }
 
-.course-row[data-state="active"] {
+.course-row[data-state='active'] {
   border-color: var(--warning, #e6a23c);
 }
 

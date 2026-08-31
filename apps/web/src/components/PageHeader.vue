@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useLoginFamilyStore } from '@/api/login'
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useLoginFamilyStore } from '@/api/login';
 
-const router = useRouter()
-const session = useLoginFamilyStore()
+const router = useRouter();
+const session = useLoginFamilyStore();
 
 // ponytail: derive logged-in state from session reactive — H5
-const loggedIn = computed(() => session.loggedIn)
+const loggedIn = computed(() => session.loggedIn);
 
 function goLogin(): void {
-  void router.push('/login')
+  void router.push('/login');
 }
 
 function goRegister(): void {
-  void router.push('/register')
+  void router.push('/register');
 }
 </script>
 
@@ -31,12 +31,7 @@ function goRegister(): void {
 
       <div class="search-box">
         <span class="search-label" aria-hidden="true">搜索</span>
-        <input
-          type="search"
-          placeholder="课程、地图…"
-          aria-label="搜索"
-          class="search-input"
-        />
+        <input type="search" placeholder="课程、地图…" aria-label="搜索" class="search-input" />
       </div>
 
       <div v-if="loggedIn" class="user-actions">

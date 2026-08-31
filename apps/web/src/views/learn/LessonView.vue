@@ -3,7 +3,12 @@
     <el-skeleton v-if="loading" animated :rows="9" />
 
     <div v-else-if="loadError" class="lesson-page__error">
-      <el-alert :title="errorMessage || '课节暂时读不到，请稍后再试。'" type="error" :closable="false" show-icon />
+      <el-alert
+        :title="errorMessage || '课节暂时读不到，请稍后再试。'"
+        type="error"
+        :closable="false"
+        show-icon
+      />
       <el-button data-action="retry" @click="bootstrapLesson">重新加载</el-button>
     </div>
 
@@ -24,7 +29,9 @@
         <aside class="lesson-catalog" aria-label="课程目录">
           <h4 class="lesson-catalog__h">课程目录</h4>
           <template v-for="(chapter, chapterIndex) in courseChapters" :key="chapter.id">
-            <div class="lesson-catalog__chapter">第 {{ chapterIndex + 1 }} 章 · {{ chapter.title }}</div>
+            <div class="lesson-catalog__chapter">
+              第 {{ chapterIndex + 1 }} 章 · {{ chapter.title }}
+            </div>
             <router-link
               v-for="lesson in chapter.lessons"
               :key="lesson.id"
@@ -78,7 +85,9 @@
               class="lesson-stage__foot"
               aria-live="polite"
             >
-              <el-tag v-if="completed" type="success" size="small" effect="plain">本节已完成</el-tag>
+              <el-tag v-if="completed" type="success" size="small" effect="plain"
+                >本节已完成</el-tag
+              >
               <span v-else class="lesson-stage__hint">阅读后请标记完成</span>
               <span class="lesson-stage__spacer" />
 
@@ -424,7 +433,9 @@ onUnmounted(() => {
 
 watch(
   () => [route.params.courseId, route.params.lessonId],
-  () => { void bootstrapLesson(); },
+  () => {
+    void bootstrapLesson();
+  },
   { immediate: true },
 );
 </script>
@@ -601,9 +612,15 @@ watch(
   background: var(--ink-2, #909399);
 }
 
-.lesson-stage__typechip.t-md { background: var(--seal, #409eff); }
-.lesson-stage__typechip.t-pdf { background: #c45656; }
-.lesson-stage__typechip.t-video { background: var(--moss, #67c23a); }
+.lesson-stage__typechip.t-md {
+  background: var(--seal, #409eff);
+}
+.lesson-stage__typechip.t-pdf {
+  background: #c45656;
+}
+.lesson-stage__typechip.t-video {
+  background: var(--moss, #67c23a);
+}
 
 .lesson-stage__sub {
   margin: 6px 0 0;

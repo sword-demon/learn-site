@@ -77,7 +77,10 @@ async function confirmDelete(row: AdminCheckinListItemDTO): Promise<void> {
 
 function formatDateTime(value: string): string {
   if (!value) return '—';
-  return value.replace('T', ' ').replace(/\+\d{2}:\d{2}$/, '').slice(0, 19);
+  return value
+    .replace('T', ' ')
+    .replace(/\+\d{2}:\d{2}$/, '')
+    .slice(0, 19);
 }
 
 onMounted(() => {

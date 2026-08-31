@@ -2,10 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { AdminScheduledTaskDTO } from '@learn-site/contracts';
-import {
-  listScheduledTasks,
-  runScheduledTask,
-} from '@/api/scheduledTasks';
+import { listScheduledTasks, runScheduledTask } from '@/api/scheduledTasks';
 import ScheduledTaskEditDialog from '@/views/scheduled-tasks/ScheduledTaskEditDialog.vue';
 
 defineOptions({ name: 'ScheduledTaskListView' });
@@ -25,7 +22,9 @@ function statusLabel(status: string | null | undefined): string {
   return '已跳过';
 }
 
-function statusTagType(status: string | null | undefined): 'success' | 'danger' | 'warning' | 'info' {
+function statusTagType(
+  status: string | null | undefined,
+): 'success' | 'danger' | 'warning' | 'info' {
   if (status === 'success') return 'success';
   if (status === 'failed') return 'danger';
   if (status === 'skipped') return 'warning';
@@ -97,12 +96,16 @@ onMounted(() => {
         <el-table-column prop="schedule_expression" label="调度表达式" min-width="160" />
         <el-table-column label="启用" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+            <el-tag :type="row.enabled ? 'success' : 'info'">{{
+              row.enabled ? '启用' : '停用'
+            }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="最近执行" min-width="120">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.last_run_status)">{{ statusLabel(row.last_run_status) }}</el-tag>
+            <el-tag :type="statusTagType(row.last_run_status)">{{
+              statusLabel(row.last_run_status)
+            }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="next_run_at" label="下次执行" min-width="160">

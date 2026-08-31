@@ -1,19 +1,19 @@
 <script setup lang="ts" generic="K extends string">
 interface Tab {
-  key: K
-  label: string
+  key: K;
+  label: string;
 }
 
 defineProps<{
-  tabs: Tab[]
-  modelValue: K
-}>()
+  tabs: Tab[];
+  modelValue: K;
+}>();
 const emit = defineEmits<{
-  'update:modelValue': [key: K]
-}>()
+  'update:modelValue': [key: K];
+}>();
 
 function select(key: K): void {
-  emit('update:modelValue', key)
+  emit('update:modelValue', key);
 }
 </script>
 
@@ -58,7 +58,9 @@ function select(key: K): void {
   font-size: 14px;
   color: #606266;
   border-bottom: 2px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
 }
 .tab-trigger.active {
   color: #409eff;

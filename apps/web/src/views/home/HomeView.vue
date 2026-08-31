@@ -124,7 +124,8 @@ const homeStore = useHomeStore();
 const session = useLoginFamilyStore();
 const route = useRoute();
 const router = useRouter();
-const { categories, recentCourses, banners, recommendedMaps, loading, error } = storeToRefs(homeStore);
+const { categories, recentCourses, banners, recommendedMaps, loading, error } =
+  storeToRefs(homeStore);
 
 const selectedId = ref<number | null>(null);
 const courses = ref<CourseListItemDTO[]>([]);
@@ -323,7 +324,9 @@ onMounted(async () => {
   border-radius: var(--r, 8px);
   background: #fff;
   overflow: hidden;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .home__map-card:hover {

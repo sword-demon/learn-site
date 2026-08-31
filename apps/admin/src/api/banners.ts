@@ -42,9 +42,7 @@ function parseBannerInput<T>(schema: { parse: (input: unknown) => T }, input: un
   } catch (error) {
     if (
       error instanceof ZodError &&
-      error.issues.some(
-        (issue) => issue.path[0] === 'image_url' || issue.path[0] === 'image_key',
-      )
+      error.issues.some((issue) => issue.path[0] === 'image_url' || issue.path[0] === 'image_key')
     ) {
       throw new Error('轮播图片无效，请重新上传');
     }

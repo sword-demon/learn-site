@@ -2,9 +2,7 @@
   <footer class="foot site-footer" aria-label="站点页脚">
     <div class="foot-inner">
       <div class="foot-brand">
-        <div class="seal-mark" aria-hidden="true">
-          <span>拾</span><span>阶</span>
-        </div>
+        <div class="seal-mark" aria-hidden="true"><span>拾</span><span>阶</span></div>
         <div class="foot-copy-block">
           <p class="foot-lead">
             <strong class="serif">拾阶学社</strong>

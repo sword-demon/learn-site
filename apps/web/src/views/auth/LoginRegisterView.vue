@@ -32,12 +32,7 @@
         <p v-if="copy.asideBody">{{ copy.asideBody }}</p>
       </aside>
       <section class="auth-card">
-        <el-tabs
-          v-model="mode"
-          class="auth-tabs"
-          data-testid="mode-tabs"
-          @tab-click="onTabClick"
-        >
+        <el-tabs v-model="mode" class="auth-tabs" data-testid="mode-tabs" @tab-click="onTabClick">
           <el-tab-pane label="登录" name="login" />
           <el-tab-pane label="注册" name="register" />
         </el-tabs>
@@ -88,22 +83,26 @@
               </el-button>
             </div>
           </label>
-          <el-alert v-if="errorLabel" :title="errorLabel" type="error" :closable="false" show-icon />
+          <el-alert
+            v-if="errorLabel"
+            :title="errorLabel"
+            type="error"
+            :closable="false"
+            show-icon
+          />
           <el-button
             type="primary"
             native-type="submit"
             :loading="busy"
             data-testid="submit-button"
-          >{{ copy.submit }}</el-button>
+            >{{ copy.submit }}</el-button
+          >
         </el-form>
         <p class="switch">
           {{ copy.switchPrompt }}
-          <a
-            href="#"
-            class="switch-link"
-            data-testid="switch-mode"
-            @click.prevent="switchMode"
-          >{{ copy.switchLabel }}</a>
+          <a href="#" class="switch-link" data-testid="switch-mode" @click.prevent="switchMode">{{
+            copy.switchLabel
+          }}</a>
         </p>
         <p class="form-note">{{ copy.note }}</p>
       </section>
@@ -240,9 +239,7 @@ async function onSubmit(): Promise<void> {
   error.value = '';
   try {
     const pair =
-      mode.value === 'login'
-        ? await loginLearner({ ...form })
-        : await registerLearner({ ...form });
+      mode.value === 'login' ? await loginLearner({ ...form }) : await registerLearner({ ...form });
     session.signIn(pair);
     await router.replace(redirect.value);
   } catch (err) {

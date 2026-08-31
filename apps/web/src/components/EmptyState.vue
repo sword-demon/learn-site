@@ -1,38 +1,20 @@
 <script setup lang="ts">
 // ponytail: native SVG over an icon lib import.
-import { RouterLink } from 'vue-router'
+import { RouterLink } from 'vue-router';
 
 defineProps<{
-  headline?: string
-  sub?: string
-  ctaText?: string
-  ctaHref?: string
-}>()
+  headline?: string;
+  sub?: string;
+  ctaText?: string;
+  ctaHref?: string;
+}>();
 </script>
 
 <template>
   <div class="empty-state" data-testid="empty-state">
-    <svg
-      class="empty-icon"
-      viewBox="0 0 64 64"
-      width="64"
-      height="64"
-      aria-hidden="true"
-    >
-      <circle
-        cx="32"
-        cy="32"
-        r="28"
-        fill="none"
-        stroke="#dcdfe6"
-        stroke-width="2"
-      />
-      <path
-        d="M22 36 L42 36"
-        stroke="#dcdfe6"
-        stroke-width="2"
-        stroke-linecap="round"
-      />
+    <svg class="empty-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+      <circle cx="32" cy="32" r="28" fill="none" stroke="#dcdfe6" stroke-width="2" />
+      <path d="M22 36 L42 36" stroke="#dcdfe6" stroke-width="2" stroke-linecap="round" />
     </svg>
     <h3 v-if="headline" class="empty-headline">{{ headline }}</h3>
     <p v-if="sub" class="empty-sub">{{ sub }}</p>

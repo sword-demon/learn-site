@@ -1,17 +1,12 @@
 <script setup lang="ts">
 // ponytail: native CSS animation over a UI-lib skeleton primitive.
 // Upgrade if rows need rounded avatars / media blocks — Element Plus el-skeleton then.
-withDefaults(defineProps<{ rows?: number }>(), { rows: 3 })
+withDefaults(defineProps<{ rows?: number }>(), { rows: 3 });
 </script>
 
 <template>
   <div class="skeleton-block" role="status" aria-busy="true">
-    <div
-      v-for="i in rows"
-      :key="i"
-      class="skeleton-row"
-      data-testid="skeleton-row"
-    />
+    <div v-for="i in rows" :key="i" class="skeleton-row" data-testid="skeleton-row" />
   </div>
 </template>
 

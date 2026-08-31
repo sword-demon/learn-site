@@ -62,7 +62,11 @@
               data-action="pay-wechat"
               data-method="wechat"
             >
-              <span class="checkout-payment__method-icon checkout-payment__method-icon--wechat" aria-hidden="true">微</span>
+              <span
+                class="checkout-payment__method-icon checkout-payment__method-icon--wechat"
+                aria-hidden="true"
+                >微</span
+              >
               <span class="checkout-payment__method-label">微信支付</span>
             </el-radio>
             <el-radio
@@ -71,7 +75,11 @@
               data-action="pay-alipay"
               data-method="alipay"
             >
-              <span class="checkout-payment__method-icon checkout-payment__method-icon--alipay" aria-hidden="true">支</span>
+              <span
+                class="checkout-payment__method-icon checkout-payment__method-icon--alipay"
+                aria-hidden="true"
+                >支</span
+              >
               <span class="checkout-payment__method-label">支付宝</span>
             </el-radio>
           </el-radio-group>
@@ -85,7 +93,11 @@
                 placeholder="可选，输入后点击应用"
                 data-testid="promo-input"
               />
-              <el-button data-action="apply-promo" :disabled="!promoCode.trim()" @click="applyPromo">
+              <el-button
+                data-action="apply-promo"
+                :disabled="!promoCode.trim()"
+                @click="applyPromo"
+              >
                 应用
               </el-button>
             </div>
@@ -94,9 +106,13 @@
 
           <el-checkbox v-model="agreed" class="checkout-payment__agree">
             我已阅读并同意
-            <router-link to="/terms" target="_blank" class="checkout-payment__terms">《用户协议》</router-link>
+            <router-link to="/terms" target="_blank" class="checkout-payment__terms"
+              >《用户协议》</router-link
+            >
             与
-            <router-link to="/refund" target="_blank" class="checkout-payment__terms">《退款说明》</router-link>
+            <router-link to="/refund" target="_blank" class="checkout-payment__terms"
+              >《退款说明》</router-link
+            >
           </el-checkbox>
 
           <el-button
@@ -116,13 +132,13 @@
 
         <template v-else>
           <h2 class="checkout-payment__h">{{ statusLabel(order.status) }}</h2>
-          <p
-            v-if="order.status === 'pending'"
-            class="checkout-payment__copy"
-          >
+          <p v-if="order.status === 'pending'" class="checkout-payment__copy">
             请使用{{ paymentMethodLabel }}完成付款，页面会自动刷新状态。
           </p>
-          <p v-else-if="order.status === 'succeeded'" class="checkout-payment__copy checkout-payment__copy--ok">
+          <p
+            v-else-if="order.status === 'succeeded'"
+            class="checkout-payment__copy checkout-payment__copy--ok"
+          >
             课程访问权已开通。
           </p>
           <p v-else class="checkout-payment__copy checkout-payment__copy--err">
@@ -207,7 +223,13 @@ async function load(): Promise<void> {
   }
 }
 
-watch(id, () => { void load(); }, { immediate: true });
+watch(
+  id,
+  () => {
+    void load();
+  },
+  { immediate: true },
+);
 
 const currentPrice = computed(() => {
   const c = course.value?.course;
@@ -456,7 +478,9 @@ onUnmounted(stopPolling);
   cursor: pointer;
   font: inherit;
   text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .checkout-payment__method:hover {

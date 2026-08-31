@@ -323,7 +323,13 @@ async function load(): Promise<void> {
 }
 
 // ponytail: matches MapDetailView pattern — SPA navigation re-loads when id changes
-watch(id, () => { void load(); }, { immediate: true });
+watch(
+  id,
+  () => {
+    void load();
+  },
+  { immediate: true },
+);
 
 function unlockCatalogLessons(): void {
   if (!detail.value?.course.viewer_authorized) return;
@@ -514,12 +520,24 @@ function onEntitled(): void {
   color: #fff;
 }
 
-.course-hero__cover[data-hue='0'] { background: #5B8FF9; }
-.course-hero__cover[data-hue='1'] { background: #5AD8A6; }
-.course-hero__cover[data-hue='2'] { background: #F6BD16; }
-.course-hero__cover[data-hue='3'] { background: #E86452; }
-.course-hero__cover[data-hue='4'] { background: #6DC8EC; }
-.course-hero__cover[data-hue='5'] { background: #945FB9; }
+.course-hero__cover[data-hue='0'] {
+  background: #5b8ff9;
+}
+.course-hero__cover[data-hue='1'] {
+  background: #5ad8a6;
+}
+.course-hero__cover[data-hue='2'] {
+  background: #f6bd16;
+}
+.course-hero__cover[data-hue='3'] {
+  background: #e86452;
+}
+.course-hero__cover[data-hue='4'] {
+  background: #6dc8ec;
+}
+.course-hero__cover[data-hue='5'] {
+  background: #945fb9;
+}
 
 .course-hero__body {
   flex: 1;
@@ -654,9 +672,15 @@ function onEntitled(): void {
   background: var(--ink-2, #909399);
 }
 
-.course-lesson__typechip.t-md { background: var(--seal, #409eff); }
-.course-lesson__typechip.t-pdf { background: #c45656; }
-.course-lesson__typechip.t-video { background: var(--moss, #67c23a); }
+.course-lesson__typechip.t-md {
+  background: var(--seal, #409eff);
+}
+.course-lesson__typechip.t-pdf {
+  background: #c45656;
+}
+.course-lesson__typechip.t-video {
+  background: var(--moss, #67c23a);
+}
 
 .course-lesson__meta {
   min-width: 0;

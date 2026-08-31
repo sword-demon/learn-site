@@ -82,17 +82,13 @@ async function revoke(row: CourseStudentDTO): Promise<void> {
   }
   let reason = '';
   try {
-    const out = await ElMessageBox.prompt(
-      `请填写撤销 ${row.login} 免费授权的原因`,
-      '撤销授权',
-      {
-        inputPlaceholder: '撤销原因',
-        inputValidator: (value) => (value.trim() ? true : '请填写撤销原因'),
-        confirmButtonText: '撤销',
-        cancelButtonText: '取消',
-        type: 'warning',
-      },
-    );
+    const out = await ElMessageBox.prompt(`请填写撤销 ${row.login} 免费授权的原因`, '撤销授权', {
+      inputPlaceholder: '撤销原因',
+      inputValidator: (value) => (value.trim() ? true : '请填写撤销原因'),
+      confirmButtonText: '撤销',
+      cancelButtonText: '取消',
+      type: 'warning',
+    });
     reason = out.value.trim();
   } catch {
     return;
@@ -112,15 +108,11 @@ async function revoke(row: CourseStudentDTO): Promise<void> {
 async function resetProgress(row: CourseStudentDTO): Promise<void> {
   if (submittingId.value !== null) return;
   try {
-    await ElMessageBox.confirm(
-      `确认重置 ${row.login} 在本课程的全部学习进度？`,
-      '重置进度',
-      {
-        type: 'warning',
-        confirmButtonText: '重置',
-        cancelButtonText: '取消',
-      },
-    );
+    await ElMessageBox.confirm(`确认重置 ${row.login} 在本课程的全部学习进度？`, '重置进度', {
+      type: 'warning',
+      confirmButtonText: '重置',
+      cancelButtonText: '取消',
+    });
   } catch {
     return;
   }

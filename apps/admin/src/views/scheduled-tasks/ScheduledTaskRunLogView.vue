@@ -111,19 +111,19 @@ onMounted(async () => {
     <el-card shadow="never" v-loading="loading">
       <div class="filters">
         <el-select v-model="filters.task_id" clearable placeholder="全部任务" style="width: 220px">
-          <el-option
-            v-for="task in tasks"
-            :key="task.id"
-            :label="task.name"
-            :value="task.id"
-          />
+          <el-option v-for="task in tasks" :key="task.id" :label="task.name" :value="task.id" />
         </el-select>
         <el-select v-model="filters.status" clearable placeholder="全部结果" style="width: 140px">
           <el-option label="成功" value="success" />
           <el-option label="失败" value="failed" />
           <el-option label="已跳过" value="skipped" />
         </el-select>
-        <el-select v-model="filters.trigger_type" clearable placeholder="触发方式" style="width: 140px">
+        <el-select
+          v-model="filters.trigger_type"
+          clearable
+          placeholder="触发方式"
+          style="width: 140px"
+        >
           <el-option label="自动" value="schedule" />
           <el-option label="手动" value="manual" />
         </el-select>

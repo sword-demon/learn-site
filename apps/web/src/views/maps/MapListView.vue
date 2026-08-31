@@ -51,10 +51,7 @@ onMounted(load);
         </template>
       </el-alert>
     </div>
-    <el-empty
-      v-else-if="items.length === 0"
-      description="还没有可用的学习地图"
-    />
+    <el-empty v-else-if="items.length === 0" description="还没有可用的学习地图" />
     <ul v-else class="map-grid" data-testid="map-grid">
       <li v-for="m in items" :key="m.id" class="map-card" :data-map-id="m.id">
         <router-link :to="`/maps/${m.id}`" class="map-card__cover-link" :aria-label="m.title">
@@ -72,8 +69,8 @@ onMounted(load);
           </p>
           <div v-if="m.enrollment" class="map-card__progress" data-testid="map-card-progress">
             <span class="map-card__progress-label">
-              {{ m.enrollment.completed_courses }}/{{ m.enrollment.total_courses }} 节
-              · {{ m.enrollment.progress_percent }}%
+              {{ m.enrollment.completed_courses }}/{{ m.enrollment.total_courses }} 节 ·
+              {{ m.enrollment.progress_percent }}%
             </span>
             <el-progress
               :percentage="m.enrollment.progress_percent"
@@ -135,7 +132,9 @@ onMounted(load);
   border: 1px solid var(--line, #ebeef5);
   border-radius: var(--r, 8px);
   overflow: hidden;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .map-card:hover {
@@ -169,12 +168,24 @@ onMounted(load);
   color: #fff;
 }
 
-.map-card__cover[data-hue='0'] { background: #5B8FF9; }
-.map-card__cover[data-hue='1'] { background: #5AD8A6; }
-.map-card__cover[data-hue='2'] { background: #F6BD16; }
-.map-card__cover[data-hue='3'] { background: #E86452; }
-.map-card__cover[data-hue='4'] { background: #6DC8EC; }
-.map-card__cover[data-hue='5'] { background: #945FB9; }
+.map-card__cover[data-hue='0'] {
+  background: #5b8ff9;
+}
+.map-card__cover[data-hue='1'] {
+  background: #5ad8a6;
+}
+.map-card__cover[data-hue='2'] {
+  background: #f6bd16;
+}
+.map-card__cover[data-hue='3'] {
+  background: #e86452;
+}
+.map-card__cover[data-hue='4'] {
+  background: #6dc8ec;
+}
+.map-card__cover[data-hue='5'] {
+  background: #945fb9;
+}
 
 .map-card__body {
   padding: 16px;

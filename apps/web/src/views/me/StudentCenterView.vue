@@ -31,13 +31,7 @@ import { useNotificationStore } from '@/stores/notifications';
 
 defineOptions({ name: 'StudentCenterView' });
 
-type TabKey =
-  | 'learning'
-  | 'favorites'
-  | 'orders'
-  | 'messages'
-  | 'checkins'
-  | 'account';
+type TabKey = 'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account';
 
 type CheckinPrompt = {
   dialogVisible: { value: boolean };
@@ -542,11 +536,9 @@ onBeforeUnmount(() => {
             />
             <div class="lmeta">
               {{ item.progress_percent }}% · 讲师 {{ item.course.teacher_name || '未知' }}
-              <el-tag
-                v-if="item.entitlement_status === 'revoked'"
-                type="danger"
-                size="small"
-              >访问已撤销</el-tag>
+              <el-tag v-if="item.entitlement_status === 'revoked'" type="danger" size="small"
+                >访问已撤销</el-tag
+              >
               <el-tag v-else-if="item.completed_at" type="success" size="small">已完成</el-tag>
             </div>
             <p
@@ -624,13 +616,13 @@ onBeforeUnmount(() => {
           </router-link>
           <div>
             <h3>
-              <router-link :to="`/courses/${course.course_id}`"
-                >《{{ course.title }}》</router-link
-              >
+              <router-link :to="`/courses/${course.course_id}`">《{{ course.title }}》</router-link>
             </h3>
             <div class="lmeta">
               {{ course.teacher_name }}
-              <el-tag v-if="course.status !== 'published'" type="info" size="small">暂不可用</el-tag>
+              <el-tag v-if="course.status !== 'published'" type="info" size="small"
+                >暂不可用</el-tag
+              >
             </div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end">
@@ -651,10 +643,7 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </div>
-      <el-empty
-        v-else
-        description="收藏夹还是空的，在课程卡片或详情页收藏想稍后学的课"
-      />
+      <el-empty v-else description="收藏夹还是空的，在课程卡片或详情页收藏想稍后学的课" />
     </section>
 
     <!-- 订单 -->
@@ -796,7 +785,10 @@ onBeforeUnmount(() => {
         :closable="false"
       />
       <el-skeleton v-if="checkinLoading && checkinItems.length === 0" :rows="4" animated />
-      <el-empty v-else-if="!checkinLoading && checkinItems.length === 0" description="还没有签到记录">
+      <el-empty
+        v-else-if="!checkinLoading && checkinItems.length === 0"
+        description="还没有签到记录"
+      >
         <el-button type="primary" data-action="open-checkin" @click="openCheckinDialog">
           立即签到
         </el-button>
@@ -851,10 +843,7 @@ onBeforeUnmount(() => {
           <el-input v-model="profileForm.nickname" maxlength="32" autocomplete="nickname" />
         </el-form-item>
         <el-form-item label="课程页公开显示">
-          <el-switch
-            v-model="profileForm.show_on_course"
-            active-text="在课程页显示我的称呼"
-          />
+          <el-switch v-model="profileForm.show_on_course" active-text="在课程页显示我的称呼" />
         </el-form-item>
         <el-alert
           v-if="profileSaved"
