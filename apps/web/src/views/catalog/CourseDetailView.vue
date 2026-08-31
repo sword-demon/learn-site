@@ -41,8 +41,8 @@
                 </li>
                 <li>
                   <span class="course-hero__fact-label">学员</span>
-                  <b>{{ detail.course.learner_count }}</b> 人
-                  <!-- ponytail: Figma wants enrolled_count (distinct semantic); reuse learner_count -->
+                  <b>{{ detail.course.learner_count }} 位学员</b>
+                  <!-- ponytail: aligned copy with CourseShelfCard / CategoryView -->
                 </li>
                 <li>
                   <span class="course-hero__fact-label">课时</span>
