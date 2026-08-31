@@ -7,7 +7,6 @@ namespace Tests;
 use App\controller\learner\NotificationController;
 use App\middleware\Authorize;
 use App\service\NotificationDispatchService;
-use App\service\PushNotificationService;
 use PHPUnit\Framework\TestCase;
 use support\App;
 use support\Request;
@@ -43,7 +42,7 @@ final class NotificationDispatchTest extends TestCase
 
     public function testAnnouncementFanOutCreatesDispatchAndInboxRows(): void
     {
-        $service = new NotificationDispatchService(new PushNotificationService());
+        $service = new NotificationDispatchService();
         $result = $service->sendAnnouncement($this->staffId, '维护通知', '今晚维护');
 
         self::assertSame('announcement', $result['type']);
@@ -61,7 +60,7 @@ final class NotificationDispatchTest extends TestCase
 
     public function testInternalMessageOnlyReachesSelectedLearners(): void
     {
-        $service = new NotificationDispatchService(new PushNotificationService());
+        $service = new NotificationDispatchService();
         $service->sendInternalMessage(
             $this->staffId,
             '学习提醒',
@@ -91,7 +90,7 @@ final class NotificationDispatchTest extends TestCase
 
     public function testInternalMessageRejectsEmptyRecipients(): void
     {
-        $service = new NotificationDispatchService(new PushNotificationService());
+        $service = new NotificationDispatchService();
         $this->expectException(\App\service\BusinessException::class);
         $this->expectExceptionMessage('INVALID_RECIPIENTS');
         $service->sendInternalMessage($this->staffId, '提醒', '正文', []);
@@ -99,7 +98,7 @@ final class NotificationDispatchTest extends TestCase
 
     public function testListAndShowReturnDispatchRecords(): void
     {
-        $service = new NotificationDispatchService(new PushNotificationService());
+        $service = new NotificationDispatchService();
         $created = $service->sendAnnouncement($this->staffId, '公告一', '正文一');
         $service->sendInternalMessage(
             $this->staffId,
@@ -128,7 +127,7 @@ final class NotificationDispatchTest extends TestCase
 
     public function testUnreadCountReturnsOnlyOwnerUnreadRows(): void
     {
-        $service = new NotificationDispatchService(new PushNotificationService());
+        $service = new NotificationDispatchService();
         $service->sendInternalMessage($this->staffId, '仅甲', '正文', [$this->learnerA]);
 
         $request = new Request("GET /api/learner/v1/messages/unread-count HTTP/1.1\r\nHost: test\r\n\r\n");

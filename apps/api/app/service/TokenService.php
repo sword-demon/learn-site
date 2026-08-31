@@ -33,6 +33,9 @@ final class TokenService
     private const REFRESH_PREFIX = 'refresh:';
     private const FAMILY_PREFIX  = 'family:';
     private const SPENT_PREFIX   = 'spent:';
+    private const ACCOUNT_FAMILIES_SUFFIX = ':families';
+    private const FAMILY_ACCESS_KEYS_SUFFIX = ':access_keys';
+    private const FAMILY_REFRESH_KEYS_SUFFIX = ':refresh_keys';
 
     public function __construct(
         private readonly int $accessTtl  = 900,
@@ -103,6 +106,7 @@ final class TokenService
         }
 
         $redis->setex(self::SPENT_PREFIX . $hash, $this->refreshTtl, $familyId);
+        $this->removeTokenFromFamilySet($redis, $key, $familyId, self::REFRESH_PREFIX);
         $redis->del($key);
 
         // Mint a new pair on the same family (refresh rotation).
@@ -156,24 +160,15 @@ final class TokenService
         if ($redis === null) {
             return 0;
         }
-        $count = 0;
-        foreach (['access:', 'refresh:'] as $prefix) {
-            foreach ($this->scanKeys($redis, $prefix . '*') as $key) {
-                $payload = $redis->get($key);
-                if (!$payload) {
-                    continue;
-                }
-                $row = json_decode((string) $payload, true) ?: [];
-                if ((string) ($row['account_id'] ?? '') === $accountId) {
-                    $redis->del($key);
-                    $count++;
-                    $familyId = (string) ($row['family_id'] ?? '');
-                    if ($familyId !== '') {
-                        $redis->set(self::FAMILY_PREFIX . $familyId . ':revoked', '1', 'EX', $this->refreshTtl);
-                    }
-                }
-            }
+        $families = $this->setMembers($redis, $this->accountFamiliesKey($accountId));
+        if ($families === [] && $this->scanFallbackEnabled()) {
+            return $this->kickAllByScan($redis, $accountId);
         }
+        $count = 0;
+        foreach ($families as $familyId) {
+            $count += $this->kickFamilyKeys($redis, $accountId, $familyId);
+        }
+        $redis->del($this->accountFamiliesKey($accountId));
         return $count;
     }
 
@@ -184,23 +179,9 @@ final class TokenService
         if ($redis === null) {
             return 0;
         }
-        $redis->set(self::FAMILY_PREFIX . $familyId . ':revoked', '1', 'EX', $this->refreshTtl);
-        $count = 0;
-        foreach ([self::ACCESS_PREFIX, self::REFRESH_PREFIX] as $prefix) {
-            foreach ($this->scanKeys($redis, $prefix . '*') as $key) {
-                $payload = $redis->get($key);
-                if (!$payload) {
-                    continue;
-                }
-                $row = json_decode((string) $payload, true) ?: [];
-                if (
-                    (string) ($row['account_id'] ?? '') === $accountId
-                    && (string) ($row['family_id'] ?? '') === $familyId
-                ) {
-                    $redis->del($key);
-                    $count++;
-                }
-            }
+        $count = $this->kickFamilyKeys($redis, $accountId, $familyId);
+        if ($count === 0 && $this->scanFallbackEnabled()) {
+            return $this->kickFamilyByScan($redis, $accountId, $familyId);
         }
         return $count;
     }
@@ -266,11 +247,135 @@ final class TokenService
             throw new \RuntimeException('redis_unavailable');
         }
         $redis->setex($key, $ttl, $body);
+        $this->trackTokenKey($redis, $accountId, $familyId, $key, $prefix, $ttl);
         if ($prefix === self::REFRESH_PREFIX) {
             // Track latest refresh hash for reuse detection.
             $redis->setex(self::FAMILY_PREFIX . $familyId, $ttl, self::hash($raw));
         }
         return $raw;
+    }
+
+    private function accountFamiliesKey(string $accountId): string
+    {
+        return 'account:' . $accountId . self::ACCOUNT_FAMILIES_SUFFIX;
+    }
+
+    private function familyKeysSet(string $familyId, string $prefix): string
+    {
+        $suffix = $prefix === self::ACCESS_PREFIX
+            ? self::FAMILY_ACCESS_KEYS_SUFFIX
+            : self::FAMILY_REFRESH_KEYS_SUFFIX;
+        return self::FAMILY_PREFIX . $familyId . $suffix;
+    }
+
+    private function trackTokenKey(
+        object $redis,
+        string $accountId,
+        string $familyId,
+        string $fullKey,
+        string $prefix,
+        int $ttl,
+    ): void {
+        $familiesKey = $this->accountFamiliesKey($accountId);
+        $redis->sAdd($familiesKey, $familyId);
+        if (method_exists($redis, 'expire')) {
+            $redis->expire($familiesKey, $this->refreshTtl);
+        }
+        $setKey = $this->familyKeysSet($familyId, $prefix);
+        $redis->sAdd($setKey, $fullKey);
+        if (method_exists($redis, 'expire')) {
+            $redis->expire($setKey, $ttl);
+        }
+    }
+
+    private function removeTokenFromFamilySet(
+        object $redis,
+        string $fullKey,
+        string $familyId,
+        string $prefix,
+    ): void {
+        $redis->sRem($this->familyKeysSet($familyId, $prefix), $fullKey);
+    }
+
+    private function kickFamilyKeys(object $redis, string $accountId, string $familyId): int
+    {
+        $redis->set(self::FAMILY_PREFIX . $familyId . ':revoked', '1', 'EX', $this->refreshTtl);
+        $count = 0;
+        foreach ([self::ACCESS_PREFIX, self::REFRESH_PREFIX] as $prefix) {
+            $setKey = $this->familyKeysSet($familyId, $prefix);
+            foreach ($this->setMembers($redis, $setKey) as $key) {
+                $redis->del($key);
+                $count++;
+            }
+            $redis->del($setKey);
+        }
+        $redis->sRem($this->accountFamiliesKey($accountId), $familyId);
+        return $count;
+    }
+
+    /** @return list<string> */
+    private function setMembers(object $redis, string $setKey): array
+    {
+        if (!method_exists($redis, 'sMembers')) {
+            return [];
+        }
+        $members = $redis->sMembers($setKey);
+        if (!is_array($members)) {
+            return [];
+        }
+        return array_values(array_filter($members, static fn ($m): bool => is_string($m) && $m !== ''));
+    }
+
+    private function scanFallbackEnabled(): bool
+    {
+        $flag = getenv('TOKEN_KICK_ALLOW_SCAN_FALLBACK');
+        return $flag !== false && $flag !== '' && filter_var($flag, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function kickAllByScan(object $redis, string $accountId): int
+    {
+        $count = 0;
+        foreach (['access:', 'refresh:'] as $prefix) {
+            foreach ($this->scanKeys($redis, $prefix . '*') as $key) {
+                $payload = $redis->get($key);
+                if (!$payload) {
+                    continue;
+                }
+                $row = json_decode((string) $payload, true) ?: [];
+                if ((string) ($row['account_id'] ?? '') === $accountId) {
+                    $redis->del($key);
+                    $count++;
+                    $familyId = (string) ($row['family_id'] ?? '');
+                    if ($familyId !== '') {
+                        $redis->set(self::FAMILY_PREFIX . $familyId . ':revoked', '1', 'EX', $this->refreshTtl);
+                    }
+                }
+            }
+        }
+        return $count;
+    }
+
+    private function kickFamilyByScan(object $redis, string $accountId, string $familyId): int
+    {
+        $redis->set(self::FAMILY_PREFIX . $familyId . ':revoked', '1', 'EX', $this->refreshTtl);
+        $count = 0;
+        foreach ([self::ACCESS_PREFIX, self::REFRESH_PREFIX] as $prefix) {
+            foreach ($this->scanKeys($redis, $prefix . '*') as $key) {
+                $payload = $redis->get($key);
+                if (!$payload) {
+                    continue;
+                }
+                $row = json_decode((string) $payload, true) ?: [];
+                if (
+                    (string) ($row['account_id'] ?? '') === $accountId
+                    && (string) ($row['family_id'] ?? '') === $familyId
+                ) {
+                    $redis->del($key);
+                    $count++;
+                }
+            }
+        }
+        return $count;
     }
 
     private function redis(): ?object

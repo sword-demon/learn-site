@@ -17,8 +17,9 @@ final class HealthController
         $checks = [
             'mysql' => $this->checkMysql(),
             'redis' => $this->checkRedis(),
+            'queue' => $this->checkQueue(),
         ];
-        $ok = $checks['mysql'] === true && $checks['redis'] === true;
+        $ok = $checks['mysql'] === true && $checks['redis'] === true && $checks['queue'] === true;
         return $ok
             ? ApiResponse::ok(['status' => 'ok', 'checks' => $checks])
             : ApiResponse::fail(ApiResponse::INTERNAL, 'unhealthy', $request->request_id ?? null);
@@ -45,5 +46,13 @@ final class HealthController
         } catch (\Throwable $e) {
             return 'redis_down';
         }
+    }
+
+    private function checkQueue(): bool|string
+    {
+        if (!class_exists(\Webman\RedisQueue\Client::class)) {
+            return 'queue_down';
+        }
+        return $this->checkRedis();
     }
 }

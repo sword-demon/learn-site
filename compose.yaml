@@ -84,6 +84,15 @@ services:
       APP_ENV: ${APP_ENV:-production}
       TZ: ${TZ:-UTC}
       WEBMAN_WORKERS: ${WEBMAN_WORKERS:-2}
+      WEBMAN_REUSE_PORT: ${WEBMAN_REUSE_PORT:-}
+      QUEUE_CONSUMERS: ${QUEUE_CONSUMERS:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-5}
+      REDIS_POOL_MAX: ${REDIS_POOL_MAX:-5}
+      PAYMENT_NOTIFY_ASYNC: ${PAYMENT_NOTIFY_ASYNC:-1}
+      TOKEN_KICK_ALLOW_SCAN_FALLBACK: ${TOKEN_KICK_ALLOW_SCAN_FALLBACK:-0}
+      HOME_CACHE_TTL_SITE: ${HOME_CACHE_TTL_SITE:-300}
+      HOME_CACHE_TTL_CATEGORY: ${HOME_CACHE_TTL_CATEGORY:-300}
+      HOME_CACHE_TTL_BANNERS: ${HOME_CACHE_TTL_BANNERS:-60}
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: ${MYSQL_DATABASE}
@@ -160,6 +169,8 @@ services:
     environment:
       API_UPSTREAM: http://api:8787
       TZ: ${TZ:-UTC}
+    volumes:
+      - api_runtime:/mnt/api-runtime:ro
     ports:
       - '${WEB_PORT:-8080}:80'
     networks:

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\support\cache\HomeCache;
 use App\controller\admin\BannerController;
 use App\controller\admin\BannerImageController;
 use App\middleware\Authorize;
@@ -57,6 +58,8 @@ final class BannerTest extends TestCase
         $this->service = new BannerService();
         $this->root = sys_get_temp_dir() . '/learn-site-banner-' . bin2hex(random_bytes(5));
         mkdir($this->root, 0775, true);
+        $this->isolateExistingBanners();
+        (new HomeCache())->forget(HomeCache::KEY_BANNERS);
     }
 
     protected function tearDown(): void
@@ -88,7 +91,7 @@ final class BannerTest extends TestCase
             self::assertSame('BANNER_LINK_INVALID', $exception->getMessage());
         }
 
-        self::assertSame(0, Db::name('banners')->count());
+        self::assertSame(0, Db::name('banners')->whereNull('deleted_at')->count());
     }
 
     public function testPublicListExcludesDisabledAndSoftDeletedBannersInSortOrder(): void
@@ -349,5 +352,18 @@ final class BannerTest extends TestCase
             }
         }
         rmdir($path);
+    }
+
+    /**
+     * Seed/demo banners are committed outside the per-test transaction.
+     * Soft-delete them so list/home assertions only see rows created in this test.
+     */
+    private function isolateExistingBanners(): void
+    {
+        $now = date('Y-m-d H:i:s');
+        Db::name('banners')->whereNull('deleted_at')->update([
+            'deleted_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 }

@@ -3,10 +3,12 @@ declare(strict_types=1);
 
 namespace App\controller\internal;
 
+use App\queue\QueueNames;
 use App\service\BusinessException;
 use App\service\OrderService;
 use App\support\ApiResponse;
 use App\support\payment\PaymentAdapter;
+use App\support\queue\JobDispatcher;
 use support\Request;
 
 /**
@@ -36,6 +38,7 @@ final class PaymentNotifyController
     public function __construct(
         private readonly OrderService $orders,
         private readonly PaymentAdapter $payment,
+        private readonly JobDispatcher $jobs = new JobDispatcher(),
     ) {}
 
     public function fake(Request $request): \support\Response
@@ -69,6 +72,23 @@ final class PaymentNotifyController
             return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'PAYMENT_NOTIFY_INVALID');
         }
 
+        if (!in_array($result->status, ['succeeded', 'failed', 'cancelled', 'unknown'], true)) {
+            return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'PAYMENT_NOTIFY_STATUS');
+        }
+
+        if ($this->shouldDispatchAsync()) {
+            try {
+                $this->jobs->dispatch(QueueNames::PAYMENT_NOTIFY, [
+                    'order_id' => $result->orderId,
+                    'status' => $result->status,
+                    'provider_ref' => (string) ($result->providerRef ?? ''),
+                ]);
+            } catch (\Throwable $e) {
+                return ApiResponse::fail(ApiResponse::INTERNAL, 'PAYMENT_NOTIFY_DISPATCH');
+            }
+            return ApiResponse::ok(['received' => true, 'status' => $result->status]);
+        }
+
         try {
             switch ($result->status) {
                 case 'succeeded':
@@ -79,8 +99,6 @@ final class PaymentNotifyController
                 case 'unknown':
                     $this->orders->markFailed($result->orderId, $result->status, $result->providerRef);
                     break;
-                default:
-                    return ApiResponse::fail(ApiResponse::VALIDATION_FAILED, 'PAYMENT_NOTIFY_STATUS');
             }
         } catch (BusinessException $e) {
             return ApiResponse::fail($e->apiCode, $e->getMessage());
@@ -89,5 +107,14 @@ final class PaymentNotifyController
         }
 
         return ApiResponse::ok(['received' => true, 'status' => $result->status]);
+    }
+
+    private function shouldDispatchAsync(): bool
+    {
+        $flag = getenv('PAYMENT_NOTIFY_ASYNC');
+        if ($flag === false || $flag === '') {
+            return true;
+        }
+        return filter_var($flag, FILTER_VALIDATE_BOOLEAN);
     }
 }

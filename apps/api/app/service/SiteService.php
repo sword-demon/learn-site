@@ -6,6 +6,7 @@ namespace App\service;
 
 use App\support\HtmlSanitizer;
 use App\support\Logger;
+use App\support\cache\HomeCache;
 use support\think\Db;
 
 final class SiteService
@@ -70,6 +71,7 @@ final class SiteService
             'target_type' => 'site_profile',
             'target_id' => 1,
         ]);
+        (new HomeCache())->forget(HomeCache::KEY_SITE_INTRO);
         return $this->shape($row);
     }
 

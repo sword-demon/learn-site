@@ -17,6 +17,8 @@ final class InMemoryRedis
     private array $store = [];
     /** @var array<string, int> */
     private array $expires = [];
+    /** @var array<string, array<string, true>> */
+    private array $sets = [];
     private int $clock = 0;
     public bool $downOnNextCall = false;
     public bool $stayDown = false;
@@ -60,6 +62,10 @@ final class InMemoryRedis
                 unset($this->store[$k], $this->expires[$k]);
                 $deleted++;
             }
+            if (isset($this->sets[$k])) {
+                unset($this->sets[$k], $this->expires[$k]);
+                $deleted++;
+            }
         }
         return $deleted;
     }
@@ -67,17 +73,94 @@ final class InMemoryRedis
     public function exists(string $key): int
     {
         $this->maybeFail();
+        if (isset($this->sets[$key]) && $this->sets[$key] !== []) {
+            return 1;
+        }
         return (isset($this->store[$key]) && !$this->isExpired($key)) ? 1 : 0;
     }
 
     public function ttl(string $key): int
     {
         $this->maybeFail();
-        if (!isset($this->store[$key])) {
+        if (!isset($this->store[$key]) && !isset($this->sets[$key])) {
             return -2;
         }
-        $rem = ($this->expires[$key] ?? 0) - $this->clock;
+        if (!isset($this->expires[$key])) {
+            return -1;
+        }
+        $rem = $this->expires[$key] - $this->clock;
         return $rem > 0 ? $rem : -2;
+    }
+
+    public function incr(string $key): int|false
+    {
+        $this->maybeFail();
+        $next = (int) ($this->store[$key] ?? 0) + 1;
+        $this->store[$key] = (string) $next;
+        return $next;
+    }
+
+    public function decr(string $key): int|false
+    {
+        $this->maybeFail();
+        $next = (int) ($this->store[$key] ?? 0) - 1;
+        $this->store[$key] = (string) $next;
+        return $next;
+    }
+
+    public function sAdd(string $key, mixed ...$members): int
+    {
+        $this->maybeFail();
+        if (!isset($this->sets[$key])) {
+            $this->sets[$key] = [];
+        }
+        $added = 0;
+        foreach ($members as $member) {
+            if (!is_string($member) || $member === '') {
+                continue;
+            }
+            if (!isset($this->sets[$key][$member])) {
+                $this->sets[$key][$member] = true;
+                $added++;
+            }
+        }
+        return $added;
+    }
+
+    public function sRem(string $key, mixed ...$members): int
+    {
+        $this->maybeFail();
+        if (!isset($this->sets[$key])) {
+            return 0;
+        }
+        $removed = 0;
+        foreach ($members as $member) {
+            if (!is_string($member) || $member === '') {
+                continue;
+            }
+            if (isset($this->sets[$key][$member])) {
+                unset($this->sets[$key][$member]);
+                $removed++;
+            }
+        }
+        return $removed;
+    }
+
+    /** @return list<string> */
+    public function sMembers(string $key): array
+    {
+        $this->maybeFail();
+        if (!isset($this->sets[$key])) {
+            return [];
+        }
+        return array_keys($this->sets[$key]);
+    }
+
+    public function expire(string $key, int $ttl): bool
+    {
+        $this->maybeFail();
+        $this->expires[$key] = $this->clock + $ttl;
+        return true;
     }
 
     public function scan(?int &$iterator, array $options = []): array|false

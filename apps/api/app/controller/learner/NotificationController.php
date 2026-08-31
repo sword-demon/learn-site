@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\controller\learner;
 
 use App\service\BusinessException;
+use App\service\UnreadCounterService;
 use App\support\ApiResponse;
 use App\support\Logger;
 use support\Request;
@@ -20,6 +21,10 @@ use support\think\Db;
  */
 final class NotificationController
 {
+    public function __construct(private readonly UnreadCounterService $unread = new UnreadCounterService())
+    {
+    }
+
     public function index(Request $request): \support\Response
     {
         try {
@@ -73,10 +78,7 @@ final class NotificationController
             if ($aid <= 0) {
                 return ApiResponse::fail(ApiResponse::UNAUTHENTICATED, 'UNAUTHENTICATED');
             }
-            $count = (int) Db::name('learner_notifications')
-                ->where('learner_id', $aid)
-                ->whereNull('read_at')
-                ->count();
+            $count = $this->unread->get($aid);
             return ApiResponse::ok(['count' => $count]);
         } catch (\Throwable $e) {
             Logger::error('notifications.unread_count_failed', ['err' => $e->getMessage()]);
@@ -106,6 +108,7 @@ final class NotificationController
                     ->where('id', (int) $id)
                     ->where('learner_id', $aid)
                     ->update(['read_at' => date('Y-m-d H:i:s')]);
+                $this->unread->decrement($aid);
             }
             return ApiResponse::ok(['read' => true]);
         } catch (BusinessException $e) {

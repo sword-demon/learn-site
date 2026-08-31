@@ -53,6 +53,9 @@
             <file>tests/FavoriteShareTest.php</file>
             <file>tests/CourseStudentTest.php</file>
             <file>tests/NotificationContractTest.php</file>
+            <file>tests/TokenIndexKickTest.php</file>
+            <file>tests/UnreadCounterTest.php</file>
+            <file>tests/HomeCacheTest.php</file>
             <file>tests/CourseDeletionTest.php</file>
         </testsuite>
     </testsuites>

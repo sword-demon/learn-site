@@ -1,5 +1,7 @@
 <?php
 
+use App\support\PoolConfig;
+
 /**
  * Business ORM config (Constitution IV).
  *
@@ -24,7 +26,7 @@ return [
             'prefix' => '',
             'break_reconnect' => true,
             'pool' => [
-                'max_connections' => 5,
+                'max_connections' => PoolConfig::dbMaxConnections(),
                 'min_connections' => 1,
                 'wait_timeout' => 3,
                 'idle_timeout' => 60,

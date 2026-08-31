@@ -1,5 +1,7 @@
 <?php
 
+use App\support\PoolConfig;
+
 /**
  * webman/redis 2.x (illuminate/redis client, phpredis driver).
  * Tokens, captcha, and revocation only. Pool is for Workerman workers.
@@ -16,7 +18,7 @@ return [
         'persistent' => false,
         'prefix' => '',
         'pool' => [
-            'max_connections' => 5,
+            'max_connections' => PoolConfig::redisMaxConnections(),
             'min_connections' => 1,
             'wait_timeout' => 3,
             'idle_timeout' => 60,

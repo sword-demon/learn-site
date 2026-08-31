@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\service;
 
+use App\support\cache\HomeCache;
 use support\think\Db;
 
 final class BannerService
@@ -45,6 +46,7 @@ final class BannerService
             'sort_order' => $sortOrder,
             'is_enabled' => $isEnabled,
         ]);
+        (new HomeCache())->forget(HomeCache::KEY_BANNERS);
 
         return $this->getForAdmin($id);
     }
@@ -94,6 +96,7 @@ final class BannerService
             throw new BusinessException('CONFLICT', 'BANNER_VERSION_CONFLICT');
         }
         $this->writeAudit($staffId, 'banner.update', $id, $updates);
+        (new HomeCache())->forget(HomeCache::KEY_BANNERS);
 
         return $this->getForAdmin($id);
     }
@@ -168,6 +171,7 @@ final class BannerService
                 'image_url' => (string) $row['image_url'],
                 'link_url' => $row['link_url'] !== null ? (string) $row['link_url'] : null,
             ]);
+            (new HomeCache())->forget(HomeCache::KEY_BANNERS);
         }
     }
 

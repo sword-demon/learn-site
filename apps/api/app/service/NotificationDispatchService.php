@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\service;
 
+use App\queue\QueueNames;
+use App\support\queue\JobDispatcher;
 use support\think\Db;
 
 /**
@@ -16,11 +18,10 @@ final class NotificationDispatchService
     public const KIND_ANNOUNCEMENT = 'announcement';
     public const KIND_INTERNAL = 'internal_message';
 
-    private const CHUNK_SIZE = 250;
     private const TITLE_MAX = 200;
     private const BODY_MAX = 10000;
 
-    public function __construct(private readonly PushNotificationService $push)
+    public function __construct(private readonly JobDispatcher $jobs = new JobDispatcher())
     {
     }
 
@@ -39,10 +40,12 @@ final class NotificationDispatchService
             'sender_staff_id' => $staffId,
             'recipient_mode' => 'all',
             'recipient_count' => count($learnerIds),
+            'fan_out_status' => 'pending',
+            'fan_out_done_count' => 0,
             'created_at' => $now,
         ]);
 
-        $this->fanOut($dispatchId, self::KIND_ANNOUNCEMENT, $title, $body, $learnerIds);
+        $this->enqueueFanOut($dispatchId);
         $this->auditSend($staffId, $dispatchId, self::TYPE_ANNOUNCEMENT, $title, count($learnerIds));
 
         return $this->shapeDispatch($this->loadDispatch($dispatchId), true);
@@ -69,6 +72,8 @@ final class NotificationDispatchService
             'sender_staff_id' => $staffId,
             'recipient_mode' => 'selected',
             'recipient_count' => count($learnerIds),
+            'fan_out_status' => 'pending',
+            'fan_out_done_count' => 0,
             'created_at' => $now,
         ]);
 
@@ -78,7 +83,7 @@ final class NotificationDispatchService
         );
         Db::name('notification_dispatch_recipients')->insertAll($recipientRows);
 
-        $this->fanOut($dispatchId, self::KIND_INTERNAL, $title, $body, $learnerIds);
+        $this->enqueueFanOut($dispatchId);
         $this->auditSend($staffId, $dispatchId, self::TYPE_INTERNAL, $title, count($learnerIds));
 
         return $this->shapeDispatch($this->loadDispatch($dispatchId), true);
@@ -140,41 +145,17 @@ final class NotificationDispatchService
         return $shaped;
     }
 
-    /** @param list<int> $learnerIds */
-    private function fanOut(int $dispatchId, string $kind, string $title, ?string $body, array $learnerIds): void
+    private function enqueueFanOut(int $dispatchId): void
     {
-        foreach (array_chunk($learnerIds, self::CHUNK_SIZE) as $chunk) {
-            $now = date('Y-m-d H:i:s');
-            $rows = [];
-            foreach ($chunk as $learnerId) {
-                $rows[] = [
-                    'learner_id' => $learnerId,
-                    'kind' => $kind,
-                    'title' => $title,
-                    'body' => $body,
-                    'payload_json' => null,
-                    'resource_type' => null,
-                    'resource_id' => null,
-                    'dispatch_id' => $dispatchId,
-                    'idempotency_key' => $dispatchId . ':' . $learnerId,
-                    'read_at' => null,
-                    'created_at' => $now,
-                ];
-            }
-            try {
-                Db::name('learner_notifications')->insertAll($rows);
-            } catch (\Throwable) {
-                // Unique idempotency_key — skip duplicates on retry.
-            }
-            foreach ($chunk as $learnerId) {
-                $notificationId = Db::name('learner_notifications')
-                    ->where('learner_id', $learnerId)
-                    ->where('idempotency_key', $dispatchId . ':' . $learnerId)
-                    ->value('id');
-                if ($notificationId !== null) {
-                    $this->push->notifyLearner($learnerId, (int) $notificationId, $kind, $title);
-                }
-            }
+        try {
+            $this->jobs->dispatch(QueueNames::NOTIFICATION_FAN_OUT, ['dispatch_id' => $dispatchId]);
+        } catch (\Throwable $e) {
+            Db::name('notification_dispatches')->where('id', $dispatchId)->update([
+                'fan_out_status' => 'failed',
+                'fan_out_error' => mb_substr($e->getMessage(), 0, 500),
+                'fan_out_finished_at' => date('Y-m-d H:i:s'),
+            ]);
+            throw new BusinessException('INTERNAL', 'NOTIFICATION_FAN_OUT_QUEUE_FAILED');
         }
     }
 
@@ -267,6 +248,17 @@ final class NotificationDispatchService
             'sender_login' => (string) ($row['sender_login'] ?? ''),
             'recipient_summary' => $summary,
             'recipient_count' => $count,
+            'fan_out_status' => (string) ($row['fan_out_status'] ?? 'completed'),
+            'fan_out_done_count' => (int) ($row['fan_out_done_count'] ?? 0),
+            'fan_out_error' => isset($row['fan_out_error']) && $row['fan_out_error'] !== null
+                ? (string) $row['fan_out_error']
+                : null,
+            'fan_out_started_at' => isset($row['fan_out_started_at']) && $row['fan_out_started_at'] !== null
+                ? (string) $row['fan_out_started_at']
+                : null,
+            'fan_out_finished_at' => isset($row['fan_out_finished_at']) && $row['fan_out_finished_at'] !== null
+                ? (string) $row['fan_out_finished_at']
+                : null,
             'created_at' => (string) $row['created_at'],
         ];
         if ($includeBody) {

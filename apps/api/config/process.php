@@ -11,6 +11,13 @@ if ($workers < 1) {
     $workers = 1;
 }
 
+$reusePortEnv = getenv('WEBMAN_REUSE_PORT');
+if ($reusePortEnv !== false && $reusePortEnv !== '') {
+    $reusePort = filter_var($reusePortEnv, FILTER_VALIDATE_BOOLEAN);
+} else {
+    $reusePort = PHP_OS_FAMILY === 'Linux';
+}
+
 return [
     'webman' => [
         'handler' => Http::class,
@@ -18,7 +25,7 @@ return [
         'count' => $workers,
         'user' => '',
         'group' => '',
-        'reusePort' => false,
+        'reusePort' => $reusePort,
         'eventLoop' => '',
         'context' => [],
         'constructor' => [

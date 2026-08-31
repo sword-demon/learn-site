@@ -6,6 +6,7 @@ namespace App\controller\admin;
 use App\model\Category;
 use App\service\BusinessException;
 use App\service\HomeService;
+use App\support\cache\HomeCache;
 use App\support\ApiResponse;
 use App\support\Logger;
 use support\Request;
@@ -124,6 +125,7 @@ final class CategoryController
             'path' => $parentPath === '/' ? '/' . $id : $parentPath . '/' . $id,
         ]);
         Logger::info('category.created', ['id' => $id, 'parent_id' => $parentId]);
+        $this->invalidateCategoryCache();
         return ApiResponse::ok($this->row($id));
     }
 
@@ -159,6 +161,7 @@ final class CategoryController
         }
         Category::where('id', (int) $id)->update($patch);
         Logger::info('category.updated', ['id' => (int) $id]);
+        $this->invalidateCategoryCache();
         return ApiResponse::ok($this->row((int) $id));
     }
 
@@ -190,6 +193,7 @@ final class CategoryController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
         Logger::info('category.status_changed', ['id' => (int) $id, 'status' => $status]);
+        $this->invalidateCategoryCache();
         return ApiResponse::ok($this->row((int) $id));
     }
 
@@ -212,6 +216,7 @@ final class CategoryController
         }
         Category::where('id', (int) $id)->delete();
         Logger::info('category.deleted', ['id' => (int) $id]);
+        $this->invalidateCategoryCache();
         return ApiResponse::ok(['deleted' => true]);
     }
 
@@ -250,5 +255,10 @@ final class CategoryController
         }
         $data = json_decode($raw, true);
         return is_array($data) ? $data : [];
+    }
+
+    private function invalidateCategoryCache(): void
+    {
+        (new HomeCache())->forget(HomeCache::KEY_CATEGORY_TREE);
     }
 }

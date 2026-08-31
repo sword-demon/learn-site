@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\service;
 
 use App\model\Category;
+use App\support\cache\HomeCache;
 
 final class HomeService
 {
-    public function __construct(private readonly BannerService $bannerService = new BannerService())
-    {
+    public function __construct(
+        private readonly BannerService $bannerService = new BannerService(),
+        private readonly HomeCache $cache = new HomeCache(),
+    ) {
     }
 
     /**
@@ -20,29 +23,35 @@ final class HomeService
      */
     public function siteIntro(): array
     {
-        try {
-            $row = \support\think\Db::name('site_profile')->where('id', 1)->find();
-        } catch (\Throwable $e) {
-            $row = null;
-        }
-        if (!is_array($row)) {
-            return [
-                'title' => '学习平台',
-                'subtitle' => '选课、学习、交流',
-                'body_html' => '',
-                'contact_email' => '',
-                'updated_at' => null,
-            ];
-        }
-        return [
-            'title' => (string) ($row['title'] ?? '学习平台'),
-            'subtitle' => (string) ($row['subtitle'] ?? ''),
-            'body_html' => (string) ($row['body_html'] ?? ''),
-            'contact_email' => (string) ($row['contact_email'] ?? ''),
-            'updated_at' => isset($row['updated_at']) && $row['updated_at'] !== null
-                ? (string) $row['updated_at']
-                : null,
-        ];
+        return $this->cache->remember(
+            HomeCache::KEY_SITE_INTRO,
+            HomeCache::ttlSiteIntro(),
+            function (): array {
+                try {
+                    $row = \support\think\Db::name('site_profile')->where('id', 1)->find();
+                } catch (\Throwable $e) {
+                    $row = null;
+                }
+                if (!is_array($row)) {
+                    return [
+                        'title' => '学习平台',
+                        'subtitle' => '选课、学习、交流',
+                        'body_html' => '',
+                        'contact_email' => '',
+                        'updated_at' => null,
+                    ];
+                }
+                return [
+                    'title' => (string) ($row['title'] ?? '学习平台'),
+                    'subtitle' => (string) ($row['subtitle'] ?? ''),
+                    'body_html' => (string) ($row['body_html'] ?? ''),
+                    'contact_email' => (string) ($row['contact_email'] ?? ''),
+                    'updated_at' => isset($row['updated_at']) && $row['updated_at'] !== null
+                        ? (string) $row['updated_at']
+                        : null,
+                ];
+            },
+        );
     }
 
     /**
@@ -52,29 +61,42 @@ final class HomeService
      */
     public function categoryTree(): array
     {
-        try {
-            $rows = Category::where('status', 'enabled')
-                ->order('sort', 'asc')
-                ->order('id', 'asc')
-                ->select()
-                ->toArray();
-        } catch (\Throwable $e) {
-            return [];
-        }
-        if (!is_array($rows)) {
-            return [];
-        }
-        return self::nest($rows);
+        /** @var list<array{id:int,name:string,children:list<mixed>}> */
+        return $this->cache->remember(
+            HomeCache::KEY_CATEGORY_TREE,
+            HomeCache::ttlCategoryTree(),
+            function (): array {
+                try {
+                    $rows = Category::where('status', 'enabled')
+                        ->order('sort', 'asc')
+                        ->order('id', 'asc')
+                        ->select()
+                        ->toArray();
+                } catch (\Throwable $e) {
+                    return [];
+                }
+                if (!is_array($rows)) {
+                    return [];
+                }
+                return self::nest($rows);
+            },
+        );
     }
 
     /** @return list<array{id:int,image_url:string,link_url:?string,sort_order:int}> */
     public function banners(): array
     {
-        try {
-            return $this->bannerService->listPublic();
-        } catch (\Throwable) {
-            return [];
-        }
+        return $this->cache->remember(
+            HomeCache::KEY_BANNERS,
+            HomeCache::ttlBanners(),
+            function (): array {
+                try {
+                    return $this->bannerService->listPublic();
+                } catch (\Throwable) {
+                    return [];
+                }
+            },
+        );
     }
 
     /**

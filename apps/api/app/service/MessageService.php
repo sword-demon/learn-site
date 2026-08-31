@@ -8,16 +8,6 @@ use App\service\PushNotificationService;
 
 /**
  * MessageService — learner inbox dispatcher (Phase 21 / US18, T104).
- *
- * Transport today: a `learner_notifications` row. The mailer / push side
- * is intentionally absent — a future phase will sweep unread rows on a
- * schedule. The dispatcher only writes the inbox; callers stay thin.
- *
- * Kinds are stable, free-form strings (no enum table). Today's inventory:
- *   - entitlement_revoked
- *
- * Payload is a JSON-encoded blob kept opaque so the dispatcher doesn't
- * couple to specific event shapes.
  */
 final class MessageService
 {
@@ -27,8 +17,10 @@ final class MessageService
     public const KIND_ANNOUNCEMENT = 'announcement';
     public const KIND_INTERNAL_MESSAGE = 'internal_message';
 
-    public function __construct(private readonly ?PushNotificationService $push = null)
-    {
+    public function __construct(
+        private readonly ?PushNotificationService $push = null,
+        private readonly UnreadCounterService $unread = new UnreadCounterService(),
+    ) {
     }
 
     /**
@@ -48,6 +40,7 @@ final class MessageService
     ): int {
         $now = date('Y-m-d H:i:s');
         $idempotencyKey ??= $kind . ':' . bin2hex(random_bytes(16));
+        $inserted = false;
         try {
             Db::name('learner_notifications')->insertGetId([
                 'learner_id' => $learnerId,
@@ -61,6 +54,7 @@ final class MessageService
                 'read_at' => null,
                 'created_at' => $now,
             ]);
+            $inserted = true;
         } catch (\Throwable) {
             // The unique learner/key index resolves concurrent retries.
         }
@@ -72,7 +66,10 @@ final class MessageService
             throw new \RuntimeException('NOTIFICATION_WRITE_FAILED');
         }
         $notificationId = (int) $id;
-        $this->push?->notifyLearner($learnerId, $notificationId, $kind, $title);
+        if ($inserted) {
+            $unread = $this->unread->increment($learnerId);
+            $this->push?->triggerNotification($learnerId, $notificationId, $kind, $title, $unread);
+        }
         return $notificationId;
     }
 }

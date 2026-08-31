@@ -148,7 +148,7 @@ final class NotificationContractTest extends TestCase
     public function testInboxIncludesAnnouncementAndInternalMessageKinds(): void
     {
         $ownerId = $this->insertLearner();
-        $dispatch = new NotificationDispatchService(new PushNotificationService());
+        $dispatch = new NotificationDispatchService();
         $staffId = $this->insertStaff();
         $dispatch->sendAnnouncement($staffId, '公告标题', '公告正文');
         $dispatch->sendInternalMessage($staffId, '私信标题', '私信正文', [$ownerId]);

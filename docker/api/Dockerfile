@@ -36,12 +36,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         ca-certificates curl tzdata fonts-dejavu-core \
-        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev \
+        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev libevent-dev libssl-dev \
         $PHPIZE_DEPS \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install -j$(nproc) gd zip bcmath pdo pdo_mysql sockets pcntl posix \
- && pecl install redis-6.2.0 \
+ && pecl install redis-6.2.0 event \
  && docker-php-ext-enable redis opcache \
+ && docker-php-ext-enable --ini-name zz-event.ini event \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

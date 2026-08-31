@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace app\process;
 
-use App\service\ScheduledTaskExecutor;
+use App\queue\QueueNames;
+use App\support\queue\JobDispatcher;
 use support\think\Db;
 use Workerman\Crontab\Crontab;
 use Workerman\Timer;
@@ -50,12 +51,16 @@ final class ScheduledTaskRunner
             ->select()
             ->toArray();
 
-        $executor = new ScheduledTaskExecutor();
+        $jobs = new JobDispatcher();
         foreach ($rows as $row) {
             $taskId = (int) $row['id'];
             $expression = (string) $row['schedule_expression'];
-            $this->crontabs[$taskId] = new Crontab($expression, function () use ($executor, $taskId): void {
-                $executor->run($taskId, 'schedule', null);
+            $this->crontabs[$taskId] = new Crontab($expression, function () use ($jobs, $taskId): void {
+                $jobs->dispatch(QueueNames::SCHEDULED_TASK, [
+                    'task_id' => $taskId,
+                    'trigger_type' => 'schedule',
+                    'actor_staff_id' => null,
+                ]);
             });
         }
 

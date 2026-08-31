@@ -1,3 +1,25 @@
+# API 十万级规模扩展 (008)
+
+日期: 2026-09-01
+范围: `apps/api` 队列、Token 索引、读缓存、部署调参。规格: `specs/008-api-scale-100k/`。
+
+## 计划
+
+- [x] Phase 1 PR-1: ext-event、worker/pool、reusePort（tasks T001–T005）
+- [x] Phase 2 PR-2: webman/redis-queue 骨架（T006–T010）
+- [x] Phase 3 PR-3: 公告异步 fan-out + 迁移（T011–T017）— MVP
+- [x] Phase 4 PR-4: Token 索引 kick（T018–T022）— MVP
+- [x] Phase 5 PR-5: 未读 Redis 计数（T023–T030）
+- [x] Phase 6 PR-6: 首页读缓存（T031–T034）
+- [x] Phase 7 PR-7: 支付/定时入队（T035–T040）
+- [x] Phase 8 PR-8: health、perf 脚本、web Nginx 媒体直出（T041–T045）
+
+## 审查
+
+（实施完成后填写）
+
+---
+
 # 学习端导航栏重排
 
 日期: 2026-08-30
