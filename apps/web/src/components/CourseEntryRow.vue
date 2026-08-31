@@ -74,7 +74,7 @@ const HUES = ['#34566b', '#4c7a5a', '#a8842c', '#6b4a5e', '#3d6b6b', '#5a6470'];
 const hue = computed(() => HUES[props.course.id % HUES.length]);
 const glyph = computed(() => props.course.title.slice(0, 1));
 const coverMeta = computed(() => props.course.title.slice(0, 4).toUpperCase());
-const coverStyle = computed(() => ({ '--hue': hue.value, height: '96px' }));
+const coverStyle = computed(() => ({ '--hue': hue.value }));
 
 const displayPrice = computed(() =>
   props.course.sale_price > 0 ? props.course.sale_price : props.course.list_price,

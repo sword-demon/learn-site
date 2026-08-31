@@ -1,25 +1,14 @@
 <template>
   <footer class="foot site-footer" aria-label="站点页脚">
     <div class="foot-inner">
-      <div class="foot-brand">
-        <div class="seal-mark" aria-hidden="true"><span>拾</span><span>阶</span></div>
-        <div class="foot-copy-block">
-          <p class="foot-lead">
-            <strong class="serif">拾阶学社</strong>
-            <span v-if="tagline"> · {{ tagline }}</span>
-          </p>
-          <p v-if="introText" class="foot-desc">{{ introText }}</p>
-          <p v-if="contactEmail" class="foot-contact">
-            课程合作：
-            <a :href="`mailto:${contactEmail}`">{{ contactEmail }}</a>
-          </p>
-        </div>
-      </div>
+      <p class="foot-brand-name serif">拾阶学社</p>
       <nav class="foot-links" aria-label="页脚导航">
-        <router-link to="/">首页 · 分类</router-link>
-        <router-link to="/maps">学习地图</router-link>
+        <router-link to="/">关于我们</router-link>
+        <router-link to="/maps">帮助中心</router-link>
+        <a v-if="contactEmail" :href="`mailto:${contactEmail}`">课程合作</a>
+        <span v-else>用户协议</span>
       </nav>
-      <p class="foot-copy mono">© {{ currentYear }} 拾阶学社</p>
+      <p class="foot-copy mono">© {{ currentYear }} 拾阶学社 Shi Jie Xue She</p>
     </div>
   </footer>
 </template>
@@ -35,12 +24,6 @@ const homeStore = useHomeStore();
 const { intro } = storeToRefs(homeStore);
 const currentYear = new Date().getFullYear();
 const contactEmail = computed(() => intro.value?.contact_email.trim() ?? '');
-const tagline = computed(() => intro.value?.subtitle?.trim() ?? '拾级而上 · 日进一阶');
-const introText = computed(() => {
-  const title = intro.value?.title?.trim();
-  if (!title || title === tagline.value) return '';
-  return title;
-});
 
 onMounted(() => {
   void homeStore.load();
@@ -49,63 +32,36 @@ onMounted(() => {
 
 <style scoped>
 .foot-inner {
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 26px 24px;
+  padding: 40px 24px;
   display: flex;
-  gap: 20px;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-  color: var(--ink-3);
+  gap: 16px;
+  text-align: center;
 }
 
-.foot-brand {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  max-width: min(560px, 100%);
-}
-
-.foot-copy-block {
-  display: grid;
-  gap: 4px;
-}
-
-.foot-lead {
+.foot-brand-name {
   margin: 0;
-  line-height: 1.5;
-}
-
-.foot-lead strong {
+  font-size: 20px;
+  font-weight: 600;
   color: var(--ink-2);
-  font-size: 14px;
-}
-
-.foot-desc {
-  margin: 0;
-  color: var(--ink-3);
-  line-height: 1.65;
-}
-
-.foot-contact {
-  margin: 0;
-  font-size: 12px;
-}
-
-.foot-contact a {
-  color: var(--indigo);
 }
 
 .foot-links {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
 }
 
-.foot-links a {
-  color: var(--ink-3);
-  font-size: 12.5px;
+.foot-links a,
+.foot-links span {
+  color: var(--ink-2);
+  font-size: 16px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .foot-links a:hover {
@@ -114,13 +70,7 @@ onMounted(() => {
 
 .foot-copy {
   margin: 0;
-  font-size: 11px;
-}
-
-@media (max-width: 640px) {
-  .foot-inner {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  font-size: 12px;
+  color: var(--ink-3);
 }
 </style>

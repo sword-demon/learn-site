@@ -52,6 +52,20 @@ describe('HomeBannerCarousel', () => {
     expect(
       wrapper.findAll('[data-banner-id]').map((node) => node.attributes('data-banner-id')),
     ).toEqual(['1', '2']);
+    expect(wrapper.find('.banner-image').attributes('src')).toBe(
+      '/api/media/banners/2026/08/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webp',
+    );
+  });
+
+  it('shows site intro headline on the first slide only', async () => {
+    const router = await routerForTest();
+    const wrapper = mount(HomeBannerCarousel, {
+      props: { banners, headline: '静水流深，拾阶而上' },
+      global: { plugins: [router], stubs },
+    });
+
+    expect(wrapper.find('.banner-copy h1').text()).toBe('静水流深，拾阶而上');
+    expect(wrapper.findAll('.banner-copy')).toHaveLength(1);
   });
 
   it('navigates internally and opens external links safely', async () => {

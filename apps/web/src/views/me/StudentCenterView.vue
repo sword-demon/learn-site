@@ -861,19 +861,27 @@ onBeforeUnmount(() => {
 <style scoped>
 .student-center-page {
   display: grid;
-  gap: 20px;
-  max-width: 960px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-areas:
+    'streak heatmap'
+    'tabs content';
+  gap: 20px 24px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 32px 24px 48px;
+  align-items: start;
 }
 
 .streak-banner {
+  grid-area: streak;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 170px;
+  padding: 20px 16px;
   border: 1px solid var(--line, #d9e5df);
-  border-radius: 12px;
+  border-radius: var(--r);
   background: var(--paper, #fff);
 }
 
@@ -896,12 +904,15 @@ onBeforeUnmount(() => {
 
 .streak-cta {
   flex-shrink: 0;
+  width: 100%;
 }
 
 .streak-heatmap {
-  padding: 14px 20px;
+  grid-area: heatmap;
+  min-height: 170px;
+  padding: 20px;
   border: 1px solid var(--line, #d9e5df);
-  border-radius: 12px;
+  border-radius: var(--r);
   background: var(--paper, #fff);
 }
 
@@ -928,7 +939,37 @@ onBeforeUnmount(() => {
 }
 
 .sc-tabs {
-  margin-top: 8px;
+  grid-area: tabs;
+  margin-top: 0;
+}
+
+.sc-tabs :deep(.el-tabs__header) {
+  margin: 0;
+}
+
+.sc-tabs :deep(.el-tabs__nav-wrap::after),
+.sc-tabs :deep(.el-tabs__active-bar) {
+  display: none;
+}
+
+.sc-tabs :deep(.el-tabs__nav) {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+}
+
+.sc-tabs :deep(.el-tabs__item) {
+  justify-content: flex-start;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.sc-tabs :deep(.el-tabs__item.is-active) {
+  color: #fff;
+  background: var(--seal);
 }
 
 .sc-tab-badge {
@@ -936,7 +977,9 @@ onBeforeUnmount(() => {
 }
 
 .sc-section {
-  padding: 18px 0;
+  grid-area: content;
+  min-width: 0;
+  padding: 0;
 }
 
 .sc-section :deep(.list-head) {
@@ -1038,5 +1081,42 @@ onBeforeUnmount(() => {
 .account-head .display {
   margin: 0 0 9px;
   color: var(--pine-deep);
+}
+
+@media (max-width: 760px) {
+  .student-center-page {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'streak'
+      'heatmap'
+      'tabs'
+      'content';
+    padding-inline: 16px;
+  }
+
+  .streak-banner,
+  .streak-heatmap {
+    min-height: 0;
+  }
+
+  .streak-banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .streak-cta {
+    width: auto;
+  }
+
+  .sc-tabs :deep(.el-tabs__nav) {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .sc-tabs :deep(.el-tabs__item) {
+    flex: 0 0 auto;
+    justify-content: center;
+  }
 }
 </style>

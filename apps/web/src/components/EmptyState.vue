@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// ponytail: native SVG over an icon lib import.
 import { RouterLink } from 'vue-router';
 
 defineProps<{
@@ -12,14 +11,14 @@ defineProps<{
 
 <template>
   <div class="empty-state" data-testid="empty-state">
-    <svg class="empty-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
-      <circle cx="32" cy="32" r="28" fill="none" stroke="#dcdfe6" stroke-width="2" />
-      <path d="M22 36 L42 36" stroke="#dcdfe6" stroke-width="2" stroke-linecap="round" />
-    </svg>
-    <h3 v-if="headline" class="empty-headline">{{ headline }}</h3>
+    <div class="empty-icon" aria-hidden="true">
+      <span class="empty-icon__ring" />
+      <span class="empty-icon__line" />
+    </div>
+    <h3 v-if="headline" class="empty-headline serif">{{ headline }}</h3>
     <p v-if="sub" class="empty-sub">{{ sub }}</p>
     <div v-if="ctaText && ctaHref" class="empty-action">
-      <router-link :to="ctaHref" class="empty-cta">{{ ctaText }}</router-link>
+      <router-link :to="ctaHref" class="btn btn-primary btn-sm">{{ ctaText }}</router-link>
     </div>
     <div v-else-if="$slots.action" class="empty-action">
       <slot name="action" />
@@ -33,34 +32,54 @@ defineProps<{
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 16px;
-  color: #909399;
+  padding: 64px 24px;
+  color: var(--ink-3);
   text-align: center;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  background: var(--card-2);
 }
+
 .empty-icon {
-  margin-bottom: 16px;
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
 }
+
+.empty-icon__ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+}
+
+.empty-icon__line {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 50%;
+  height: 2px;
+  background: var(--line);
+  transform: translateY(-50%);
+}
+
 .empty-headline {
   margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #606266;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink-2);
 }
+
 .empty-sub {
   margin: 0 0 16px;
-  font-size: 14px;
-  line-height: 1.6;
+  max-width: 28rem;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink-3);
 }
+
 .empty-action {
   margin-top: 8px;
-}
-.empty-cta {
-  display: inline-block;
-  padding: 8px 18px;
-  background: #409eff;
-  color: #fff;
-  border-radius: 4px;
-  text-decoration: none;
-  font-size: 14px;
 }
 </style>

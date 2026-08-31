@@ -1,14 +1,13 @@
 <template>
   <div class="campus auth-page" :data-mode="mode">
-    <header class="masthead">
-      <div class="masthead-inner">
+    <header class="masthead auth-page__masthead">
+      <div class="masthead-inner auth-page__masthead-inner">
         <router-link to="/" class="brand">
           <div class="seal-mark" aria-hidden="true">
             <span>拾</span><span>阶</span><span>学</span><span>社</span>
           </div>
           <div class="brand-txt">
             <h1>拾阶学社</h1>
-            <p>拾级而上 · 日进一阶</p>
           </div>
         </router-link>
         <div class="masthead-tools">
@@ -24,87 +23,93 @@
         </div>
       </div>
     </header>
-    <main class="auth-shell">
-      <aside class="auth-aside">
-        <p class="eyebrow"><span class="eyebrow-rule" />拾阶学社 · 学员入口</p>
-        <p class="auth-index latin">{{ copy.asideIndex }}</p>
-        <h1 class="display">{{ copy.asideHeadline }}</h1>
-        <p v-if="copy.asideBody">{{ copy.asideBody }}</p>
-      </aside>
-      <section class="auth-card">
-        <el-tabs v-model="mode" class="auth-tabs" data-testid="mode-tabs" @tab-click="onTabClick">
-          <el-tab-pane label="登录" name="login" />
-          <el-tab-pane label="注册" name="register" />
-        </el-tabs>
-        <p class="badge">{{ copy.badge }}</p>
-        <h2 class="display">{{ copy.title }}</h2>
-        <p class="lede">{{ copy.lede }}</p>
-        <el-form :model="form" @submit.prevent="onSubmit">
-          <label class="field">
-            手机号
-            <el-input
-              v-model="form.phone"
-              maxlength="11"
-              autocomplete="username"
-              placeholder="11 位大陆手机号"
-              data-testid="phone-input"
-            />
-          </label>
-          <label class="field">
-            密码
-            <el-input
-              v-model="form.password"
-              type="password"
-              :autocomplete="copy.autocomplete"
-              show-password
-              placeholder="8–72 位"
-              data-testid="password-input"
-            />
-          </label>
-          <label class="field">
-            图形验证码
-            <!-- ponytail: Figma wants sms.code + sms.expires_at; backend currently returns image captcha -->
-            <div class="captcha-row">
+
+    <main class="auth-page__main">
+      <section class="auth-card-stitch">
+        <aside class="auth-card-stitch__aside" aria-hidden="true">
+          <h1>拾阶而上</h1>
+          <p>逐级攀登，知识生辉</p>
+        </aside>
+
+        <div class="auth-card-stitch__body">
+          <el-tabs v-model="mode" class="auth-tabs" data-testid="mode-tabs" @tab-click="onTabClick">
+            <el-tab-pane label="登录" name="login" />
+            <el-tab-pane label="注册" name="register" />
+          </el-tabs>
+
+          <p class="badge">{{ copy.badge }}</p>
+          <h2 class="display auth-card-stitch__title">{{ copy.title }}</h2>
+          <p class="lede">{{ copy.lede }}</p>
+
+          <el-form class="auth-card-stitch__form" :model="form" @submit.prevent="onSubmit">
+            <label class="field auth-field-underline">
+              手机号码
               <el-input
-                v-model="form.captcha_answer"
-                maxlength="8"
-                autocomplete="off"
-                placeholder="图中字符"
-                data-testid="captcha-input"
+                v-model="form.phone"
+                maxlength="11"
+                autocomplete="username"
+                placeholder="请输入手机号"
+                data-testid="phone-input"
               />
-              <el-button
-                class="captcha-btn"
-                :loading="loadingCaptcha"
-                aria-label="刷新图形验证码"
-                @click="() => loadCaptcha()"
-              >
-                <img v-if="captcha.image" :src="captcha.image" alt="点击刷新验证码" />
-                <span v-else>加载验证码</span>
-              </el-button>
-            </div>
-          </label>
-          <el-alert
-            v-if="errorLabel"
-            :title="errorLabel"
-            type="error"
-            :closable="false"
-            show-icon
-          />
-          <el-button
-            type="primary"
-            native-type="submit"
-            :loading="busy"
-            data-testid="submit-button"
-            >{{ copy.submit }}</el-button
-          >
-        </el-form>
-        <p class="switch">
-          {{ copy.switchPrompt }}
-          <a href="#" class="switch-link" data-testid="switch-mode" @click.prevent="switchMode">{{
-            copy.switchLabel
-          }}</a>
-        </p>
-        <p class="form-note">{{ copy.note }}</p>
+            </label>
+            <label class="field auth-field-underline">
+              密码
+              <el-input
+                v-model="form.password"
+                type="password"
+                :autocomplete="copy.autocomplete"
+                show-password
+                placeholder="请输入密码"
+                data-testid="password-input"
+              />
+            </label>
+            <label class="field auth-field-underline">
+              图形验证码
+              <div class="captcha-row">
+                <el-input
+                  v-model="form.captcha_answer"
+                  maxlength="8"
+                  autocomplete="off"
+                  placeholder="验证码"
+                  data-testid="captcha-input"
+                />
+                <el-button
+                  class="captcha-btn"
+                  :loading="loadingCaptcha"
+                  aria-label="刷新图形验证码"
+                  @click="() => loadCaptcha()"
+                >
+                  <img v-if="captcha.image" :src="captcha.image" alt="点击刷新验证码" />
+                  <span v-else>加载验证码</span>
+                </el-button>
+              </div>
+            </label>
+            <el-alert
+              v-if="errorLabel"
+              :title="errorLabel"
+              type="error"
+              :closable="false"
+              show-icon
+            />
+            <el-button
+              type="primary"
+              native-type="submit"
+              class="auth-card-stitch__submit"
+              :loading="busy"
+              data-testid="submit-button"
+            >
+              {{ copy.submit }}
+            </el-button>
+          </el-form>
+
+          <p class="switch">
+            {{ copy.switchPrompt }}
+            <a href="#" class="switch-link" data-testid="switch-mode" @click.prevent="switchMode">{{
+              copy.switchLabel
+            }}</a>
+          </p>
+          <p class="form-note">{{ copy.note }}</p>
+        </div>
       </section>
     </main>
   </div>
@@ -140,7 +145,6 @@ interface Copy {
   errorCodes: Record<string, string>;
 }
 
-// ponytail: H1 route-derived mode via computed + path membership check
 const route = useRoute();
 const router = useRouter();
 const session = useLoginFamilyStore();
@@ -155,7 +159,6 @@ const busy = ref(false);
 const loadingCaptcha = ref(false);
 const error = ref('');
 
-// ponytail: H1 redirect query extracted once; only honored in login mode
 const redirect = computed(() =>
   mode.value === 'login' &&
   typeof route.query.redirect === 'string' &&
@@ -176,8 +179,8 @@ const copy = computed<Copy>(() =>
         switchLabel: '注册',
         note: '学员账户与后台账户相互独立，请使用学员手机号登录。',
         asideIndex: 'READ / 01',
-        asideHeadline: '从上次停下的地方，继续读下去。',
-        asideBody: '课程、学习地图和进度记录都会留在你的个人书架里。',
+        asideHeadline: '拾阶而上',
+        asideBody: '拾级而上 · 日进一阶',
         errorFallback: '暂时无法登录',
         errorCodes: {
           CAPTCHA_INVALID: '验证码错误或已过期，请换一张再试',
@@ -196,8 +199,8 @@ const copy = computed<Copy>(() =>
         switchLabel: '登录',
         note: '注册成功后会自动登录，并保留你的学习进度与收藏。',
         asideIndex: 'READ / 02',
-        asideHeadline: '给自己留一间安静的课室。',
-        asideBody: '注册后可以加入课程、记录进度，也可以沿着学习地图逐阶段完成。',
+        asideHeadline: '拾阶而上',
+        asideBody: '拾级而上 · 日进一阶',
         errorFallback: '暂时无法注册',
         errorCodes: {
           CAPTCHA_INVALID: '验证码错误或已过期，请换一张再试',
@@ -273,3 +276,116 @@ onMounted(() => {
   void loadCaptcha();
 });
 </script>
+
+<style scoped>
+.auth-page__masthead {
+  border-bottom: 1px solid var(--line-2);
+}
+
+.auth-page__masthead-inner {
+  min-height: 64px;
+  padding: 0 24px;
+}
+
+.auth-page__main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100dvh - 64px);
+  padding: 40px 24px 64px;
+}
+
+.auth-card-stitch {
+  display: flex;
+  width: min(800px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.auth-card-stitch__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 30%;
+  min-width: 200px;
+  padding: 40px 24px;
+  background: var(--seal);
+  color: #fff;
+  text-align: center;
+}
+
+.auth-card-stitch__aside h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 32px;
+  line-height: 1.3;
+  letter-spacing: 0.2em;
+  writing-mode: vertical-rl;
+}
+
+.auth-card-stitch__aside p {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--seal-soft);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.12em;
+}
+
+.auth-card-stitch__body {
+  flex: 1;
+  padding: 32px;
+}
+
+.auth-card-stitch__title {
+  margin: 12px 0 8px;
+  font-size: 28px;
+}
+
+.auth-card-stitch__form {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.auth-field-underline :deep(.el-input__wrapper) {
+  border-radius: 0;
+  box-shadow: 0 1px 0 0 var(--line) inset;
+  background: transparent;
+}
+
+.auth-field-underline :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 2px 0 0 var(--seal) inset;
+}
+
+.auth-card-stitch__submit {
+  width: 100%;
+  min-height: 44px;
+  margin-left: 0;
+}
+
+@media (max-width: 720px) {
+  .auth-card-stitch {
+    flex-direction: column;
+  }
+
+  .auth-card-stitch__aside {
+    width: 100%;
+    min-width: 0;
+    min-height: 140px;
+    padding: 24px;
+  }
+
+  .auth-card-stitch__aside h1,
+  .auth-card-stitch__aside p {
+    writing-mode: horizontal-tb;
+  }
+
+  .auth-card-stitch__body {
+    padding: 24px 20px;
+  }
+}
+</style>

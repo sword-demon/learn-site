@@ -6,6 +6,11 @@ import type { LearnerMapListDTO } from '@learn-site/contracts';
 defineOptions({ name: 'MapListView' });
 
 const MAP_HUES = ['#5B8FF9', '#5AD8A6', '#F6BD16', '#E86452', '#6DC8EC', '#945FB9'] as const;
+const MAP_FALLBACKS = [
+  '/assets/stitch-map-scroll.jpg',
+  '/assets/stitch-map-steps.jpg',
+  '/assets/stitch-map-stars.jpg',
+] as const;
 
 const items = ref<LearnerMapListDTO['items']>([]);
 const loading = ref(false);
@@ -29,8 +34,8 @@ function retry(): void {
   void load();
 }
 
-function coverGlyph(title: string): string {
-  return title.slice(0, 2);
+function mapFallbackCover(id: number): string {
+  return MAP_FALLBACKS[id % MAP_FALLBACKS.length] ?? MAP_FALLBACKS[0];
 }
 
 onMounted(load);
@@ -40,7 +45,7 @@ onMounted(load);
   <main class="page maps-page">
     <header class="maps-page__head">
       <h1>拾阶而上</h1>
-      <p>按主题路径，了解一个领域的关键脉络。</p>
+      <p>遵循古法序进，探索系统化的知识脉络。选择一幅地图，开启您的研学之旅。</p>
     </header>
 
     <el-skeleton v-if="loading" animated :rows="3" class="maps-skeleton" />
@@ -56,10 +61,7 @@ onMounted(load);
       <li v-for="m in items" :key="m.id" class="map-card" :data-map-id="m.id">
         <router-link :to="`/maps/${m.id}`" class="map-card__cover-link" :aria-label="m.title">
           <div class="map-card__cover" :data-hue="m.id % MAP_HUES.length">
-            <img v-if="m.cover_url" :src="m.cover_url" :alt="m.title" />
-            <span v-else class="map-card__cover-glyph" aria-hidden="true">
-              {{ coverGlyph(m.title) }}
-            </span>
+            <img :src="m.cover_url || mapFallbackCover(m.id)" :alt="m.title" />
           </div>
         </router-link>
         <div class="map-card__body">
@@ -78,8 +80,8 @@ onMounted(load);
               :stroke-width="4"
             />
           </div>
-          <router-link :to="`/maps/${m.id}`" class="map-card__cta">
-            {{ m.enrollment ? '继续学习' : '开始学习' }} →
+          <router-link :to="`/maps/${m.id}`" class="map-card__cta btn btn-primary">
+            {{ m.enrollment ? '继续学习' : '开始探索' }}
           </router-link>
         </div>
       </li>
@@ -97,15 +99,20 @@ onMounted(load);
 }
 
 .maps-page__head h1 {
-  margin: 0 0 6px;
-  font-size: 22px;
-  color: var(--ink, #303133);
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
 }
 
 .maps-page__head p {
   margin: 0;
-  color: var(--ink-2, #606266);
-  font-size: 14px;
+  max-width: 42rem;
+  color: var(--ink-2);
+  font-size: 18px;
+  line-height: 1.65;
 }
 
 .maps-skeleton {
@@ -128,18 +135,20 @@ onMounted(load);
 .map-card {
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid var(--line, #ebeef5);
-  border-radius: var(--r, 8px);
+  background: var(--card);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
   overflow: hidden;
   transition:
+    border-color 0.2s,
     transform 0.15s,
     box-shadow 0.15s;
 }
 
 .map-card:hover {
+  border-color: var(--seal);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
 }
 
 .map-card__cover-link {
@@ -149,17 +158,22 @@ onMounted(load);
 }
 
 .map-card__cover {
-  aspect-ratio: 16 / 9;
+  height: 192px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--card-2, #f5f7fa);
+  background: var(--card-2);
+  overflow: hidden;
 }
 
 .map-card__cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.map-card__cover img[src*='stitch-map'] {
+  opacity: 0.92;
 }
 
 .map-card__cover-glyph {
@@ -188,18 +202,19 @@ onMounted(load);
 }
 
 .map-card__body {
-  padding: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
 }
 
 .map-card__title {
   margin: 0;
-  font-size: 16px;
-  line-height: 1.4;
-  color: var(--ink, #303133);
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .map-card__lede {
@@ -226,10 +241,10 @@ onMounted(load);
 }
 
 .map-card__cta {
-  margin-top: 8px;
-  font-size: 14px;
-  color: var(--seal, #409eff);
+  margin-top: auto;
+  width: 100%;
+  min-height: 44px;
   text-decoration: none;
-  align-self: flex-start;
+  text-align: center;
 }
 </style>

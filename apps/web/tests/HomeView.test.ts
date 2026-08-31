@@ -109,6 +109,23 @@ describe('HomeView', () => {
     await flushPromises();
 
     expect(wrapper.find('[data-testid="home-banner-carousel"]').exists()).toBe(true);
+    expect(wrapper.find('.banner-image').attributes('src')).toContain('/api/media/banners/');
+    expect(wrapper.text()).toContain('拾阶学社');
+  });
+
+  it('hides the hero carousel when home payload has no banners', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: HomeView }],
+    });
+    await router.push('/');
+    await router.isReady();
+
+    const wrapper = mount(HomeView, { global: { plugins: [createPinia(), router] } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="home-banner-carousel"]').exists()).toBe(false);
+    expect(wrapper.find('.home-hero-fallback').exists()).toBe(false);
   });
 
   it('renders the recommended learning maps rail when payload has maps', async () => {

@@ -124,8 +124,8 @@ describe('MapListView', () => {
     const enrolled = wrapper.find('[data-map-id="7"]');
     const unjoined = wrapper.find('[data-map-id="9"]');
     expect(enrolled.text()).toContain('继续学习');
-    expect(enrolled.text()).not.toContain('开始学习');
-    expect(unjoined.text()).toContain('开始学习');
+    expect(enrolled.text()).not.toContain('开始探索');
+    expect(unjoined.text()).toContain('开始探索');
     expect(unjoined.text()).not.toContain('继续学习');
   });
 

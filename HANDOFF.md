@@ -1,13 +1,55 @@
-# HANDOFF — learn-site Phase 4 收尾 & 后续 Phase 5 入口
+# HANDOFF — learn-site
 
-> 创建时间: 2026-08-24
-> 来源: /speckit-implement Phase 4 完成后,用户请求 /handoff
-> 增补时间: 2026-08-24 (Phase 5 完成后,用户请求 /handoff 继续补充)
-> 当前阶段: **Phase 5 完成,Phase 6 待启动**
+> **最新特性 (2026-08-31)**: `007-stitch-web-fidelity` — 学习端 Stitch 设计对齐 **已完成**（见 §0）
+> 历史阶段: Phase 4 收尾 & Phase 5/6 入口（§1 起）
 
 ---
 
-## 1. 当前位置
+## 0. 007-stitch-web-fidelity（学习端 Stitch 对齐）— 已完成
+
+**规格**: `specs/007-stitch-web-fidelity/spec.md`  
+**任务**: `specs/007-stitch-web-fidelity/tasks.md`（T001–T035 全部勾选）  
+**走查表**: `specs/007-stitch-web-fidelity/verification-walkthrough.md`
+
+### 范围
+
+- **仅 `apps/web/`** 视觉与壳层；不改 API 契约（Push 鉴权修补除外，见下）
+- 7+ 主路由：首页、课程详情、学习页、个人中心、地图列表/详情、登录、结算
+- 全局 token：`apps/web/src/style.css`（`--paper`、`--seal`、Noto Serif/Sans、夜读模式）
+
+### 关键实现
+
+| 区域 | 文件 |
+|------|------|
+| 壳层 | `LearnerLayout.vue`、`SiteFooter.vue`、`EmptyState.vue` |
+| 首页轮播 | `HomeBannerCarousel.vue` — **数据来自** `GET /api/learner/v1/home` 的 `banners`，禁止静态 hero |
+| Home 刷新 | `home.ts` `load({ force: true })`；`HomeView` 进入时强制拉取 |
+| 地图 fallback | `apps/web/public/assets/stitch-map-*.jpg` |
+| Push 403 修复 | `PushAuthGuard.php`、`PushClientScript.php`（patch `push.js`）、`notifications.ts`、`push.ts` |
+
+### 运营依赖
+
+1. **首页轮播**: 管理端 `http://localhost:8081/banners` 创建并启用 banner；DB 空则首页无轮播区（预期）
+2. **Push**: 需 `docker compose build api web && docker compose up -d`；浏览器强刷；学员须已登录带 token
+
+### 管理端附带
+
+- `BannerListView.vue`：`BANNER_LINK_INVALID` 等友好文案 + 提交前 `validateLinkUrl`
+
+### 门禁
+
+```bash
+make test-web   # lint + typecheck + vitest + build — 已通过
+```
+
+### 不要做的事
+
+- 不要用 `stitch-home-hero.jpg` 替代 API banners
+- 不要在本特性中改 `packages/contracts` 课程/报名域模型
+
+---
+
+## 1. 当前位置（历史 Phase 4–6）
 
 - **完成阶段**: Phase 4 (User Story 2: 管理员在后台组织并发布课程) — T034–T040 全部勾选
 - **下一阶段**: Phase 5 (User Story 3: 学员浏览/报名/学习流程) — 任务编号 T041 起

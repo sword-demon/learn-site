@@ -18,6 +18,7 @@ const emit = defineEmits<{
       controls
       preload="metadata"
       :src="url"
+      poster="/assets/stitch-lesson-hero.jpg"
       class="player"
       @timeupdate="emit('timeupdate', $event)"
       @ended="emit('ended', $event)"

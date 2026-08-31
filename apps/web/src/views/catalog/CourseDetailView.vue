@@ -21,11 +21,9 @@
           <header class="course-hero">
             <div class="course-hero__cover" :data-hue="(detail.course.id ?? 0) % MAP_HUES.length">
               <img
-                v-if="detail.course.cover_url"
-                :src="detail.course.cover_url"
+                :src="detail.course.cover_url || '/assets/stitch-course-hero.jpg'"
                 :alt="detail.course.title"
               />
-              <b v-else class="course-hero__cover-glyph">{{ coverGlyph }}</b>
               <!-- ponytail: legacy used coverStyle CSS var + coverMeta text; now follows MapListView MAP_HUES pattern -->
             </div>
             <div class="course-hero__body">
@@ -272,8 +270,6 @@ const previewAvailable = computed(() =>
   chapters.value.some((chapter) => chapter.lessons.some((lesson) => lesson.is_preview)),
 );
 
-const coverGlyph = computed(() => detail.value?.course.title.slice(0, 1) ?? '课');
-
 const firstLesson = computed(() => {
   for (const chapter of chapters.value) {
     const lesson = chapter.lessons[0];
@@ -448,6 +444,10 @@ function onEntitled(): void {
   padding-bottom: 48px;
 }
 
+.course-detail > .crumbs {
+  display: none;
+}
+
 .course-detail__error {
   display: flex;
   flex-direction: column;
@@ -480,8 +480,8 @@ function onEntitled(): void {
 
 .course-detail__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 32px;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 24px;
   align-items: start;
 }
 
@@ -490,22 +490,21 @@ function onEntitled(): void {
 }
 
 .course-hero {
-  display: flex;
-  gap: 24px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--line, #ebeef5);
+  display: grid;
+  gap: 10px;
 }
 
 .course-hero__cover {
-  flex-shrink: 0;
-  width: 240px;
-  height: 160px;
-  border-radius: var(--r, 8px);
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--card-2, #f5f7fa);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid var(--line-2);
 }
 
 .course-hero__cover img {
@@ -540,16 +539,22 @@ function onEntitled(): void {
 }
 
 .course-hero__body {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--line, #ebeef5);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
 }
 
 .course-hero__title {
   margin: 0;
-  font-size: 22px;
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 600;
   color: var(--ink, #303133);
 }
 
@@ -587,11 +592,16 @@ function onEntitled(): void {
 }
 
 .course-tabs {
-  margin-top: 24px;
+  margin-top: 10px;
+  padding: 0 16px 16px;
+  border: 1px solid var(--line, #ebeef5);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
 }
 
 .course-tabs :deep(.el-tabs__header) {
-  margin: 0 0 20px;
+  margin: 0 0 16px;
 }
 
 .course-tabs :deep(.el-tabs__item) {
@@ -719,13 +729,14 @@ function onEntitled(): void {
 .course-detail__buy-panel.buy-panel {
   position: sticky;
   top: 80px;
-  padding: 20px;
+  padding: 24px;
   border: 1px solid var(--line, #ebeef5);
-  border-radius: var(--r, 8px);
+  border-radius: 12px;
   background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  box-shadow: var(--shadow);
 }
 
 .buy-panel__price {
@@ -735,7 +746,8 @@ function onEntitled(): void {
 }
 
 .buy-panel__price-now {
-  font-size: 24px;
+  font-family: var(--serif);
+  font-size: 40px;
   font-weight: 700;
   color: var(--seal, #409eff);
 }
@@ -768,5 +780,30 @@ function onEntitled(): void {
 .buy-panel__actions > .el-button {
   width: 100%;
   margin-left: 0;
+}
+
+@media (max-width: 900px) {
+  .course-detail__grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .course-detail__buy-panel.buy-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .course-hero__cover {
+    height: 140px;
+  }
+
+  .course-hero__title {
+    font-size: 21px;
+  }
+
+  .course-tabs {
+    padding-inline: 12px;
+  }
 }
 </style>

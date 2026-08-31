@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --paper: #f6f1e7;
-  --paper-2: #efe8da;
-  --card: #fffdf8;
-  --card-2: #faf6ec;
-  --ink: #2b2620;
-  --ink-2: #6b6355;
-  --ink-3: #998f7d;
-  --line: #e3d9c6;
-  --line-2: #d2c5a9;
-  --seal: #b5402c;
-  --seal-soft: #f3ded7;
-  --seal-deep: #8f3121;
-  --indigo: #33566b;
-  --indigo-soft: #e2ebee;
-  --moss: #2f7d57;
-  --moss-soft: #e0ede4;
-  --gold: #a8842c;
-  --gold-soft: #f1e8d2;
-  --shadow: 0 6px 24px rgba(43, 38, 32, 0.07);
-  --shadow-lg: 0 18px 48px rgba(43, 38, 32, 0.14);
-  --r: 4px;
+  --paper: #faf8fe;
+  --paper-2: #f4f3f8;
+  --card: #ffffff;
+  --card-2: #eeedf3;
+  --ink: #1a1b1f;
+  --ink-2: #574142;
+  --ink-3: #8b7171;
+  --line: #e3e2e7;
+  --line-2: #debfc0;
+  --seal: #912132;
+  --seal-soft: #ffdadb;
+  --seal-deep: #b23a48;
+  --indigo: #3a6849;
+  --indigo-soft: #bcefc8;
+  --moss: #3a6849;
+  --moss-soft: #bcefc8;
+  --gold: #806003;
+  --gold-soft: #ffdf9e;
+  --shadow: 0 4px 16px rgba(31, 32, 36, 0.06);
+  --shadow-lg: 0 12px 32px rgba(31, 32, 36, 0.1);
+  --r: 8px;
 
   /* Legacy aliases used across views */
   --paper-deep: var(--paper-2);
@@ -139,14 +139,16 @@ body,
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
+  overflow-x: clip;
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.75;
+  font-size: 14px;
+  line-height: 1.65;
   background-color: var(--paper);
   text-rendering: optimizeLegibility;
 }
@@ -157,9 +159,7 @@ body::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(43, 38, 32, 0.05) 1px, transparent 1px);
-  background-size: 22px 22px;
-  opacity: 0.5;
+  display: none;
 }
 
 html[data-theme='night'] body::before {
@@ -233,9 +233,10 @@ select:focus-visible {
 }
 
 .masthead-inner:has(.masthead-bar) {
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   gap: 0;
+  min-height: 64px;
   padding: 0 24px;
 }
 
@@ -243,15 +244,25 @@ select:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 16px;
-  min-height: 72px;
-  padding: 10px 0;
+  gap: 24px;
+  min-height: 64px;
+  padding: 0;
+  flex: 1;
+  width: 100%;
+}
+
+.masthead-brandnav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+  flex: 1;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: var(--ink);
   text-decoration: none;
   flex-shrink: 0;
@@ -259,8 +270,8 @@ select:focus-visible {
 }
 
 .seal-mark {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   background: var(--seal);
   color: #f9f3e8;
   font-family: var(--serif);
@@ -292,26 +303,29 @@ select:focus-visible {
 
 .brand-txt h1 {
   font-family: var(--serif);
-  font-size: 22px;
+  font-size: 20px;
   margin: 0;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
+  color: var(--seal);
 }
 
 .brand-txt p {
   margin: 0;
   font-size: 12px;
   color: var(--ink-2);
-  letter-spacing: 0.18em;
+  display: none;
 }
 
 .mainnav {
   display: flex;
   align-items: stretch;
-  gap: 2px;
-  min-height: 44px;
-  margin: 0 -8px;
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  min-height: 64px;
+  margin: 0;
+  border-top: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .mainnav a {
@@ -319,10 +333,10 @@ select:focus-visible {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  padding: 0 14px;
+  padding: 0 8px;
   color: var(--ink-2);
   font-size: 14px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
   word-break: keep-all;
@@ -357,7 +371,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 10px;
+  gap: 8px;
   margin-left: auto;
   min-width: 0;
 }
@@ -408,10 +422,10 @@ select:focus-visible {
 
 .btn-night.el-button {
   border: 1px solid var(--line-2);
-  background: var(--card-2);
+  background: var(--card);
   color: var(--ink-2);
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   margin-left: 0;
 }
@@ -454,9 +468,9 @@ select:focus-visible {
 }
 
 .page {
-  width: min(1180px, 100%);
+  width: min(1200px, 100%);
   margin: 0 auto;
-  padding: 28px 24px 64px;
+  padding: 24px 24px 64px;
   animation: page-in 0.4s ease both;
 }
 
@@ -553,8 +567,8 @@ select:focus-visible {
 
 .btn-primary {
   background: var(--seal);
-  color: #f9f3e8;
-  box-shadow: 0 4px 14px rgba(181, 64, 44, 0.28);
+  color: #fff;
+  box-shadow: none;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -568,7 +582,7 @@ select:focus-visible {
   background: var(--card);
   border-color: var(--line-2);
   color: var(--ink);
-  box-shadow: var(--shadow);
+  box-shadow: none;
 }
 
 .btn-ghost:hover:not(:disabled),
@@ -722,7 +736,7 @@ select:focus-visible {
 
 .foot {
   border-top: 1px solid var(--line-2);
-  background: var(--card);
+  background: var(--card-2);
   margin-top: auto;
 }
 
@@ -806,8 +820,8 @@ select:focus-visible {
 
 .home-grid {
   display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 32px;
+  grid-template-columns: 256px 1fr;
+  gap: 24px;
   align-items: start;
 }
 
@@ -815,7 +829,7 @@ select:focus-visible {
   font-family: var(--serif);
   font-size: 15px;
   margin: 0 0 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0;
   color: var(--ink-2);
   border-bottom: 2px solid var(--ink);
   padding-bottom: 8px;
@@ -920,29 +934,33 @@ select:focus-visible {
 .entry-list {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 .entry {
   display: grid;
-  grid-template-columns: 148px 1fr auto;
-  gap: 20px;
-  padding: 22px 6px;
+  grid-template-columns: 144px 1fr auto;
+  gap: 16px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
   align-items: center;
   cursor: pointer;
   position: relative;
-  border-radius: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
   text-decoration: none;
   color: inherit;
 }
 
 .entry:hover {
-  background: var(--card-2);
+  background: var(--paper-2);
+  box-shadow: var(--shadow);
 }
 
 .entry h3 {
   font-family: var(--serif);
-  font-size: 18px;
+  font-size: 16px;
   margin: 2px 0 6px;
   font-weight: 700;
   color: var(--ink);
@@ -955,7 +973,7 @@ select:focus-visible {
 .entry .digest {
   margin: 0 0 8px;
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 13px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -981,7 +999,7 @@ select:focus-visible {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-  min-width: 120px;
+  min-width: 92px;
 }
 
 .entry-side .price-line {

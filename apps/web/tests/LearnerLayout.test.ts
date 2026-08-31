@@ -104,16 +104,16 @@ describe('LearnerLayout masthead', () => {
     });
   });
 
-  it('keeps brand tools and nav on separate rows', async () => {
+  it('keeps brand, nav and tools in one desktop masthead row', async () => {
     const wrapper = await mountLayout();
     const bar = wrapper.get('.masthead-bar');
     const nav = wrapper.get('#learner-navigation');
 
     expect(bar.find('.brand').exists()).toBe(true);
     expect(bar.find('.masthead-tools').exists()).toBe(true);
-    expect(bar.find('#learner-navigation').exists()).toBe(false);
-    expect(nav.element.parentElement?.classList.contains('masthead-inner')).toBe(true);
-    expect(nav.element.previousElementSibling?.classList.contains('masthead-bar')).toBe(true);
+    expect(bar.find('.masthead-brandnav').exists()).toBe(true);
+    expect(bar.find('#learner-navigation').exists()).toBe(true);
+    expect(nav.element.parentElement?.classList.contains('masthead-brandnav')).toBe(true);
   });
 
   it('shows compact public links before login', async () => {
@@ -147,7 +147,7 @@ describe('LearnerLayout masthead', () => {
 });
 
 describe('learner masthead CSS', () => {
-  it('forces nav labels onto a single line in a dedicated row', () => {
+  it('forces nav labels onto a single line in the desktop masthead', () => {
     const css = readFileSync(path.resolve(process.cwd(), 'src/style.css'), 'utf8');
     const navLink = css.match(/\.mainnav a \{[\s\S]*?\n\}/)?.[0] ?? '';
     const inner = css.match(/\.masthead-inner \{[\s\S]*?\n\}/)?.[0] ?? '';
@@ -156,6 +156,6 @@ describe('learner masthead CSS', () => {
     expect(navLink).toContain('flex-shrink: 0');
     expect(inner).not.toContain('flex-wrap: wrap');
     expect(css).toContain('.masthead-bar {');
-    expect(css).toContain('.masthead-inner:has(.masthead-bar)');
+    expect(css).toContain('.masthead-brandnav {');
   });
 });

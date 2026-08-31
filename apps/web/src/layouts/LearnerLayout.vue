@@ -3,15 +3,40 @@
     <header class="masthead">
       <div class="masthead-inner">
         <div class="masthead-bar">
-          <router-link to="/" class="brand" aria-label="拾阶学社">
-            <div class="seal-mark" aria-hidden="true">
-              <span>拾</span><span>阶</span><span>学</span><span>社</span>
-            </div>
-            <div class="brand-txt">
-              <h1>拾阶学社</h1>
-              <p>拾级而上 · 日进一阶</p>
-            </div>
-          </router-link>
+          <div class="masthead-brandnav">
+            <router-link to="/" class="brand" aria-label="拾阶学社">
+              <div class="seal-mark" aria-hidden="true">
+                <span>拾</span><span>阶</span><span>学</span><span>社</span>
+              </div>
+              <div class="brand-txt">
+                <h1>拾阶学社</h1>
+                <p>拾级而上 · 日进一阶</p>
+              </div>
+            </router-link>
+
+            <nav
+              id="learner-navigation"
+              class="mainnav"
+              :class="{ open: menuOpen }"
+              aria-label="主导航"
+              @click="menuOpen = false"
+            >
+              <router-link to="/" active-class="on" exact-active-class="on">首页</router-link>
+              <router-link to="/maps" active-class="on">学习地图</router-link>
+              <template v-if="session.loggedIn">
+                <router-link to="/me/learning" active-class="on">我的学习</router-link>
+                <router-link to="/me/favorites" active-class="on">收藏</router-link>
+                <router-link to="/me/orders" active-class="on">我的订单</router-link>
+                <router-link to="/me/messages" active-class="on">
+                  消息
+                  <span v-if="unreadCount > 0" class="nav-badge">{{
+                    unreadCount > 99 ? '99+' : unreadCount
+                  }}</span>
+                </router-link>
+                <router-link to="/me/checkins" active-class="on">每日签到</router-link>
+              </template>
+            </nav>
+          </div>
 
           <div class="masthead-tools">
             <el-button
@@ -51,29 +76,6 @@
             {{ menuOpen ? '收起' : '菜单' }}
           </el-button>
         </div>
-
-        <nav
-          id="learner-navigation"
-          class="mainnav"
-          :class="{ open: menuOpen }"
-          aria-label="主导航"
-          @click="menuOpen = false"
-        >
-          <router-link to="/" active-class="on" exact-active-class="on">首页</router-link>
-          <router-link to="/maps" active-class="on">学习地图</router-link>
-          <template v-if="session.loggedIn">
-            <router-link to="/me/learning" active-class="on">我的学习</router-link>
-            <router-link to="/me/favorites" active-class="on">收藏</router-link>
-            <router-link to="/me/orders" active-class="on">我的订单</router-link>
-            <router-link to="/me/messages" active-class="on">
-              消息
-              <span v-if="unreadCount > 0" class="nav-badge">{{
-                unreadCount > 99 ? '99+' : unreadCount
-              }}</span>
-            </router-link>
-            <router-link to="/me/checkins" active-class="on">每日签到</router-link>
-          </template>
-        </nav>
       </div>
     </header>
     <router-view />

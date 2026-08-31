@@ -44,6 +44,28 @@ describe('home store', () => {
     expect(store.error).toBe(false);
   });
 
+  it('refetches home data when force reload is requested', async () => {
+    const store = useHomeStore();
+    await store.load();
+    expect(learnerApi.fetchHome).toHaveBeenCalledTimes(1);
+
+    learnerApi.fetchHome.mockResolvedValueOnce({
+      ...homePayload,
+      banners: [
+        {
+          id: 1,
+          image_url: '/api/media/banners/2026/08/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webp',
+          link_url: null,
+          sort_order: 0,
+        },
+      ],
+    });
+    await store.load({ force: true });
+
+    expect(learnerApi.fetchHome).toHaveBeenCalledTimes(2);
+    expect(store.banners).toHaveLength(1);
+  });
+
   it('reads the latest saved public profile in a fresh visitor session', async () => {
     const first = useHomeStore();
     await first.load();

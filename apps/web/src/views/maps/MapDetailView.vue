@@ -311,16 +311,19 @@ function goCourse(courseId: number): void {
 
 .map-detail__title {
   margin: 0 0 8px;
-  font-size: 24px;
-  color: var(--ink, #303133);
+  font-family: var(--serif);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
 }
 
 .map-detail__lede {
   margin: 0;
   max-width: 720px;
-  font-size: 14px;
-  color: var(--ink-2, #606266);
-  line-height: 1.6;
+  font-size: 18px;
+  color: var(--ink-2);
+  line-height: 1.65;
 }
 
 .map-detail__audience {
@@ -370,9 +373,19 @@ function goCourse(courseId: number): void {
 
 .map-detail__grid {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 32px;
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr);
+  gap: 24px;
   margin-top: 24px;
+  align-items: start;
+}
+
+.map-detail__timeline {
+  padding-right: 24px;
+}
+
+.map-detail__stages {
+  padding-left: 24px;
+  border-left: 1px solid var(--line-2);
 }
 
 .stage-line {
@@ -417,26 +430,32 @@ function goCourse(courseId: number): void {
 }
 
 .stage-node[data-state='completed'] .stage-dot {
-  background: var(--success, #67c23a);
-  border-color: var(--success, #67c23a);
+  background: var(--moss);
+  border-color: var(--moss);
   color: #fff;
 }
 
 .stage-node[data-state='active'] .stage-dot {
-  background: var(--warning, #e6a23c);
-  border-color: var(--warning, #e6a23c);
-  color: #fff;
+  background: var(--card);
+  border-color: var(--seal);
+  color: var(--seal);
+}
+
+.stage-info h3 {
+  margin: 4px 0 4px;
+  font-family: var(--serif);
+  font-size: 20px;
+  color: var(--ink);
+}
+
+.stage-node[data-state='active'] .stage-info h3 {
+  color: var(--seal);
+  font-size: 24px;
 }
 
 .stage-info {
   flex: 1;
   min-width: 0;
-}
-
-.stage-info h3 {
-  margin: 4px 0 4px;
-  font-size: 14px;
-  color: var(--ink, #303133);
 }
 
 .stage-summary {
@@ -487,18 +506,16 @@ function goCourse(courseId: number): void {
   grid-template-columns: 1fr auto auto;
   gap: 16px;
   align-items: center;
-  padding: 12px 16px;
-  border: 1px solid var(--line, #ebeef5);
-  border-radius: var(--r, 8px);
-  background: #fff;
-}
-
-.course-row[data-state='done'] {
-  background: var(--success-soft, #f0f9eb);
+  padding: 16px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--card);
+  box-shadow: var(--shadow);
 }
 
 .course-row[data-state='active'] {
-  border-color: var(--warning, #e6a23c);
+  border-color: var(--seal);
+  box-shadow: 0 0 0 3px var(--seal-soft);
 }
 
 .course-row__title {

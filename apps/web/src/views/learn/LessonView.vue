@@ -444,7 +444,8 @@ watch(
 .lesson-page {
   display: grid;
   gap: 0;
-  padding-bottom: 48px;
+  max-width: 1440px;
+  padding-bottom: 24px;
 }
 
 .lesson-page__error {
@@ -511,27 +512,32 @@ watch(
 
 .lesson-grid {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: 16px;
   align-items: start;
+  min-height: calc(100vh - 180px);
 }
 
 .lesson-catalog {
-  padding: 16px;
-  border: 1px solid var(--line, #ebeef5);
-  border-radius: var(--r, 8px);
-  background: #fff;
+  padding: 0 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--card);
   position: sticky;
   top: 80px;
   max-height: calc(100vh - 100px);
   overflow-y: auto;
+  box-shadow: var(--shadow);
 }
 
 .lesson-catalog__h {
-  margin: 0 0 12px;
-  font-size: 14px;
-  color: var(--ink, #303133);
+  margin: 0;
+  padding: 16px;
+  font-family: var(--serif);
+  font-size: 24px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-2);
 }
 
 .lesson-catalog__chapter {
@@ -546,6 +552,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin: 0 8px;
   padding: 8px 10px;
   border-radius: var(--r, 6px);
   color: var(--ink-2, #606266);
@@ -560,9 +567,11 @@ watch(
 }
 
 .lesson-catalog__lesson--cur {
-  background: var(--seal-soft, #ecf5ff);
-  color: var(--seal, #409eff);
+  background: color-mix(in srgb, var(--seal) 8%, transparent);
+  border-left: 2px solid var(--seal);
+  color: var(--seal);
   font-weight: 600;
+  border-radius: 0 8px 8px 0;
 }
 
 .lesson-catalog__lesson-title {
@@ -584,9 +593,10 @@ watch(
 
 .lesson-stage {
   padding: 24px;
-  border: 1px solid var(--line, #ebeef5);
-  border-radius: var(--r, 8px);
-  background: #fff;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
 }
 
 .lesson-stage__head {
@@ -600,8 +610,9 @@ watch(
 
 .lesson-stage__title {
   margin: 0;
-  font-size: 16px;
-  color: var(--ink, #303133);
+  font-family: var(--serif);
+  font-size: 32px;
+  color: var(--ink);
 }
 
 .lesson-stage__typechip {

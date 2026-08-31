@@ -20,9 +20,13 @@ export const useHomeStore = defineStore('home', () => {
   const error = ref(false);
   let inflight: Promise<void> | null = null;
 
-  function load(): Promise<void> {
-    if (loaded.value) return Promise.resolve();
-    if (inflight) return inflight;
+  function load(options?: { force?: boolean }): Promise<void> {
+    if (loaded.value && !options?.force) return Promise.resolve();
+    if (inflight && !options?.force) return inflight;
+
+    if (options?.force) {
+      loaded.value = false;
+    }
 
     loading.value = true;
     error.value = false;

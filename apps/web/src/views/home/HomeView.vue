@@ -10,43 +10,14 @@
     />
 
     <div v-else>
-      <HomeBannerCarousel v-if="banners.length > 0" :banners="banners" />
-
-      <section
-        v-if="recommendedMaps.length > 0"
-        class="home__map-rail"
-        data-testid="recommended-map-rail"
-        aria-label="推荐学习地图"
-      >
-        <header class="home__map-rail-head">
-          <h2>推荐学习地图</h2>
-          <router-link to="/maps" class="home__map-rail-more">查看全部 →</router-link>
-        </header>
-        <div class="home__map-grid">
-          <article
-            v-for="m in recommendedMaps"
-            :key="m.id"
-            class="home__map-card"
-            :data-map-id="m.id"
-          >
-            <div class="home__map-card-cover">
-              <img v-if="m.cover_url" :src="m.cover_url" :alt="m.title" />
-              <div v-else class="home__map-card-cover-fallback" aria-hidden="true">
-                {{ m.title.slice(0, 2) }}
-              </div>
-            </div>
-            <div class="home__map-card-body">
-              <h3>{{ m.title }}</h3>
-              <p v-if="m.summary" class="home__map-card-summary">{{ m.summary }}</p>
-              <router-link :to="`/maps/${m.id}`" class="home__map-card-cta">开始探索 →</router-link>
-            </div>
-          </article>
-        </div>
-      </section>
+      <HomeBannerCarousel v-if="banners.length > 0" :banners="banners" :headline="bannerHeadline" />
 
       <div class="home-grid">
-        <aside class="tree-panel" aria-label="课程分类">
-          <h3>分类目录</h3>
+        <aside class="tree-panel home-sidebar" aria-label="课程分类">
+          <div class="home-sidebar__head">
+            <h2>拾阶目录</h2>
+            <p>逐级而上</p>
+          </div>
           <el-button
             text
             class="all-categories"
@@ -77,11 +48,18 @@
         </aside>
 
         <section aria-label="课程列表">
-          <div class="list-head">
-            <h2>{{ listTitle }}</h2>
-            <span class="cnt">{{ courses.length }} 门课程</span>
+          <div class="home-list-head">
+            <div class="crumbs home-list-head__crumbs">
+              <router-link to="/">拾阶学社</router-link>
+              <span class="sep">/</span>
+              <span>{{ listTitle }}</span>
+            </div>
+            <div class="list-head home-list-head__title">
+              <h2>
+                {{ listTitle }} <span class="cnt">({{ courses.length }}门)</span>
+              </h2>
+            </div>
           </div>
-          <div class="crumbs" style="margin-bottom: 6px">{{ breadcrumbText }}</div>
 
           <el-skeleton v-if="listLoading" animated :rows="5" />
           <el-alert
@@ -105,6 +83,36 @@
           </div>
         </section>
       </div>
+
+      <section
+        v-if="recommendedMaps.length > 0"
+        class="home__map-rail"
+        data-testid="recommended-map-rail"
+        aria-label="推荐学习地图"
+      >
+        <header class="home__map-rail-head">
+          <h2>推荐学习地图</h2>
+          <router-link to="/maps" class="home__map-rail-more">查看全部 →</router-link>
+        </header>
+        <div class="home__map-grid">
+          <article
+            v-for="m in recommendedMaps"
+            :key="m.id"
+            class="home__map-card"
+            :data-map-id="m.id"
+          >
+            <div class="home__map-card-cover">
+              <img v-if="m.cover_url" :src="m.cover_url" :alt="m.title" />
+              <img v-else :src="mapFallbackCover(m.id)" :alt="m.title" />
+            </div>
+            <div class="home__map-card-body">
+              <h3>{{ m.title }}</h3>
+              <p v-if="m.summary" class="home__map-card-summary">{{ m.summary }}</p>
+              <router-link :to="`/maps/${m.id}`" class="home__map-card-cta">开始探索 →</router-link>
+            </div>
+          </article>
+        </div>
+      </section>
     </div>
   </main>
 </template>
@@ -124,14 +132,21 @@ const homeStore = useHomeStore();
 const session = useLoginFamilyStore();
 const route = useRoute();
 const router = useRouter();
-const { categories, recentCourses, banners, recommendedMaps, loading, error } =
+const { categories, recentCourses, banners, recommendedMaps, intro, loading, error } =
   storeToRefs(homeStore);
+
+const bannerHeadline = computed(() => intro.value?.title?.trim() ?? '');
 
 const selectedId = ref<number | null>(null);
 const courses = ref<CourseListItemDTO[]>([]);
 const allCourseTotal = ref(0);
 const listLoading = ref(false);
 const listError = ref(false);
+const MAP_FALLBACKS = [
+  '/assets/stitch-map-scroll.jpg',
+  '/assets/stitch-map-steps.jpg',
+  '/assets/stitch-map-stars.jpg',
+] as const;
 
 function collectIds(nodes: CategoryNode[]): number[] {
   const ids: number[] = [];
@@ -182,10 +197,6 @@ const listTitle = computed(() =>
   selectedId.value != null ? (findPath(selectedId.value).at(-1) ?? '分类课程') : '全部课程',
 );
 
-const breadcrumbText = computed(() =>
-  selectedId.value != null ? findPath(selectedId.value).join(' / ') : '拾阶学社 · 分类浏览',
-);
-
 function parseCatQuery(): number | null {
   const raw = route.query.cat;
   const value = Array.isArray(raw) ? raw[0] : raw;
@@ -223,6 +234,10 @@ function onCategoryNodeClick(node: CategoryNode): void {
   selectCategory(node.id);
 }
 
+function mapFallbackCover(id: number): string {
+  return MAP_FALLBACKS[id % MAP_FALLBACKS.length] ?? MAP_FALLBACKS[0];
+}
+
 watch(
   () => route.query.cat,
   () => {
@@ -232,7 +247,7 @@ watch(
 );
 
 onMounted(async () => {
-  await homeStore.load();
+  await homeStore.load({ force: true });
   selectedId.value = parseCatQuery();
   allCourseTotal.value = recentCourses.value.length;
   await loadCourses(selectedId.value);
@@ -242,6 +257,64 @@ onMounted(async () => {
 <style scoped>
 .home-page {
   padding-bottom: 48px;
+}
+
+.home-sidebar {
+  position: sticky;
+  top: 80px;
+  min-height: 600px;
+  padding: 16px 0;
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line-2);
+  border-radius: 0 12px 12px 0;
+  background: var(--card);
+}
+
+.home-sidebar__head {
+  padding: 0 16px 16px;
+  margin-bottom: 8px;
+}
+
+.home-sidebar__head h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 24px;
+  color: var(--seal);
+}
+
+.home-sidebar__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.home-list-head {
+  margin-bottom: 16px;
+}
+
+.home-list-head__crumbs {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.home-list-head__title {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.home-list-head__title h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.home-list-head__title .cnt {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink-2);
 }
 
 .tree-panel {
@@ -290,7 +363,7 @@ onMounted(async () => {
 }
 
 .home__map-rail {
-  margin: 24px 0 32px;
+  margin: 40px 0 0;
 }
 
 .home__map-rail-head {
