@@ -51,34 +51,30 @@
         <template v-if="!order">
           <h2 class="checkout-payment__h">选择支付方式</h2>
 
-          <div class="checkout-payment__methods" role="radiogroup" aria-label="支付方式">
-            <button
-              type="button"
+          <el-radio-group
+            v-model="paymentMethod"
+            class="checkout-payment__methods"
+            aria-label="支付方式"
+          >
+            <el-radio
+              value="wechat"
               class="checkout-payment__method"
-              :class="{ 'checkout-payment__method--active': paymentMethod === 'wechat' }"
-              role="radio"
-              :aria-checked="paymentMethod === 'wechat'"
               data-action="pay-wechat"
               data-method="wechat"
-              @click="paymentMethod = 'wechat'"
             >
               <span class="checkout-payment__method-icon checkout-payment__method-icon--wechat" aria-hidden="true">微</span>
               <span class="checkout-payment__method-label">微信支付</span>
-            </button>
-            <button
-              type="button"
+            </el-radio>
+            <el-radio
+              value="alipay"
               class="checkout-payment__method"
-              :class="{ 'checkout-payment__method--active': paymentMethod === 'alipay' }"
-              role="radio"
-              :aria-checked="paymentMethod === 'alipay'"
               data-action="pay-alipay"
               data-method="alipay"
-              @click="paymentMethod = 'alipay'"
             >
               <span class="checkout-payment__method-icon checkout-payment__method-icon--alipay" aria-hidden="true">支</span>
               <span class="checkout-payment__method-label">支付宝</span>
-            </button>
-          </div>
+            </el-radio>
+          </el-radio-group>
 
           <div class="checkout-payment__promo">
             <label class="checkout-payment__promo-label" for="promo-code">优惠码</label>

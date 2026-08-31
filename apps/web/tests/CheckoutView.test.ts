@@ -110,7 +110,9 @@ describe('CheckoutView', () => {
     expect(submit.attributes('disabled')).toBeDefined();
 
     // Toggle alipay; submit label should reflect it
-    await wrapper.get('[data-action="pay-alipay"]').trigger('click');
+    // ponytail: happy-dom does not bubble <label> clicks to nested <input type="radio">,
+    // so drive the v-model via the inner input directly.
+    await wrapper.get('[data-action="pay-alipay"] input[type="radio"]').setValue(true);
     expect(wrapper.text()).toContain('提交并使用支付宝');
 
     // Tick agreement to unlock submit
