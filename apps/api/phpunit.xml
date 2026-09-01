@@ -37,6 +37,7 @@
             <file>tests/LearningMapRouteTest.php</file>
         </testsuite>
         <testsuite name="Contract">
+            <file>tests/RateLimitTest.php</file>
             <file>tests/MigrationReleaseGateTest.php</file>
             <file>tests/LearnerControllerTest.php</file>
             <file>tests/RoleControllerTest.php</file>

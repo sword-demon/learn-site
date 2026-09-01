@@ -18,6 +18,7 @@ use support\Response;
  *   403     — FORBIDDEN / LAST_SUPER_ADMIN
  *   404     — NOT_FOUND
  *   409     — CONFLICT / CATEGORY_IN_USE
+ *   429     — RATE_LIMITED
  *   422     — PAYMENT_UNSETTLED
  *   500     — INTERNAL
  *
@@ -41,6 +42,7 @@ final class ApiResponse
     public const PAYMENT_UNSETTLED    = 'PAYMENT_UNSETTLED';
     public const ACCOUNT_DISABLED     = 'ACCOUNT_DISABLED';
     public const ALREADY_CHECKED_IN   = 'ALREADY_CHECKED_IN';
+    public const RATE_LIMITED         = 'RATE_LIMITED';
     public const INTERNAL             = 'INTERNAL';
 
     private const STATUS_BY_CODE = [
@@ -58,6 +60,7 @@ final class ApiResponse
         self::PAYMENT_UNSETTLED => 422,
         self::ACCOUNT_DISABLED  => 403,
         self::ALREADY_CHECKED_IN => 409,
+        self::RATE_LIMITED       => 429,
         self::INTERNAL          => 500,
     ];
 

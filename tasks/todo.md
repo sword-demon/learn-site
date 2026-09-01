@@ -65,13 +65,13 @@
 
 规格与代码仍不一致、文档不替代码改名的地方:
 
-| 概念 | 规格 / 词表 | 当前代码 | 处理 |
-|---|---|---|---|
-| 章节/课节生命周期 | 归档 (`active`/`archived`) | `enabled`/`disabled` | 词表用归档; 代码列名未改 |
-| 教师展示名称 | `teacher_display_name` | `teacher_name` | 词表用教师展示名称 |
-| 优惠窗口字段 | `sale_starts_at` | `sale_start_at` | 词表不收录列名 |
-| 课程访问权表 | `course_entitlements` | Phase 6 未落地; 非试看课节对未授权一律拒绝 | 词条保留, 不假装表已存在 |
-| 消息 | 领域概念存在; 规格写明本期不做读写接口 | 学习端有 `MessagesView` 壳 | 词条保留 |
+| 概念              | 规格 / 词表                            | 当前代码                                   | 处理                     |
+| ----------------- | -------------------------------------- | ------------------------------------------ | ------------------------ |
+| 章节/课节生命周期 | 归档 (`active`/`archived`)             | `enabled`/`disabled`                       | 词表用归档; 代码列名未改 |
+| 教师展示名称      | `teacher_display_name`                 | `teacher_name`                             | 词表用教师展示名称       |
+| 优惠窗口字段      | `sale_starts_at`                       | `sale_start_at`                            | 词表不收录列名           |
+| 课程访问权表      | `course_entitlements`                  | Phase 6 未落地; 非试看课节对未授权一律拒绝 | 词条保留, 不假装表已存在 |
+| 消息              | 领域概念存在; 规格写明本期不做读写接口 | 学习端有 `MessagesView` 壳                 | 词条保留                 |
 
 ## 审查 2 (2026-08-24): 代码评审 25 项
 
@@ -102,18 +102,37 @@
 
 按 diagnosing-bugs 纪律: A 类修必须先有 red-capable 测试. 当前 `apps/api/tests/` 全部是配置/结构断言, think-orm 无 in-memory 替身, 修真 DB 行为需要 docker 内 phpunit 跑 think-orm (用户已说自行跑测试).
 
-| ID | 位置 | 缺陷 | 红 seam |
-|---|---|---|---|
-| A1 | `EntitlementService::revoke` | 不带 `source='free'` 守卫, 可撤销 purchase 授权 (违反 FR-023 "支付成功产生的访问权不得取消") | 无 — 需真 DB |
-| A2 | `EntitlementService::viewerAuthorized` line 56-61 | `\Throwable` 静默吞所有异常, Redis 故障 → 用户看似匿名 (Standards §V) | 无 |
-| A3 | `QuestionController::findThread` | 泄露 `author_staff_id` 给学员 (FR-045) | 无 |
-| A4 | `Authorize::MAP` `/api/admin/v1/permissions` → `org.role` | 路由错配, 应为独立权限码 (Spec C1) | 单元测试可写 |
-| A5 | 注册端点 `captcha_answer` 字段名 | 契约要求 `captcha` (Spec C4) | 集成测试可写 |
-| A6 | `Logger::scrub` 仅顶层脱敏, 嵌套泄露 | 违反 FR-093 | 单元测试可写 |
-| A7 | `learner/AuthController` captcha 在 phone 校验前消耗 | DoS 风险 (FR-091) | 单元测试可写 |
+| ID  | 位置                                                      | 缺陷                                                                                         | 红 seam      |
+| --- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------ |
+| A1  | `EntitlementService::revoke`                              | 不带 `source='free'` 守卫, 可撤销 purchase 授权 (违反 FR-023 "支付成功产生的访问权不得取消") | 无 — 需真 DB |
+| A2  | `EntitlementService::viewerAuthorized` line 56-61         | `\Throwable` 静默吞所有异常, Redis 故障 → 用户看似匿名 (Standards §V)                        | 无           |
+| A3  | `QuestionController::findThread`                          | 泄露 `author_staff_id` 给学员 (FR-045)                                                       | 无           |
+| A4  | `Authorize::MAP` `/api/admin/v1/permissions` → `org.role` | 路由错配, 应为独立权限码 (Spec C1)                                                           | 单元测试可写 |
+| A5  | 注册端点 `captcha_answer` 字段名                          | 契约要求 `captcha` (Spec C4)                                                                 | 集成测试可写 |
+| A6  | `Logger::scrub` 仅顶层脱敏, 嵌套泄露                      | 违反 FR-093                                                                                  | 单元测试可写 |
+| A7  | `learner/AuthController` captcha 在 phone 校验前消耗      | DoS 风险 (FR-091)                                                                            | 单元测试可写 |
 
 ### 下一步建议 (给用户)
 
 A 类中有 A4/A6/A7 可在用户跑 docker 之前补单元测试 (mock seam 足够). A1/A2/A3 必须真 DB, 等用户跑 docker 时才能验证. C5/C7/C12 是无副作用小改, 可现在合.
 
 未做: 不改迁移、契约或 PHP. 下次改目录状态时, 应把代码列名收到「归档」, 而不是把词表改成「停用课节」.
+
+---
+
+# 优惠券管理表单修复
+
+日期: 2026-09-01
+范围: `apps/admin/src/views/coupons/CouponListView.vue` 与对应 Vitest 测试.
+
+## 计划
+
+- [x] 搜索筛选项在桌面端同一行展示,窄屏正常换行
+- [x] 创建/编辑表单改用 Element Plus 日期时间组件,补齐名称等字段占位符
+- [x] 分类与课程改为远程筛选的多选项,提交真实 ID 列表
+- [x] 补齐编辑入口并复用现有 `PATCH /coupons/:id` 能力
+- [x] 运行优惠券测试、类型检查、lint 与浏览器渲染验收
+
+## 审查
+
+优惠券视图测试 5/5、Admin 全量测试 119/119、类型检查、lint、构建和目标文件格式检查均通过。浏览器已验证路由会正确进入管理端登录守卫，因无已登录标签页且需要图形验证码，未进入优惠券页面做截图和真实点击验收。

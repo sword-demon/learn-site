@@ -31,15 +31,17 @@ import { useNotificationStore } from '@/stores/notifications';
 
 defineOptions({ name: 'StudentCenterView' });
 
-type TabKey = 'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account';
+type TabKey = 'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account' | 'coupons';
 
 type CheckinPrompt = {
   dialogVisible: { value: boolean };
-  refreshStatus: () => Promise<void>;
+  checkedInToday: { value: boolean };
+  refreshStatus: (options?: { forceOpen?: boolean }) => Promise<void>;
   afterSuccess: (hook: () => void) => () => void;
 };
 
 const HUES = ['#34566b', '#4c7a5a', '#a8842c', '#6b4a5e', '#3d6b6b', '#5a6470'] as const;
+const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] as const;
 
 const route = useRoute();
 const router = useRouter();
@@ -52,6 +54,7 @@ const TAB_BY_PATH: Record<string, TabKey> = {
   '/me/messages': 'messages',
   '/me/checkins': 'checkins',
   '/me/account': 'account',
+  '/me/coupons': 'coupons',
 };
 
 const activeTab = computed<TabKey>(() => TAB_BY_PATH[route.path] ?? 'learning');
@@ -76,11 +79,25 @@ const notifStore = useNotificationStore();
 const { unreadCount } = storeToRefs(notifStore);
 
 const checkinPrompt = inject<CheckinPrompt | null>('dailyCheckinPrompt', null);
+let openingCheckin = false;
 
 // ── 顶部全局 STREAK ──
 const streakDays = ref(0);
 const streakBest = ref(0);
-const heatmapCells = ref<{ date: string; hit: boolean }[]>([]);
+type HeatmapCell = {
+  key: string;
+  date: string;
+  day: number;
+  hit: boolean;
+  today: boolean;
+  empty: boolean;
+};
+
+const heatmapCells = ref<HeatmapCell[]>([]);
+
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 async function loadStreak(): Promise<void> {
   try {
@@ -91,18 +108,38 @@ async function loadStreak(): Promise<void> {
     for (let i = 0; i < 365; i += 1) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const iso = dateKey(d);
       if (dates.has(iso)) n += 1;
       else break;
     }
     streakDays.value = n;
     // ponytail: 后端无 best 字段，用 items.length 占位
     streakBest.value = items.length;
-    heatmapCells.value = Array.from({ length: 30 }, (_, i) => {
+    const start = new Date(today);
+    start.setDate(today.getDate() - 29);
+    const leadingEmptyCells = (start.getDay() + 6) % 7;
+    heatmapCells.value = Array.from({ length: leadingEmptyCells + 30 }, (_, i) => {
+      if (i < leadingEmptyCells) {
+        return {
+          key: `empty-${i}`,
+          date: '',
+          day: 0,
+          hit: false,
+          today: false,
+          empty: true,
+        };
+      }
       const d = new Date(today);
-      d.setDate(today.getDate() - (29 - i));
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return { date: iso, hit: dates.has(iso) };
+      d.setDate(today.getDate() - (29 - (i - leadingEmptyCells)));
+      const iso = dateKey(d);
+      return {
+        key: iso,
+        date: iso,
+        day: d.getDate(),
+        hit: dates.has(iso),
+        today: i === leadingEmptyCells + 29,
+        empty: false,
+      };
     });
   } catch {
     streakDays.value = 0;
@@ -112,9 +149,19 @@ async function loadStreak(): Promise<void> {
 }
 
 async function openCheckinDialog(): Promise<void> {
-  if (checkinPrompt) {
-    checkinPrompt.dialogVisible.value = true;
-    await checkinPrompt.refreshStatus();
+  if (
+    !checkinPrompt ||
+    checkinPrompt.checkedInToday.value ||
+    checkinPrompt.dialogVisible.value ||
+    openingCheckin
+  ) {
+    return;
+  }
+  openingCheckin = true;
+  try {
+    await checkinPrompt.refreshStatus({ forceOpen: true });
+  } finally {
+    openingCheckin = false;
   }
 }
 
@@ -454,16 +501,32 @@ onBeforeUnmount(() => {
         今日签到
       </el-button>
     </section>
-    <section class="streak-heatmap">
-      <h3>近 30 天</h3>
-      <div class="heatmap-grid">
+    <section class="streak-heatmap" aria-label="近 30 天签到日历">
+      <div class="heatmap-heading">
+        <h3>近 30 天</h3>
+        <span class="heatmap-range">按周查看签到记录</span>
+      </div>
+      <div class="heatmap-weekdays" data-testid="checkin-calendar-weekdays" aria-hidden="true">
+        <span v-for="weekday in WEEKDAYS" :key="weekday" class="heatmap-weekday">{{
+          weekday
+        }}</span>
+      </div>
+      <div class="heatmap-grid" data-testid="checkin-calendar">
         <div
           v-for="cell in heatmapCells"
-          :key="cell.date"
+          :key="cell.key"
           class="heatmap-cell"
-          :class="{ hit: cell.hit }"
-          :title="cell.date"
-        />
+          :class="{ empty: cell.empty, hit: cell.hit, today: cell.today }"
+          :title="cell.empty ? undefined : `${cell.date} ${cell.hit ? '已签到' : '未签到'}`"
+          :aria-label="cell.empty ? undefined : `${cell.date} ${cell.hit ? '已签到' : '未签到'}`"
+          :aria-hidden="cell.empty ? 'true' : undefined"
+          data-testid="checkin-calendar-cell"
+        >
+          <template v-if="!cell.empty">
+            <time :datetime="cell.date" data-testid="checkin-calendar-date">{{ cell.day }}</time>
+            <Check v-if="cell.hit" class="heatmap-check" aria-hidden="true" />
+          </template>
+        </div>
       </div>
     </section>
 
@@ -487,6 +550,7 @@ onBeforeUnmount(() => {
         </template>
       </el-tab-pane>
       <el-tab-pane label="每日签到" name="checkins" />
+      <el-tab-pane label="优惠券" name="coupons" />
       <el-tab-pane label="账户" name="account" />
     </el-tabs>
 
@@ -682,6 +746,13 @@ onBeforeUnmount(() => {
             <el-tag :type="orderStatusTagType(order.status)" effect="plain">
               {{ orderStatusLabel(order.status) }}
             </el-tag>
+            <router-link
+              :to="`/me/orders/${order.order_id}`"
+              class="btn-link"
+              style="display: block; margin-top: 6px"
+            >
+              查看详情
+            </router-link>
             <router-link
               v-if="orderCanRetry(order.status)"
               :to="`/checkout/${order.course_id}`"
@@ -917,25 +988,80 @@ onBeforeUnmount(() => {
 }
 
 .streak-heatmap h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 0.95rem;
   color: var(--muted);
 }
 
+.heatmap-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.heatmap-range {
+  color: var(--ink-soft, #6b7b6e);
+  font-size: 0.75rem;
+}
+
+.heatmap-weekdays,
 .heatmap-grid {
   display: grid;
-  grid-template-columns: repeat(30, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  max-width: 640px;
+  gap: 8px;
+}
+
+.heatmap-weekdays {
+  margin-bottom: 6px;
+}
+
+.heatmap-weekday {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
 }
 
 .heatmap-cell {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 48px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px;
+  border: 1px solid var(--line, #d9e5df);
   aspect-ratio: 1;
-  border-radius: 3px;
-  background: var(--line, #e3e9e4);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--line, #e3e9e4) 32%, var(--paper, #fff));
+  color: var(--ink-soft, #6b7b6e);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.heatmap-cell.empty {
+  visibility: hidden;
 }
 
 .heatmap-cell.hit {
+  border-color: transparent;
   background: var(--pine-deep, #34566b);
+  color: #fff;
+}
+
+.heatmap-cell.today {
+  box-shadow: inset 0 0 0 2px var(--seal, #9a1f37);
+}
+
+.heatmap-check {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 14px;
+  height: 14px;
 }
 
 .sc-tabs {

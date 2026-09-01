@@ -50,6 +50,12 @@ const router = createRouter({
           component: () => import('@/views/me/StudentCenterView.vue'),
         },
         {
+          path: 'me/orders/:orderId',
+          name: 'order-detail',
+          beforeEnter: requireLearnerAuth,
+          component: () => import('@/views/me/OrderDetailView.vue'),
+        },
+        {
           path: 'checkout/:courseId',
           name: 'checkout',
           beforeEnter: requireLearnerAuth,
@@ -72,6 +78,25 @@ const router = createRouter({
           name: 'account',
           beforeEnter: requireLearnerAuth,
           component: () => import('@/views/me/StudentCenterView.vue'),
+        },
+        {
+          path: 'me/coupons',
+          name: 'me-coupons',
+          beforeEnter: requireLearnerAuth,
+          meta: { title: '优惠券' },
+          component: () => import('@/views/me/CouponsView.vue'),
+        },
+        {
+          path: 'terms',
+          name: 'terms',
+          meta: { legalKey: 'terms', title: '用户协议' },
+          component: () => import('@/views/legal/LegalDocumentView.vue'),
+        },
+        {
+          path: 'refund',
+          name: 'refund',
+          meta: { legalKey: 'refund', title: '退款说明' },
+          component: () => import('@/views/legal/LegalDocumentView.vue'),
         },
       ],
     },

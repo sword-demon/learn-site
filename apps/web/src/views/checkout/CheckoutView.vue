@@ -3,7 +3,7 @@
     <header class="checkout__head">
       <p class="checkout__eyebrow"><span class="checkout__rule" />订单确认 · 学员入口</p>
       <h1 class="checkout__title">确认课程订单</h1>
-      <p class="checkout__lede">价格在提交瞬间再次确认，支付完成前不会开通课程访问权。</p>
+      <p class="checkout__lede">价格在提交瞬间再次确认,支付完成前不会开通课程访问权。</p>
     </header>
 
     <el-skeleton v-if="loading" animated :rows="6" />
@@ -30,10 +30,9 @@
             <span>限时优惠</span>
             <span>− ¥ {{ formatPrice(discountAmount) }}</span>
           </li>
-          <!-- ponytail: Figma wants order.promo_code + order.discount_amount from promo input; backend gap, UI placeholder only -->
-          <li v-if="promoDiscount > 0" class="checkout-summary__row checkout-summary__row--promo">
-            <span>优惠码（{{ promoCode }}）</span>
-            <span>− ¥ {{ formatPrice(promoDiscount) }}</span>
+          <li v-if="couponDiscount > 0" class="checkout-summary__row checkout-summary__row--coupon">
+            <span>优惠券 ({{ selectedCouponName }})</span>
+            <span>− ¥ {{ formatPrice(couponDiscount) }}</span>
           </li>
           <li class="checkout-summary__row checkout-summary__row--total">
             <span>应付金额</span>
@@ -41,10 +40,7 @@
           </li>
         </ul>
 
-        <p class="checkout-summary__refund">
-          <!-- ponytail: Figma wants explicit "refundable = false" copy; backend exposes no such flag yet -->
-          本课程为虚拟内容，购买成功后不支持退款
-        </p>
+        <p class="checkout-summary__refund">本课程为虚拟内容,购买成功后不支持退款</p>
       </article>
 
       <section class="checkout-payment" aria-live="polite">
@@ -84,24 +80,50 @@
             </el-radio>
           </el-radio-group>
 
-          <div class="checkout-payment__promo">
-            <label class="checkout-payment__promo-label" for="promo-code">优惠码</label>
-            <div class="checkout-payment__promo-row">
-              <el-input
-                id="promo-code"
-                v-model="promoCode"
-                placeholder="可选，输入后点击应用"
-                data-testid="promo-input"
-              />
-              <el-button
-                data-action="apply-promo"
-                :disabled="!promoCode.trim()"
-                @click="applyPromo"
+          <div class="checkout-payment__coupons">
+            <p class="checkout-payment__coupons-label">使用优惠券</p>
+            <el-skeleton v-if="couponsLoading" animated :rows="2" />
+            <el-radio-group
+              v-else
+              v-model="selectedCouponId"
+              class="checkout-payment__coupon-list"
+              data-testid="coupon-options"
+            >
+              <el-radio
+                :value="null"
+                class="checkout-payment__coupon-option"
+                data-action="no-coupon"
               >
-                应用
-              </el-button>
-            </div>
-            <!-- ponytail: Figma wants promo_code persistence + discount_amount from server; current backend has no promo endpoint -->
+                <span class="checkout-payment__coupon-label">不使用</span>
+              </el-radio>
+              <el-radio
+                v-for="opt in couponOptions"
+                :key="opt.id"
+                :value="opt.id"
+                :disabled="!opt.eligible"
+                class="checkout-payment__coupon-option"
+                :data-action="`coupon-${opt.id}`"
+                :data-eligible="opt.eligible ? '1' : '0'"
+              >
+                <div class="checkout-payment__coupon-row">
+                  <span class="checkout-payment__coupon-label">
+                    {{ opt.name }} · 满 {{ opt.min_amount }} 减 {{ opt.discount_amount }}
+                  </span>
+                  <span
+                    v-if="!opt.eligible && opt.ineligible_reason"
+                    class="checkout-payment__coupon-reason"
+                  >
+                    {{ humanizeCouponReason(opt.ineligible_reason) }}
+                  </span>
+                </div>
+              </el-radio>
+            </el-radio-group>
+            <p
+              v-if="couponOptions.length === 0 && !couponsLoading"
+              class="checkout-payment__coupons-empty"
+            >
+              当前课程暂无可用优惠券
+            </p>
           </div>
 
           <el-checkbox v-model="agreed" class="checkout-payment__agree">
@@ -133,7 +155,7 @@
         <template v-else>
           <h2 class="checkout-payment__h">{{ statusLabel(order.status) }}</h2>
           <p v-if="order.status === 'pending'" class="checkout-payment__copy">
-            请使用{{ paymentMethodLabel }}完成付款，页面会自动刷新状态。
+            请使用{{ paymentMethodLabel }}完成付款,页面会自动刷新状态。
           </p>
           <p
             v-else-if="order.status === 'succeeded'"
@@ -142,7 +164,7 @@
             课程访问权已开通。
           </p>
           <p v-else class="checkout-payment__copy checkout-payment__copy--err">
-            本次订单未完成支付，可以重新确认价格后再试。
+            本次订单未完成支付,可以重新确认价格后再试。
           </p>
           <div v-if="payment" class="checkout-payment__code-box">
             <code>{{ payment.code_url }}</code>
@@ -183,10 +205,12 @@ import type {
   PublicCourseDetailDTO,
 } from '@learn-site/contracts';
 import { createCourseOrder, fetchCourseDetail, fetchOrder } from '@/api/learner';
+import { fetchCheckoutCoupons, type CheckoutCouponsResult } from '@/api/coupons';
 
 defineOptions({ name: 'CheckoutView' });
 
 type PaymentMethod = 'wechat' | 'alipay';
+type CouponOption = CheckoutCouponsResult['items'][number];
 
 const route = useRoute();
 const id = computed(() => Number(route.params.courseId));
@@ -199,13 +223,15 @@ const submitting = ref(false);
 const refreshing = ref(false);
 const submitError = ref('');
 const paymentMethod = ref<PaymentMethod>('wechat');
-const promoCode = ref('');
-const promoDiscount = ref(0);
 const agreed = ref(false);
+const couponsLoading = ref(false);
+const couponOptions = ref<CouponOption[]>([]);
+const basePrice = ref(0);
+const selectedCouponId = ref<number | null>(null);
 
 let pollTimer: number | null = null;
 
-async function load(): Promise<void> {
+async function loadCourse(): Promise<void> {
   if (!Number.isFinite(id.value) || id.value <= 0) {
     loadError.value = '课程地址无效。';
     loading.value = false;
@@ -223,13 +249,29 @@ async function load(): Promise<void> {
   }
 }
 
-watch(
-  id,
-  () => {
-    void load();
-  },
-  { immediate: true },
-);
+async function loadCoupons(): Promise<void> {
+  couponsLoading.value = true;
+  try {
+    const res = await fetchCheckoutCoupons(id.value);
+    basePrice.value = res.base_price;
+    couponOptions.value = res.items;
+    const stillValid = res.items.some((opt) => opt.id === selectedCouponId.value && opt.eligible);
+    if (!stillValid) {
+      selectedCouponId.value = null;
+    }
+  } catch {
+    couponOptions.value = [];
+    basePrice.value = 0;
+  } finally {
+    couponsLoading.value = false;
+  }
+}
+
+async function load(): Promise<void> {
+  await Promise.all([loadCourse(), loadCoupons()]);
+}
+
+watch(id, () => void load(), { immediate: true });
 
 const currentPrice = computed(() => {
   const c = course.value?.course;
@@ -243,7 +285,20 @@ const discountAmount = computed(() => {
   return c.sale_price > 0 ? c.list_price - c.sale_price : 0;
 });
 
-const payable = computed(() => Math.max(0, currentPrice.value - promoDiscount.value));
+const selectedCoupon = computed<CouponOption | null>(() => {
+  if (selectedCouponId.value === null) return null;
+  return couponOptions.value.find((o) => o.id === selectedCouponId.value) ?? null;
+});
+
+const couponDiscount = computed(() => {
+  const opt = selectedCoupon.value;
+  if (!opt || !opt.eligible) return 0;
+  return opt.discount_amount;
+});
+
+const selectedCouponName = computed(() => selectedCoupon.value?.name ?? '');
+
+const payable = computed(() => Math.max(0, currentPrice.value - couponDiscount.value));
 
 const submitLabel = computed(() => {
   const m = paymentMethod.value === 'wechat' ? '微信支付' : '支付宝';
@@ -253,10 +308,6 @@ const submitLabel = computed(() => {
 const paymentMethodLabel = computed(() =>
   paymentMethod.value === 'wechat' ? '微信支付' : '支付宝',
 );
-
-function formatPrice(value: number): string {
-  return value.toFixed(2);
-}
 
 function statusLabel(status: OrderDTO['status']): string {
   return {
@@ -268,11 +319,20 @@ function statusLabel(status: OrderDTO['status']): string {
   }[status];
 }
 
-// ponytail: stub — backend has no /promo endpoint yet; Figma requires server-side validation
-function applyPromo(): void {
-  const code = promoCode.value.trim().toUpperCase();
-  if (!code) return;
-  promoDiscount.value = code === 'TRYSTEP10' ? 10 : 0;
+function humanizeCouponReason(code: string): string {
+  const map: Record<string, string> = {
+    COUPON_MIN_AMOUNT_NOT_MET: '未达到满减门槛',
+    COUPON_USE_LIMIT_EXCEEDED: '已超过每人限用次数',
+    COUPON_NOT_APPLICABLE: '不适用于当前课程',
+    COUPON_EXPIRED: '已过期',
+    COUPON_VOIDED: '已失效',
+    COUPON_NOT_FOUND: '所选优惠券已失效,请重新选择优惠券',
+  };
+  return map[code] ?? '不可用';
+}
+
+function formatPrice(value: number): string {
+  return value.toFixed(2);
 }
 
 async function submitOrder(): Promise<void> {
@@ -280,15 +340,22 @@ async function submitOrder(): Promise<void> {
   submitting.value = true;
   submitError.value = '';
   try {
-    const created = await createCourseOrder(id.value);
+    const created = await createCourseOrder(id.value, selectedCouponId.value);
     payment.value = created.payment;
     await refreshOrderById(created.order_id);
     startPolling();
   } catch (err) {
-    submitError.value =
-      err instanceof Error && err.message === 'SALE_WINDOW_EXPIRED'
-        ? '优惠已结束，请返回课程页刷新价格。'
-        : '订单创建失败，请稍后再试。';
+    if (err instanceof Error && err.message === 'SALE_WINDOW_EXPIRED') {
+      submitError.value = '优惠已结束,请返回课程页刷新价格。';
+    } else if (err instanceof Error && err.message.startsWith('COUPON_')) {
+      selectedCouponId.value = null;
+      const reason = humanizeCouponReason(err.message);
+      submitError.value =
+        err.message === 'COUPON_NOT_FOUND' ? `${reason}。` : '优惠券不可用:' + reason;
+      await loadCoupons();
+    } else {
+      submitError.value = '订单创建失败,请稍后再试。';
+    }
   } finally {
     submitting.value = false;
   }
@@ -305,7 +372,7 @@ async function refreshOrder(): Promise<void> {
   try {
     await refreshOrderById(order.value.order_id);
   } catch {
-    submitError.value = '订单状态暂时读不到，请稍后再试。';
+    submitError.value = '订单状态暂时读不到,请稍后再试。';
   } finally {
     refreshing.value = false;
   }
@@ -332,12 +399,10 @@ onUnmounted(stopPolling);
   gap: 28px;
   padding-bottom: 48px;
 }
-
 .checkout__head {
   padding: 18px 0 26px;
   border-bottom: 1px solid var(--line, #ebeef5);
 }
-
 .checkout__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -347,40 +412,34 @@ onUnmounted(stopPolling);
   color: var(--ink-2, #909399);
   letter-spacing: 0.5px;
 }
-
 .checkout__rule {
   display: inline-block;
   width: 24px;
   height: 1px;
   background: var(--seal, #409eff);
 }
-
 .checkout__title {
   margin: 0 0 8px;
   font-size: 24px;
   color: var(--ink, #303133);
 }
-
 .checkout__lede {
   margin: 0;
   font-size: 13px;
   color: var(--ink-2, #606266);
 }
-
 .checkout__error {
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
 }
-
 .checkout__grid {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
   gap: 24px;
   align-items: start;
 }
-
 .checkout-summary,
 .checkout-payment {
   padding: 24px;
@@ -389,63 +448,56 @@ onUnmounted(stopPolling);
   background: var(--card);
   box-shadow: var(--shadow);
 }
-
 .checkout-payment {
   position: sticky;
   top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-
 .checkout-summary__title {
   margin: 0 0 8px;
   font-size: 20px;
-  color: var(--ink, #303133);
+  color: var(--ink);
 }
-
 .checkout-summary__teacher,
 .checkout-summary__copy {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--ink-2, #606266);
+  color: var(--ink-2);
   line-height: 1.6;
 }
-
 .checkout-summary__price-list {
   list-style: none;
   margin: 20px 0 0;
   padding: 16px 0 0;
-  border-top: 1px dashed var(--line, #ebeef5);
+  border-top: 1px dashed var(--line);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .checkout-summary__row {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: var(--ink-2, #606266);
+  color: var(--ink-2);
 }
-
 .checkout-summary__row--disc {
   color: var(--moss, #67c23a);
 }
-
-.checkout-summary__row--promo {
+.checkout-summary__row--coupon {
   color: var(--seal, #409eff);
 }
-
 .checkout-summary__row--total {
   font-size: 14px;
-  color: var(--ink, #303133);
+  color: var(--ink);
   padding-top: 8px;
-  border-top: 1px solid var(--line, #ebeef5);
+  border-top: 1px solid var(--line);
 }
-
 .checkout-summary__row--total b {
   font-size: 18px;
-  color: var(--seal, #409eff);
+  color: var(--seal);
 }
-
 .checkout-summary__refund {
   margin: 16px 0 0;
   padding: 8px 12px;
@@ -454,25 +506,16 @@ onUnmounted(stopPolling);
   background: var(--card-2, #f5f7fa);
   border-radius: var(--r, 6px);
 }
-
-.checkout-payment {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .checkout-payment__h {
   margin: 0;
   font-size: 16px;
-  color: var(--ink, #303133);
+  color: var(--ink);
 }
-
 .checkout-payment__methods {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .checkout-payment__method {
   display: flex;
   align-items: center;
@@ -485,17 +528,14 @@ onUnmounted(stopPolling);
   margin-right: 0;
   height: auto;
 }
-
 .checkout-payment__method:hover {
   border-color: var(--seal-soft, #c6e2ff);
 }
-
 .checkout-payment__method.el-radio--checked {
-  border-color: var(--seal, #409eff);
+  border-color: var(--seal);
   background: var(--seal-soft, #ecf5ff);
-  box-shadow: 0 0 0 1px var(--seal, #409eff) inset;
+  box-shadow: 0 0 0 1px var(--seal) inset;
 }
-
 .checkout-payment__method-icon {
   display: inline-flex;
   align-items: center;
@@ -507,109 +547,127 @@ onUnmounted(stopPolling);
   color: #fff;
   font-weight: 600;
 }
-
 .checkout-payment__method-icon--wechat {
   background: #07c160;
 }
-
 .checkout-payment__method-icon--alipay {
   background: #1677ff;
 }
-
 .checkout-payment__method-label {
   font-size: 14px;
-  color: var(--ink, #303133);
+  color: var(--ink);
 }
-
-.checkout-payment__promo {
+.checkout-payment__coupons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r);
+  background: var(--card-2);
+}
+.checkout-payment__coupons-label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.checkout-payment__coupon-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-
-.checkout-payment__promo-label {
+.checkout-payment__coupon-option {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--card);
+  margin-right: 0;
+  height: auto;
+}
+.checkout-payment__coupon-option.is-disabled {
+  color: var(--ink-2, #909399);
+}
+.checkout-payment__coupon-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.checkout-payment__coupon-label {
   font-size: 13px;
-  color: var(--ink-2, #606266);
+  color: var(--ink);
 }
-
-.checkout-payment__promo-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+.checkout-payment__coupon-reason {
+  font-size: 12px;
+  color: var(--ink-2, #909399);
 }
-
+.checkout-payment__coupons-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+}
 .checkout-payment__agree {
   font-size: 12px;
-  color: var(--ink-2, #606266);
+  color: var(--ink-2);
 }
-
 .checkout-payment__terms {
-  color: var(--seal, #409eff);
+  color: var(--seal);
   text-decoration: none;
 }
-
 .checkout-payment__submit {
   width: 100%;
   margin-left: 0;
 }
-
 .checkout-payment__error {
   margin: 0;
   font-size: 12px;
   color: var(--danger, #f56c6c);
 }
-
 .checkout-payment__copy {
   margin: 0;
   font-size: 13px;
-  color: var(--ink-2, #606266);
+  color: var(--ink-2);
 }
-
 .checkout-payment__copy--ok {
-  color: var(--moss, #67c23a);
+  color: var(--moss);
 }
-
 .checkout-payment__copy--err {
-  color: var(--danger, #f56c6c);
+  color: var(--danger);
 }
-
 .checkout-payment__code-box {
   padding: 12px;
   overflow: auto;
-  border: 1px dashed var(--line, #ebeef5);
-  background: var(--card-2, #f5f7fa);
-  color: var(--ink, #303133);
+  border: 1px dashed var(--line);
+  background: var(--card-2);
+  color: var(--ink);
   font-size: 12px;
-  border-radius: var(--r, 6px);
+  border-radius: var(--r);
 }
-
 .checkout-payment__meta {
   margin: 0;
   font-size: 12px;
   color: var(--ink-2, #909399);
   font-family: var(--font-mono);
 }
-
 .checkout-payment__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-
 .checkout-payment__primary {
   display: inline-block;
   padding: 8px 16px;
-  background: var(--seal, #409eff);
+  background: var(--seal);
   color: #fff;
   text-decoration: none;
-  border-radius: var(--r, 6px);
+  border-radius: var(--r);
   font-size: 13px;
 }
-
 .checkout-payment__link {
   font-size: 13px;
-  color: var(--seal, #409eff);
+  color: var(--seal);
   text-decoration: none;
 }
 </style>

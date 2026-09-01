@@ -16,7 +16,17 @@ Route::group($learnerV1, function () {
     Route::get('/auth/captcha', [\App\controller\learner\AuthController::class, 'captcha']);
     Route::get('/home', [\App\controller\learner\HomeController::class, 'home']);
 
-});
+})->middleware([\App\middleware\RateLimit::class]);
+
+Route::group($learnerV1, function () {
+    // 005-learner-daily-checkin + 009-learner-coupons — write/read hot paths
+    Route::get('/checkins/today', [\App\controller\learner\CheckinController::class, 'today']);
+    Route::post('/checkins', [\App\controller\learner\CheckinController::class, 'store']);
+    Route::post('/coupons/{campaignId}/claim', [\App\controller\learner\CouponController::class, 'claim']);
+})->middleware([
+    \App\middleware\LearnerAuth::class,
+    \App\middleware\RateLimit::class,
+]);
 
 Route::group($learnerV1, function () {
     // Phase 5 / US1 — public catalog (auth optional)
@@ -74,11 +84,13 @@ Route::group($learnerV1, function () {
     Route::get('/messages/unread-count', [\App\controller\learner\NotificationController::class, 'unreadCount']);
     Route::post('/messages/{id}/read', [\App\controller\learner\NotificationController::class, 'read']);
 
-    // 005-learner-daily-checkin — daily check-in and plan
-    Route::get('/checkins/today', [\App\controller\learner\CheckinController::class, 'today']);
-    Route::post('/checkins', [\App\controller\learner\CheckinController::class, 'store']);
     Route::get('/checkins', [\App\controller\learner\CheckinController::class, 'index']);
     Route::get('/checkins/{id}', [\App\controller\learner\CheckinController::class, 'show']);
+
+    // 009-learner-coupons — learner claim center, my coupons, checkout options
+    Route::get('/coupons/claimable', [\App\controller\learner\CouponController::class, 'claimable']);
+    Route::get('/my/coupons', [\App\controller\learner\CouponController::class, 'mine']);
+    Route::get('/courses/{courseId}/checkout-coupons', [\App\controller\learner\CouponController::class, 'checkoutOptions']);
 })->middleware([\App\middleware\LearnerAuth::class]);
 
 // The fake notify seam is test-only. Production settles through the delayed
@@ -98,7 +110,7 @@ Route::group($adminV1, function () {
     Route::post('/auth/login', [\App\controller\admin\AuthController::class, 'login']);
     Route::post('/auth/refresh', [\App\controller\admin\AuthController::class, 'refresh']);
     Route::get('/auth/captcha', [\App\controller\admin\AuthController::class, 'captcha']);
-});
+})->middleware([\App\middleware\RateLimit::class]);
 
 Route::group($adminV1, function () {
     Route::post('/auth/logout', [\App\controller\admin\AuthController::class, 'logout']);
@@ -265,6 +277,15 @@ Route::group($adminV1, function () {
     Route::get('/checkins', [\App\controller\admin\CheckinController::class, 'index']);
     Route::get('/checkins/{id}', [\App\controller\admin\CheckinController::class, 'show']);
     Route::delete('/checkins/{id}', [\App\controller\admin\CheckinController::class, 'destroy']);
+
+    // 009-learner-coupons — coupon management + redemption records (coupon.manage)
+    Route::get('/coupons', [\App\controller\admin\CouponController::class, 'index']);
+    Route::get('/coupons/{id}', [\App\controller\admin\CouponController::class, 'show']);
+    Route::post('/coupons', [\App\controller\admin\CouponController::class, 'store']);
+    Route::patch('/coupons/{id}', [\App\controller\admin\CouponController::class, 'update']);
+    Route::post('/coupons/{id}/disable', [\App\controller\admin\CouponController::class, 'disable']);
+    Route::post('/coupons/{id}/grants', [\App\controller\admin\CouponController::class, 'grants']);
+    Route::get('/coupon-redemptions', [\App\controller\admin\CouponController::class, 'redemptions']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,

@@ -84,6 +84,11 @@ export type PaymentEnvelopeDTO = z.infer<typeof PaymentEnvelopeDTO>;
 export const CreateOrderResponseDTO = z.object({
   order_id: z.number().int().positive(),
   status: z.literal('pending'),
+  list_price_snapshot: z.number().nonnegative(),
+  sale_price_snapshot: z.number().nonnegative(),
+  coupon_discount_snapshot: z.number().nonnegative().default(0),
+  paid_amount: z.number().nonnegative(),
+  learner_coupon_id: z.number().int().positive().nullable().default(null),
   payment: PaymentEnvelopeDTO,
 });
 export type CreateOrderResponseDTO = z.infer<typeof CreateOrderResponseDTO>;
@@ -92,9 +97,12 @@ export type CreateOrderResponseDTO = z.infer<typeof CreateOrderResponseDTO>;
 export const OrderDTO = z.object({
   order_id: z.number().int().positive(),
   course_id: z.number().int().positive(),
+  course_title: z.string().nullable().default(null),
   list_price_snapshot: z.number().nonnegative(),
   sale_price_snapshot: z.number().nonnegative(),
+  coupon_discount_snapshot: z.number().nonnegative().default(0),
   paid_amount: z.number().nonnegative(),
+  learner_coupon_id: z.number().int().positive().nullable().default(null),
   currency: z.string(),
   status: OrderStatus,
   provider: z.string(),

@@ -27,6 +27,7 @@ import CheckinListView from '@/views/checkins/CheckinListView.vue';
 import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView.vue';
 import ScheduledTaskRunLogView from '@/views/scheduled-tasks/ScheduledTaskRunLogView.vue';
 import BannerListView from '@/views/banners/BannerListView.vue';
+import CouponListView from '@/views/coupons/CouponListView.vue';
 import ForbiddenView from '@/views/errors/ForbiddenView.vue';
 import { hasTokens, mustChangePassword, permissionCodes } from '@/api/http';
 import { firstVisiblePath } from '@/layouts/AdminMenu';
@@ -248,6 +249,12 @@ const routes: RouteRecordRaw[] = [
         name: 'banners',
         component: BannerListView,
         meta: { title: '轮播图管理', permission: 'banner.manage' },
+      },
+      {
+        path: 'coupons',
+        name: 'coupons',
+        component: CouponListView,
+        meta: { title: '优惠券管理', permission: 'coupon.manage' },
       },
       {
         path: 'site/profile',

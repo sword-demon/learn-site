@@ -39,6 +39,7 @@ const ENTRIES: readonly AdminMenuEntry[] = [
   { path: '/checkins', label: '签到管理', permission: 'checkin.manage' },
   { path: '/scheduled-tasks', label: '自动任务', permission: 'scheduled_task.manage' },
   { path: '/banners', label: '轮播图管理', permission: 'banner.manage' },
+  { path: '/coupons', label: '优惠券管理', permission: 'coupon.manage' },
   { path: '/site/profile', label: '站点资料', permission: 'site.manage' },
   { path: '/site/audit', label: '审计日志', permission: 'audit.view' },
   {

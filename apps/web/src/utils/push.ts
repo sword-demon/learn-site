@@ -25,6 +25,7 @@ declare global {
 }
 
 let scriptPromise: Promise<void> | null = null;
+export const PUSH_SCRIPT_URL = '/plugin/webman/push/push.js?v=auth';
 
 function loadPushScript(): Promise<void> {
   if (typeof window === 'undefined') {
@@ -38,7 +39,7 @@ function loadPushScript(): Promise<void> {
   }
   scriptPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = '/plugin/webman/push/push.js';
+    script.src = PUSH_SCRIPT_URL;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('PUSH_SCRIPT_LOAD_FAILED'));

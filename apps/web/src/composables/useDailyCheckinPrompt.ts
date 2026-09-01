@@ -13,7 +13,7 @@ export function useDailyCheckinPrompt() {
   const serverDate = ref('');
   const successHooks = new Set<() => void>();
 
-  async function refreshStatus(): Promise<void> {
+  async function refreshStatus(options: { forceOpen?: boolean } = {}): Promise<void> {
     if (!loggedIn.value) {
       dialogVisible.value = false;
       checkedInToday.value = false;
@@ -28,7 +28,7 @@ export function useDailyCheckinPrompt() {
         return;
       }
       const dismissed = sessionStorage.getItem(`${DISMISS_PREFIX}${status.server_date}`) === '1';
-      dialogVisible.value = !dismissed;
+      dialogVisible.value = options.forceOpen ? true : !dismissed;
     } catch {
       dialogVisible.value = false;
     }

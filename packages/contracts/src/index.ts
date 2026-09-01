@@ -23,3 +23,4 @@ export * from "./adminScheduledTask.js";
 export * from "./dailyCheckin.js";
 export * from "./order.js";
 export * from "./banner.js";
+export * from "./coupon.js";

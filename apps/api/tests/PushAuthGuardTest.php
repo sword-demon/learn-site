@@ -55,6 +55,13 @@ final class PushAuthGuardTest extends TestCase
     public function testPushClientScriptPatchesAuthHeadersAndAuthData(): void
     {
         $source = <<<'JS'
+function __ajax(options){
+    if(options.type==='POST'){
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.send(params);
+    }
+}
+
 function createPrivateChannel(channel_name, push)
 {
     var channel = new Channel(push.connection, channel_name);

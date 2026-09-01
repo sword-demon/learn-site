@@ -47,6 +47,7 @@ final class PermissionSeeder extends AbstractSeed
         ['code' => 'scheduled_task.manage', 'module' => 'scheduled_task', 'description' => 'Manage scheduled background tasks'],
         ['code' => 'checkin.manage', 'module' => 'checkin', 'description' => 'View and delete learner daily check-ins'],
         ['code' => 'banner.manage', 'module' => 'banner', 'description' => 'Manage home banners'],
+        ['code' => 'coupon.manage', 'module' => 'promotion', 'description' => 'Manage coupon campaigns'],
         ['code' => 'dashboard.view', 'module' => 'site', 'description' => 'Read admin dashboard'],
     ];
 

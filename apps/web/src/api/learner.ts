@@ -202,9 +202,14 @@ export async function startCourse(courseId: number): Promise<StartCourseResponse
   }
 }
 
-export async function createCourseOrder(courseId: number): Promise<CreateOrderResponseDTO> {
+export async function createCourseOrder(
+  courseId: number,
+  learnerCouponId?: number | null,
+): Promise<CreateOrderResponseDTO> {
   try {
-    const { data } = await http.post(`/courses/${courseId}/orders`);
+    const body =
+      learnerCouponId && learnerCouponId > 0 ? { learner_coupon_id: learnerCouponId } : {};
+    const { data } = await http.post(`/courses/${courseId}/orders`, body);
     const parsed = ApiResponse(CreateOrderResponseDTO).parse(data);
     if (!parsed.ok) {
       throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { reactive } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -108,12 +108,18 @@ const favoritesFixture = {
 const ordersFixture = {
   items: [
     {
-      order_id: 'ord-100',
+      order_id: 100,
       course_id: 7,
+      course_title: 'Webman 实战',
       list_price_snapshot: 199.0,
       sale_price_snapshot: 0,
+      coupon_discount_snapshot: 0,
       paid_amount: 199.0,
+      learner_coupon_id: null,
+      currency: 'CNY',
       status: 'succeeded',
+      provider: 'fake',
+      succeeded_at: '2026-08-20T10:01:00+08:00',
       created_at: '2026-08-20T10:00:00',
     },
   ],
@@ -197,16 +203,123 @@ describe('StudentCenterView', () => {
     clearTokens();
   });
 
-  function mountView(pinia = createPinia()) {
+  function mountView(
+    pinia = createPinia(),
+    checkinPrompt?: {
+      dialogVisible: { value: boolean };
+      refreshStatus: (options?: { forceOpen?: boolean }) => Promise<void>;
+      afterSuccess: (hook: () => void) => () => void;
+    },
+  ) {
     setActivePinia(pinia);
     useLoginFamilyStore().signIn(tokenPair);
     return mount(StudentCenterView, {
       global: {
         plugins: [pinia],
         stubs: { RouterLink: RouterLinkStub },
+        provide: checkinPrompt ? { dailyCheckinPrompt: checkinPrompt } : {},
       },
     });
   }
+
+  describe('check-in trigger', () => {
+    it('keeps the dialog closed while a checked-in status refresh is pending', async () => {
+      const dialogVisible = ref(false);
+      const checkedInToday = ref(false);
+      let releaseRefresh!: () => void;
+      const refreshStatus = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseRefresh = () => {
+              dialogVisible.value = false;
+              resolve();
+            };
+          }),
+      );
+      const checkinPrompt = {
+        dialogVisible,
+        checkedInToday,
+        refreshStatus,
+        afterSuccess: vi.fn(() => vi.fn()),
+      };
+      const wrapper = mountView(createPinia(), checkinPrompt);
+
+      const click = wrapper.get('button[data-action="open-checkin"]').trigger('click');
+      await nextTick();
+
+      expect(dialogVisible.value).toBe(false);
+
+      releaseRefresh();
+      await click;
+      await flushPromises();
+      expect(dialogVisible.value).toBe(false);
+    });
+
+    it('opens the dialog after confirming that today is available', async () => {
+      const dialogVisible = ref(false);
+      const checkedInToday = ref(false);
+      const refreshStatus = vi.fn(async (options?: { forceOpen?: boolean }) => {
+        if (options?.forceOpen) dialogVisible.value = true;
+      });
+      const checkinPrompt = {
+        dialogVisible,
+        checkedInToday,
+        refreshStatus,
+        afterSuccess: vi.fn(() => vi.fn()),
+      };
+      const wrapper = mountView(createPinia(), checkinPrompt);
+
+      await wrapper.get('button[data-action="open-checkin"]').trigger('click');
+      await flushPromises();
+
+      expect(refreshStatus).toHaveBeenCalledWith({ forceOpen: true });
+      expect(dialogVisible.value).toBe(true);
+    });
+
+    it('does not refresh the checked-in status when today is already complete', async () => {
+      const dialogVisible = ref(false);
+      const checkedInToday = ref(true);
+      const refreshStatus = vi.fn();
+      const checkinPrompt = {
+        dialogVisible,
+        checkedInToday,
+        refreshStatus,
+        afterSuccess: vi.fn(() => vi.fn()),
+      };
+      const wrapper = mountView(createPinia(), checkinPrompt);
+
+      await wrapper.get('button[data-action="open-checkin"]').trigger('click');
+
+      expect(refreshStatus).not.toHaveBeenCalled();
+    });
+
+    it('does not send duplicate status refreshes during a repeated click', async () => {
+      const dialogVisible = ref(false);
+      const checkedInToday = ref(false);
+      let releaseRefresh!: () => void;
+      const refreshStatus = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseRefresh = resolve;
+          }),
+      );
+      const checkinPrompt = {
+        dialogVisible,
+        checkedInToday,
+        refreshStatus,
+        afterSuccess: vi.fn(() => vi.fn()),
+      };
+      const wrapper = mountView(createPinia(), checkinPrompt);
+
+      const firstClick = wrapper.get('button[data-action="open-checkin"]').trigger('click');
+      await nextTick();
+      const secondClick = wrapper.get('button[data-action="open-checkin"]').trigger('click');
+
+      expect(refreshStatus).toHaveBeenCalledTimes(1);
+      releaseRefresh();
+      await Promise.all([firstClick, secondClick]);
+    });
+  });
 
   it('renders the streak banner on every tab and derives active tab from route.path', async () => {
     const wrapper = mountView();
@@ -299,6 +412,14 @@ describe('StudentCenterView', () => {
       expect(wrapper.text()).toContain('课程 #7');
       expect(wrapper.text()).toContain('支付成功');
     });
+
+    it('links each order to its detail page', async () => {
+      setPath('/me/orders');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.get('a[href="/me/orders/100"]').text()).toContain('查看详情');
+    });
   });
 
   describe('messages tab', () => {
@@ -320,6 +441,34 @@ describe('StudentCenterView', () => {
   });
 
   describe('checkins tab', () => {
+    it('renders recent check-ins as a weekday calendar', async () => {
+      const today = new Date();
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      checkinsApi.listCheckins.mockResolvedValue({
+        items: [
+          {
+            id: 1,
+            checkin_date: todayIso,
+            plan_html: '<p>今日计划</p>',
+            checked_in_at: `${todayIso}T09:00:00+08:00`,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+      });
+      setPath('/me/checkins');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.get('[data-testid="checkin-calendar-weekdays"]').text()).toContain('周一');
+      expect(
+        wrapper.findAll('[data-testid="checkin-calendar-cell"]').length,
+      ).toBeGreaterThanOrEqual(30);
+      expect(wrapper.findAll('time[data-testid="checkin-calendar-date"]')).toHaveLength(30);
+      expect(wrapper.findAll('.heatmap-cell.hit')).toHaveLength(1);
+    });
+
     it('renders empty state when no records', async () => {
       setPath('/me/checkins');
       const wrapper = mountView();

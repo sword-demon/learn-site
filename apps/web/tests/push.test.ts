@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { PUSH_SCRIPT_URL } from '@/utils/push';
 
 vi.mock('@/utils/push', async () => {
   const actual = await vi.importActual<typeof import('@/utils/push')>('@/utils/push');
@@ -6,6 +7,10 @@ vi.mock('@/utils/push', async () => {
 });
 
 describe('push connection options', () => {
+  it('cache-busts the patched vendor script', () => {
+    expect(PUSH_SCRIPT_URL).toBe('/plugin/webman/push/push.js?v=auth');
+  });
+
   it('documents auth header and body token fields used by patched push.js', () => {
     const options = {
       url: 'ws://push.test',

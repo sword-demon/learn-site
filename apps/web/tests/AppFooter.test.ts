@@ -98,6 +98,8 @@ describe('App footer', () => {
     expect(footer.text()).toContain('拾阶学社');
     expect(footer.get('nav[aria-label="页脚导航"] a[href="/"]').text()).toContain('关于我们');
     expect(footer.get('a[href="/maps"]').text()).toContain('帮助中心');
+    expect(footer.get('a[href="/terms"]').text()).toContain('用户协议');
+    expect(footer.get('a[href="/refund"]').text()).toContain('退款说明');
     expect(footer.get('a[href="mailto:courses@example.test"]').text()).toBe('课程合作');
   });
 
@@ -110,6 +112,8 @@ describe('App footer', () => {
     const footer = wrapper.get('footer[aria-label="站点页脚"]');
     expect(footer.text()).toContain('拾阶学社');
     expect(footer.get('a[href="/maps"]').text()).toContain('帮助中心');
+    expect(footer.get('a[href="/terms"]').text()).toContain('用户协议');
+    expect(footer.get('a[href="/refund"]').text()).toContain('退款说明');
     expect(footer.find('a[href^="mailto:"]').exists()).toBe(false);
   });
 });

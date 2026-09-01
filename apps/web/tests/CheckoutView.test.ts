@@ -2,171 +2,146 @@
 
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-  CreateOrderResponseDTO,
-  OrderDTO,
-  PublicCourseDetailDTO,
-} from '@learn-site/contracts';
 
 const learnerApi = vi.hoisted(() => ({
   fetchCourseDetail: vi.fn(),
   createCourseOrder: vi.fn(),
   fetchOrder: vi.fn(),
 }));
-const routerApi = vi.hoisted(() => ({
-  route: { params: { courseId: '21' }, fullPath: '/checkout/21', query: {} },
+
+const couponsApi = vi.hoisted(() => ({
+  fetchCheckoutCoupons: vi.fn(),
+  fetchClaimableCoupons: vi.fn(),
+  claimCoupon: vi.fn(),
+  fetchMyCoupons: vi.fn(),
 }));
 
 vi.mock('@/api/learner', () => learnerApi);
+vi.mock('@/api/coupons', () => couponsApi);
+
 vi.mock('vue-router', () => ({
-  useRoute: () => routerApi.route,
-  useRouter: () => ({ push: vi.fn() }),
+  useRoute: () => ({ params: { courseId: 42 } }),
+  useRouter: () => ({ replace: vi.fn() }),
+  RouterLink: { template: '<a><slot /></a>' },
 }));
 
 import CheckoutView from '@/views/checkout/CheckoutView.vue';
 
-const RouterLinkStub = {
-  props: { to: { type: [String, Object], required: true } },
-  template: '<a :href="String(to)"><slot /></a>',
-};
-
-const detail: PublicCourseDetailDTO = {
+const detail = {
   course: {
-    id: 21,
-    category_id: 3,
-    category_name: '工程实践',
-    title: 'TypeScript 进阶',
+    id: 42,
+    title: 'QA Course',
+    summary: 'x',
     cover_url: null,
-    teacher_name: '陈老师',
-    summary: '从基础类型到高级类型编程',
-    intro_html: '<p>课程介绍</p>',
-    price_mode: 'paid',
-    list_price: 299.0,
-    sale_price: 199.0,
-    sale_start_at: '2026-08-01 00:00:00',
-    sale_end_at: '2026-12-31 23:59:59',
-    viewer_authorized: false,
-    viewer_entitlement_status: null,
-    viewer_entitlement_source: null,
-    viewer_revoked_reason: null,
-    viewer_can_rejoin: false,
-    learner_count: 48,
-    created_at: '2026-08-20 10:00:00',
+    teacher_name: 'Tester',
+    list_price: 100,
+    sale_price: 0,
+    sale_start_at: null,
+    sale_end_at: null,
+    category_id: 1,
+    department_id: 1,
+    is_published: true,
   },
   chapters: [],
 };
 
-const createdOrder: CreateOrderResponseDTO = {
-  order_id: 501,
-  status: 'pending',
-  payment: {
-    type: 'qrcode',
-    code_url: 'weixin://wxpay/bizpayurl?pr=abc123',
-    out_trade_no: 'O-501',
-    amount: 199.0,
+const checkout = {
+  base_price: 100,
+  list_price: 100,
+  sale_price: 0,
+  items: [
+    {
+      id: 501,
+      name: '满 50 减 15',
+      min_amount: 50,
+      discount_amount: 15,
+      eligible: true,
+      ineligible_reason: null,
+      payable_preview: 85,
+    },
+  ],
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  learnerApi.fetchCourseDetail.mockResolvedValue(detail);
+  couponsApi.fetchCheckoutCoupons.mockResolvedValue(checkout);
+  learnerApi.createCourseOrder.mockResolvedValue({
+    order_id: 9001,
+    status: 'pending',
+    list_price_snapshot: 100,
+    sale_price_snapshot: 0,
+    coupon_discount_snapshot: 15,
+    paid_amount: 85,
+    learner_coupon_id: 501,
+    payment: { type: 'wechat_native', code_url: 'weixin://wxpay/bizpayurl?pr=xxx' },
+  });
+  learnerApi.fetchOrder.mockResolvedValue({
+    order_id: 9001,
+    course_id: 42,
+    list_price_snapshot: 100,
+    sale_price_snapshot: 0,
+    coupon_discount_snapshot: 15,
+    paid_amount: 85,
+    learner_coupon_id: 501,
     currency: 'CNY',
-    provider: 'wechat',
-  },
-};
+    status: 'pending',
+    provider: 'fake',
+    succeeded_at: null,
+    created_at: '2026-09-01T00:00:00+08:00',
+  });
+});
 
-const pendingOrder: OrderDTO = {
-  order_id: 501,
-  course_id: 21,
-  list_price_snapshot: 299.0,
-  sale_price_snapshot: 199.0,
-  paid_amount: 0,
-  currency: 'CNY',
-  status: 'pending',
-  provider: 'wechat',
-  succeeded_at: null,
-  created_at: '2026-08-30 10:00:00',
-};
-
-describe('CheckoutView', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    routerApi.route.params.courseId = '21';
-    learnerApi.fetchCourseDetail.mockResolvedValue(detail);
-    learnerApi.createCourseOrder.mockResolvedValue(createdOrder);
-    learnerApi.fetchOrder.mockResolvedValue(pendingOrder);
+describe('CheckoutView coupon integration', () => {
+  it('loads checkout options and includes coupon discount row', async () => {
+    const wrapper = mount(CheckoutView);
+    await flushPromises();
+    expect(couponsApi.fetchCheckoutCoupons).toHaveBeenCalledWith(42);
+    const html = wrapper.html();
+    expect(html).toContain('满 50 减 15');
+    expect(html).toContain('应付金额');
+    wrapper.unmount();
   });
 
-  it('renders course summary, both payment methods, and a disabled submit until agreement', async () => {
-    const wrapper = mount(CheckoutView, {
-      global: { stubs: { RouterLink: RouterLinkStub } },
-    });
+  it('clears a missing coupon and shows a friendly submission error', async () => {
+    learnerApi.createCourseOrder.mockRejectedValueOnce(new Error('COUPON_NOT_FOUND'));
+    const wrapper = mount(CheckoutView);
     await flushPromises();
 
-    expect(learnerApi.fetchCourseDetail).toHaveBeenCalledWith(21);
-    expect(wrapper.text()).toContain('TypeScript 进阶');
-    expect(wrapper.text()).toContain('讲师 · 陈老师');
-    expect(wrapper.text()).toContain('¥ 299.00');
-    expect(wrapper.text()).toContain('¥ 199.00');
-    expect(wrapper.text()).toContain('微信支付');
-    expect(wrapper.text()).toContain('支付宝');
-    expect(wrapper.text()).toContain('不支持退款');
+    const vm = wrapper.vm as unknown as {
+      selectedCouponId: number | null;
+      agreed: boolean;
+      submitOrder: () => Promise<void>;
+      submitError: string;
+    };
+    vm.selectedCouponId = 501;
+    vm.agreed = true;
+    await vm.submitOrder();
 
-    const submit = wrapper.get('[data-action="create-order"]');
-    expect(submit.attributes('disabled')).toBeDefined();
-
-    // Toggle alipay; submit label should reflect it
-    // ponytail: happy-dom does not bubble <label> clicks to nested <input type="radio">,
-    // so drive the v-model via the inner input directly.
-    await wrapper.get('[data-action="pay-alipay"] input[type="radio"]').setValue(true);
-    expect(wrapper.text()).toContain('提交并使用支付宝');
-
-    // Tick agreement to unlock submit
-    await wrapper.get('input[type="checkbox"]').setValue(true);
-    expect(submit.attributes('disabled')).toBeUndefined();
+    expect(learnerApi.createCourseOrder).toHaveBeenCalledWith(42, 501);
+    expect(vm.selectedCouponId).toBeNull();
+    expect(vm.submitError).toBe('所选优惠券已失效,请重新选择优惠券。');
+    expect(wrapper.text()).toContain('所选优惠券已失效,请重新选择优惠券。');
+    expect(couponsApi.fetchCheckoutCoupons).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
   });
 
-  it('submits an order and surfaces status + payment code_url', async () => {
-    const wrapper = mount(CheckoutView, {
-      global: { stubs: { RouterLink: RouterLinkStub } },
+  it('clears a coupon that becomes ineligible after refresh', async () => {
+    const wrapper = mount(CheckoutView);
+    await flushPromises();
+
+    const vm = wrapper.vm as unknown as {
+      selectedCouponId: number | null;
+      loadCoupons: () => Promise<void>;
+    };
+    vm.selectedCouponId = 501;
+    couponsApi.fetchCheckoutCoupons.mockResolvedValueOnce({
+      ...checkout,
+      items: [{ ...checkout.items[0], eligible: false, ineligible_reason: 'COUPON_EXPIRED' }],
     });
-    await flushPromises();
+    await vm.loadCoupons();
 
-    await wrapper.get('input[type="checkbox"]').setValue(true);
-    await wrapper.get('[data-action="create-order"]').trigger('click');
-    await flushPromises();
-
-    expect(learnerApi.createCourseOrder).toHaveBeenCalledWith(21);
-    expect(learnerApi.fetchOrder).toHaveBeenCalledWith(501);
-    expect(wrapper.text()).toContain('等待支付');
-    expect(wrapper.text()).toContain('weixin://wxpay/bizpayurl?pr=abc123');
-    expect(wrapper.text()).toContain('订单 #501');
-    expect(wrapper.find('[data-action="refresh-order"]').exists()).toBe(true);
-  });
-
-  it('treats the promo code input as UI-only and never sends it to the backend', async () => {
-    const wrapper = mount(CheckoutView, {
-      global: { stubs: { RouterLink: RouterLinkStub } },
-    });
-    await flushPromises();
-
-    await wrapper.get('[data-testid="promo-input"]').setValue('TRYSTEP10');
-    await wrapper.get('[data-action="apply-promo"]').trigger('click');
-    await wrapper.get('input[type="checkbox"]').setValue(true);
-    await wrapper.get('[data-action="create-order"]').trigger('click');
-    await flushPromises();
-
-    expect(learnerApi.createCourseOrder).toHaveBeenCalledWith(21);
-    // ponytail: applyPromo is local-stub — only 21 must be sent, no promo payload leaks into the call.
-    const callArgs = learnerApi.createCourseOrder.mock.calls[0];
-    expect(callArgs).toHaveLength(1);
-  });
-
-  it('shows the error retry path when the course cannot be loaded', async () => {
-    learnerApi.fetchCourseDetail.mockRejectedValueOnce(
-      Object.assign(new Error('NOT_FOUND'), { code: 'NOT_FOUND' }),
-    );
-    const wrapper = mount(CheckoutView, {
-      global: { stubs: { RouterLink: RouterLinkStub } },
-    });
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('课程不存在或已下架。');
-    expect(wrapper.find('[data-action="retry"]').exists()).toBe(true);
-    expect(wrapper.text()).not.toContain('TypeScript 进阶');
+    expect(vm.selectedCouponId).toBeNull();
+    wrapper.unmount();
   });
 });

@@ -36,6 +36,7 @@ final class OrderService
     public function __construct(
         private readonly EntitlementService $entitlements,
         private readonly PaymentAdapter $payment,
+        private readonly ?CouponService $coupons = null,
     ) {
         if ($payment instanceof FakePaymentAdapter) {
             $payment->setSuccessHandler(function (int $orderId, string $providerRef): void {
@@ -50,10 +51,18 @@ final class OrderService
      * is responsible for the 409-already-entitled short-circuit; this
      * method assumes the learner is NOT yet entitled.
      *
-     * Returns the API envelope: { order_id, status, payment: {...} }.
+     * $learnerCouponId is optional; when provided, the matching
+     * `learner_coupons` row is validated + locked in the same
+     * transaction as the order insert, and the resulting discount is
+     * stamped into the order's immutable snapshot.
+     *
+     * Returns the API envelope:
+     *   { order_id, status, list_price_snapshot, sale_price_snapshot,
+     *     coupon_discount_snapshot, paid_amount, learner_coupon_id,
+     *     payment: {...} }
      */
     /** @return array<string, mixed> */
-    public function createPending(int $learnerId, int $courseId): array
+    public function createPending(int $learnerId, int $courseId, ?int $learnerCouponId = null): array
     {
         $course = Db::name('courses')->where('id', $courseId)->find();
         if (!$course || $course['status'] !== 'published') {
@@ -69,6 +78,8 @@ final class OrderService
         // A pending order already represents a confirmed price. Reuse its
         // immutable snapshot even when the course's sale window has since
         // closed; only a brand-new confirmation must revalidate the window.
+        // When a coupon was locked against the existing pending order, the
+        // caller must echo back the same learner_coupon_id (research R8).
         $existingPending = Db::name('orders')
             ->where('learner_id', $learnerId)
             ->where('course_id', $courseId)
@@ -76,16 +87,19 @@ final class OrderService
             ->find();
         if ($existingPending) {
             $orderId = (int) $existingPending['id'];
+            $existingCouponId = isset($existingPending['learner_coupon_id'])
+                ? (int) $existingPending['learner_coupon_id']
+                : 0;
+            if ($learnerCouponId !== null && $learnerCouponId > 0
+                && $learnerCouponId !== $existingCouponId) {
+                throw new BusinessException('CONFLICT', 'ORDER_PENDING_COUPON_MISMATCH');
+            }
             $amount = (float) $existingPending['paid_amount'];
             $paymentEnvelope = $this->payment->createCharge($orderId, $amount, 'CNY');
             if ($this->payment instanceof FakePaymentAdapter) {
                 $this->payment->scheduleSuccess($orderId);
             }
-            return [
-                'order_id' => $orderId,
-                'status'   => 'pending',
-                'payment'  => $paymentEnvelope,
-            ];
+            return $this->shapeCreateResponse($existingPending, $paymentEnvelope);
         }
 
         // Sale window check: if a sale price is declared it must be in
@@ -110,7 +124,15 @@ final class OrderService
 
         $nowDt = date('Y-m-d H:i:s');
 
-        $row = Db::transaction(function () use ($learnerId, $courseId, $listPrice, $salePrice, $paidAmount, $nowDt) {
+        $orderId = (int) Db::transaction(function () use (
+            $learnerId,
+            $courseId,
+            $listPrice,
+            $salePrice,
+            $paidAmount,
+            $nowDt,
+            $learnerCouponId,
+        ) {
             // Idempotency: if a pending order for this (learner, course)
             // exists, return it as-is.
             $existing = Db::name('orders')
@@ -120,14 +142,16 @@ final class OrderService
                 ->lock(true)
                 ->find();
             if ($existing) {
-                return $existing;
+                return (int) $existing['id'];
             }
 
-            return Db::name('orders')->insertGetId([
+            $newId = (int) Db::name('orders')->insertGetId([
                 'learner_id'           => $learnerId,
                 'course_id'            => $courseId,
+                'learner_coupon_id'    => null,
                 'list_price_snapshot'  => $listPrice,
                 'sale_price_snapshot'  => $salePrice,
+                'coupon_discount_snapshot' => 0,
                 'paid_amount'          => $paidAmount,
                 'currency'             => 'CNY',
                 'status'               => 'pending',
@@ -137,27 +161,61 @@ final class OrderService
                 'created_at'           => $nowDt,
                 'updated_at'           => $nowDt,
             ]);
+
+            if ($learnerCouponId !== null && $learnerCouponId > 0 && $this->coupons !== null) {
+                $lockResult = $this->coupons->lockForOrder(
+                    $learnerId,
+                    $courseId,
+                    $learnerCouponId,
+                    $newId,
+                );
+                $discount = (float) $lockResult['coupon_discount'];
+                if ($discount > 0) {
+                    $finalPaid = max(0.0, $paidAmount - $discount);
+                    Db::name('orders')->where('id', $newId)->update([
+                        'learner_coupon_id' => $learnerCouponId,
+                        'coupon_discount_snapshot' => $discount,
+                        'paid_amount' => $finalPaid,
+                        'updated_at' => $nowDt,
+                    ]);
+                }
+            }
+
+            return $newId;
         });
 
-        $orderId = is_array($row) ? (int) $row['id'] : (int) $row;
-        $orderRow = is_array($row) ? $row : Db::name('orders')->where('id', $orderId)->find();
+        $orderRow = Db::name('orders')->where('id', $orderId)->find();
 
         Logger::info('order.created', [
             'order_id'   => $orderId,
             'learner_id' => $learnerId,
             'course_id'  => $courseId,
-            'paid_amount'=> $paidAmount,
+            'paid_amount'=> (float) $orderRow['paid_amount'],
+            'coupon_id'  => isset($orderRow['learner_coupon_id']) ? (int) $orderRow['learner_coupon_id'] : null,
         ]);
 
-        $effectiveAmount = is_array($row) ? (float) $row['paid_amount'] : $paidAmount;
+        $effectiveAmount = (float) $orderRow['paid_amount'];
         $paymentEnvelope = $this->payment->createCharge($orderId, $effectiveAmount, 'CNY');
         if ($this->payment instanceof FakePaymentAdapter) {
             $this->payment->scheduleSuccess($orderId);
         }
+        return $this->shapeCreateResponse($orderRow, $paymentEnvelope);
+    }
+
+    /** @param array<string, mixed> $orderRow */
+    private function shapeCreateResponse(array $orderRow, array $paymentEnvelope): array
+    {
         return [
-            'order_id' => $orderId,
-            'status'   => 'pending',
-            'payment'  => $paymentEnvelope,
+            'order_id' => (int) $orderRow['id'],
+            'status' => (string) $orderRow['status'],
+            'list_price_snapshot' => (float) $orderRow['list_price_snapshot'],
+            'sale_price_snapshot' => (float) $orderRow['sale_price_snapshot'],
+            'coupon_discount_snapshot' => (float) ($orderRow['coupon_discount_snapshot'] ?? 0),
+            'paid_amount' => (float) $orderRow['paid_amount'],
+            'learner_coupon_id' => isset($orderRow['learner_coupon_id'])
+                ? (int) $orderRow['learner_coupon_id']
+                : null,
+            'payment' => $paymentEnvelope,
         ];
     }
 
@@ -197,7 +255,12 @@ final class OrderService
     /** @return array<string, mixed>|null */
     public function findForLearner(int $learnerId, int $orderId): ?array
     {
-        $row = Db::name('orders')->where('id', $orderId)->find();
+        $row = Db::name('orders')
+            ->alias('o')
+            ->join('courses c', 'c.id = o.course_id')
+            ->where('o.id', $orderId)
+            ->field('o.*, c.title AS course_title')
+            ->find();
         if (!$row || (int) $row['learner_id'] !== $learnerId) {
             return null;
         }
@@ -242,6 +305,12 @@ final class OrderService
                 'purchase',
                 $orderId,
             );
+            // 009-learner-coupons — redeem the locked coupon in the same
+            // transaction so a half-committed payment can't leave the
+            // coupon in 'locked' indefinitely.
+            if ($this->coupons !== null) {
+                $this->coupons->redeemOnSuccess($orderId);
+            }
             Logger::info('order.succeeded', [
                 'order_id'   => $orderId,
                 'learner_id' => (int) $row['learner_id'],
@@ -280,6 +349,9 @@ final class OrderService
                 return;
             }
             Db::name('orders')->where('id', $orderId)->update($patch);
+            if ($this->coupons !== null) {
+                $this->coupons->releaseOnTerminal($orderId);
+            }
             Logger::info('order.' . $status, ['order_id' => $orderId]);
         });
     }
@@ -354,9 +426,14 @@ final class OrderService
         return [
             'order_id'             => (int) $row['id'],
             'course_id'            => (int) $row['course_id'],
+            'course_title'         => isset($row['course_title']) ? (string) $row['course_title'] : null,
             'list_price_snapshot'  => (float) $row['list_price_snapshot'],
             'sale_price_snapshot'  => (float) $row['sale_price_snapshot'],
+            'coupon_discount_snapshot' => (float) ($row['coupon_discount_snapshot'] ?? 0),
             'paid_amount'          => (float) $row['paid_amount'],
+            'learner_coupon_id'    => isset($row['learner_coupon_id'])
+                ? (int) $row['learner_coupon_id']
+                : null,
             'currency'             => (string) $row['currency'],
             'status'               => (string) $row['status'],
             'provider'             => (string) $row['provider'],

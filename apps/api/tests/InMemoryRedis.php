@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests;
@@ -34,7 +35,12 @@ final class InMemoryRedis
         return $v === false ? false : (string) $v;
     }
 
-    public function set(string $key, string $value, string|int|null $expOption = null, int|string|null $ttl = null): bool
+    public function set(
+        string $key,
+        string $value,
+        string|int|null $expOption = null,
+        int|string|null $ttl = null,
+    ): bool
     {
         $this->maybeFail();
         $this->store[$key] = $value;
@@ -98,6 +104,28 @@ final class InMemoryRedis
         $next = (int) ($this->store[$key] ?? 0) + 1;
         $this->store[$key] = (string) $next;
         return $next;
+    }
+
+    /** @return array{0: int, 1: int} */
+    public function eval(string $script, int $numKeys, mixed ...$arguments): array
+    {
+        $this->maybeFail();
+        if ($numKeys !== 1 || count($arguments) < 2) {
+            throw new \InvalidArgumentException('unsupported_eval_shape');
+        }
+
+        $key = (string) $arguments[0];
+        $window = max(1, (int) $arguments[1]);
+        if ($this->isExpired($key)) {
+            unset($this->store[$key], $this->expires[$key]);
+        }
+        $current = (int) ($this->store[$key] ?? 0) + 1;
+        $this->store[$key] = (string) $current;
+        if ($current === 1) {
+            $this->expires[$key] = $this->clock + $window;
+        }
+
+        return [$current, max(1, $this->expires[$key] - $this->clock)];
     }
 
     public function decr(string $key): int|false

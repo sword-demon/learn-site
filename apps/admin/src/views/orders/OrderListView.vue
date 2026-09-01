@@ -461,6 +461,14 @@ onMounted(() => {
               }}</strong></template
             >
           </el-table-column>
+          <el-table-column label="优惠券抵扣" width="120">
+            <template #default="{ row }">
+              <span v-if="row.coupon_discount_snapshot > 0" class="amount-coupon">
+                − ¥ {{ formatMoney(row.coupon_discount_snapshot, row.currency) }}
+              </span>
+              <span v-else class="amount-none">—</span>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="110">
             <template #default="{ row }">
               <el-tag :type="statusType(row.status)" effect="light" size="small">{{
@@ -534,6 +542,16 @@ onMounted(() => {
             <dd>{{ formatMoney(selected.list_price_snapshot, selected.currency) }}</dd>
             <dt>售价</dt>
             <dd>{{ formatMoney(selected.sale_price_snapshot, selected.currency) }}</dd>
+            <dt>优惠券抵扣</dt>
+            <dd>
+              <span v-if="selected.coupon_discount_snapshot > 0">
+                − ¥ {{ formatMoney(selected.coupon_discount_snapshot, selected.currency) }}
+                <small v-if="selected.learner_coupon_id">
+                  (券 #{{ selected.learner_coupon_id }})
+                </small>
+              </span>
+              <span v-else>—</span>
+            </dd>
             <dt class="emphasis">实付</dt>
             <dd class="emphasis">{{ formatMoney(selected.paid_amount, selected.currency) }}</dd>
             <dt>支付渠道</dt>

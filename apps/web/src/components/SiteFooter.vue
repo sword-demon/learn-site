@@ -5,8 +5,9 @@
       <nav class="foot-links" aria-label="页脚导航">
         <router-link to="/">关于我们</router-link>
         <router-link to="/maps">帮助中心</router-link>
+        <router-link to="/terms">用户协议</router-link>
+        <router-link to="/refund">退款说明</router-link>
         <a v-if="contactEmail" :href="`mailto:${contactEmail}`">课程合作</a>
-        <span v-else>用户协议</span>
       </nav>
       <p class="foot-copy mono">© {{ currentYear }} 拾阶学社 Shi Jie Xue She</p>
     </div>

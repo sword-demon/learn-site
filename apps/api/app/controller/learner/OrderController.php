@@ -52,12 +52,35 @@ final class OrderController
         if ($this->entitlements->viewerAuthorized($courseId, $learnerId)) {
             return ApiResponse::fail(ApiResponse::CONFLICT, 'ALREADY_ENTITLED');
         }
+        $body = $this->readJson($request);
+        $couponId = $this->parseCouponId($body['learner_coupon_id'] ?? null);
         try {
-            $payload = $this->orders->createPending($learnerId, $courseId);
+            $payload = $this->orders->createPending($learnerId, $courseId, $couponId);
         } catch (BusinessException $e) {
             return ApiResponse::fail($e->apiCode, $e->getMessage());
         }
         return ApiResponse::ok($payload);
+    }
+
+    private function parseCouponId(mixed $value): ?int
+    {
+        if ($value === null || $value === '' || $value === false) {
+            return null;
+        }
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+        if (is_string($value) && ctype_digit($value) && (int) $value > 0) {
+            return (int) $value;
+        }
+        throw new BusinessException(ApiResponse::VALIDATION_FAILED, 'INVALID_COUPON_ID');
+    }
+
+    /** @return array<string,mixed> */
+    private function readJson(Request $request): array
+    {
+        $decoded = json_decode((string) $request->rawBody(), true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**

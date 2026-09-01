@@ -29,6 +29,8 @@ final class Authorize implements MiddlewareInterface
         '/api/admin/v1/scheduled-tasks' => 'scheduled_task.manage',
         '/api/admin/v1/checkins' => 'checkin.manage',
         '/api/admin/v1/banners' => 'banner.manage',
+        '/api/admin/v1/coupons' => 'coupon.manage',
+        '/api/admin/v1/coupon-redemptions' => 'coupon.manage',
     ];
 
     public static function permissionFor(string $path, string $method): ?string
