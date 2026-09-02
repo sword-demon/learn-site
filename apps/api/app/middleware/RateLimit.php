@@ -25,10 +25,9 @@ final class RateLimit implements MiddlewareInterface
     ];
 
     /**
-     * Auth-bypass and code-redemption endpoints: if Redis is down we MUST
-     * fail closed — fail-open would let an attacker brute-force creds or
-     * guess activation codes whenever Redis blips. Read-side rules above
-     * stay fail-open (auth + business rules remain authoritative).
+     * Auth-bypass endpoints fail closed when Redis is down. Business routes
+     * stay fail-open because their authentication and domain constraints are
+     * authoritative.
      */
     private const STRICT_KEYS = [
         'learner_auth_login',
@@ -36,7 +35,6 @@ final class RateLimit implements MiddlewareInterface
         'learner_auth_refresh',
         'admin_auth_login',
         'admin_auth_refresh',
-        'learner_activation_code_redeem',
     ];
 
     private const SCRIPT = <<<'LUA'
@@ -65,7 +63,7 @@ LUA;
                     $request->request_id ?? null,
                 )->withHeaders(['Retry-After' => (string) $rule['window']]);
             }
-            // ponytail: fail open on read-side rules when Redis is down —
+            // ponytail: fail open on business routes when Redis is down —
             // auth + business rules remain authoritative.
             return $handler($request);
         }

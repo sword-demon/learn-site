@@ -6,6 +6,7 @@ namespace App\service;
 use App\model\CourseEntitlement;
 use App\support\Logger;
 use support\think\Db;
+use think\db\exception\PDOException as ThinkPdoException;
 
 /**
  * EntitlementService — grants and authorization checks for learners.
@@ -29,10 +30,9 @@ use support\think\Db;
      *      intentionally excluded from that index.
  *   2. Revoked entitlements remain in the table for audit; re-join creates
  *      a new row, never re-activates an old one.
- *   3. grant() is idempotent for the (learner, course) pair when an active
- *      row already exists — we return that row instead of failing. The
- *      caller can therefore call grant() freely from start-free / paid
- *      paths without racing itself.
+ *   3. grant() is idempotent for free/purchase grants. Activation-code
+ *      grants reject an existing active entitlement so a losing code is
+ *      never consumed by the caller.
  */
 final class EntitlementService
 {
@@ -66,14 +66,12 @@ final class EntitlementService
     }
 
     /**
-     * Idempotent grant. If an active entitlement already exists, returns
-     * it without creating a new row. Otherwise inserts one and returns
-     * the fresh row.
+     * Insert-first grant. The active-entitlement unique index arbitrates
+     * races without locking a missing row first.
      *
-     * NOTE for activation-code redemption: the idempotent path must never
-     * be used to consume a code. ActivationCodeService::redeem() checks for
-     * an active entitlement first and throws ENTITLEMENT_ALREADY_ACTIVE
-     * without touching the code row (FR-015).
+     * NOTE for activation-code redemption: duplicate active grants are a
+     * conflict, not an idempotent success. This makes the losing redemption
+     * roll back so its activation code remains unused (FR-015).
      *
      * @param 'free'|'purchase'|'activation_code' $source
      * @return array{ id:int, learner_id:int, course_id:int, source:string, order_id:?int, activation_code_id:?int, status:string, created_at:string, updated_at:string }
@@ -105,17 +103,6 @@ final class EntitlementService
         $now = date('Y-m-d H:i:s');
 
         return Db::transaction(function () use ($learnerId, $courseId, $source, $orderId, $activationCodeId, $now) {
-            $existing = Db::name('course_entitlements')
-                ->where('learner_id', $learnerId)
-                ->where('course_id', $courseId)
-                ->where('status', 'active')
-                ->lock(true)
-                ->find();
-            if ($existing) {
-                $this->ensureEnrollment($learnerId, $courseId, $now);
-                return $this->shape($existing);
-            }
-
             $insert = [
                 'learner_id' => $learnerId,
                 'course_id'  => $courseId,
@@ -129,15 +116,18 @@ final class EntitlementService
             try {
                 $id = (int) Db::name('course_entitlements')->insertGetId($insert);
             } catch (\Throwable $e) {
-                // ponytail: race window — another tx beat us to the unique
-                // (learner_id, course_id, status) index. Treat as success
-                // and re-read; never reveal the conflict to the caller.
+                if (!$this->isDuplicateKey($e)) {
+                    throw $e;
+                }
                 $row = Db::name('course_entitlements')
                     ->where('learner_id', $learnerId)
                     ->where('course_id', $courseId)
                     ->where('status', 'active')
                     ->find();
                 if ($row) {
+                    if ($source === 'activation_code') {
+                        throw new BusinessException('CONFLICT', 'ENTITLEMENT_ALREADY_ACTIVE');
+                    }
                     $this->ensureEnrollment($learnerId, $courseId, $now);
                     return $this->shape($row);
                 }
@@ -153,6 +143,20 @@ final class EntitlementService
             ]);
             return $this->shape(array_merge($insert, ['id' => $id]));
         });
+    }
+
+    private function isDuplicateKey(\Throwable $exception): bool
+    {
+        if ($exception instanceof ThinkPdoException) {
+            $info = $exception->getData()['PDO Error Info'] ?? [];
+            return ($info['SQLSTATE'] ?? null) === '23000'
+                && (int) ($info['Driver Error Code'] ?? 0) === 1062;
+        }
+        if ($exception instanceof \PDOException) {
+            return ($exception->errorInfo[0] ?? null) === '23000'
+                && (int) ($exception->errorInfo[1] ?? 0) === 1062;
+        }
+        return false;
     }
 
     /** Ensure every active grant has its aggregate learning row. */

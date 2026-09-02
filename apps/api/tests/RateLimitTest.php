@@ -132,7 +132,7 @@ final class RateLimitTest extends TestCase
         self::assertSame(429, $response->getStatusCode());
     }
 
-    public function testActivationCodeRedeemIsStrict(): void
+    public function testActivationCodeRedeemFailsOpenWhenRedisIsUnavailable(): void
     {
         $this->redis->stayDown = true;
         $called = false;
@@ -144,8 +144,8 @@ final class RateLimitTest extends TestCase
             },
         );
 
-        self::assertFalse($called);
-        self::assertSame(429, $response->getStatusCode());
+        self::assertTrue($called);
+        self::assertSame(200, $response->getStatusCode());
     }
 
     public function testKeyAuthAndBusinessRoutesAreMountedWithRateLimit(): void

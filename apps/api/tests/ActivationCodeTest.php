@@ -6,6 +6,7 @@ namespace Tests;
 
 use App\service\ActivationCodeService;
 use App\service\BusinessException;
+use App\service\EntitlementService;
 use PHPUnit\Framework\TestCase;
 use support\App;
 use support\think\Db;
@@ -14,11 +15,8 @@ use Webman\ThinkOrm\ThinkOrm;
 /**
  * 010-course-notify-feedback-codes / US2 + US3 — activation code lifecycle.
  *
- * True two-client concurrency cannot run inside one PHPUnit process, but
- * the redeem transaction's `FOR UPDATE` lock plus the guarded
- * `WHERE status='unused'` update and the unique entitlement index give the
- * same guarantee; sequential double-redeem asserts the observable contract
- * (one winner, everyone else sees ACTIVATION_CODE_REDEEMED).
+ * The concurrency regression uses forked workers with independent database
+ * connections so the row-lock and unique-index contract is exercised for real.
  */
 final class ActivationCodeTest extends TestCase
 {
@@ -383,6 +381,70 @@ final class ActivationCodeTest extends TestCase
         );
     }
 
+    public function testActivationCodeGrantNeverReusesAnExistingEntitlement(): void
+    {
+        $courseId = $this->insertCourse('published', 'paid');
+        $codes = $this->service->generateBatch($courseId, 2, null, $this->staffId)['codes'];
+        $learnerId = $this->insertLearner();
+        $this->service->redeem($learnerId, $codes[0]);
+
+        try {
+            (new EntitlementService())->grant(
+                $learnerId,
+                $courseId,
+                'activation_code',
+                null,
+                $this->codeIdByPlain($codes[1]),
+            );
+            self::fail('Activation-code grants must reject an existing active entitlement.');
+        } catch (BusinessException $exception) {
+            self::assertSame('ENTITLEMENT_ALREADY_ACTIVE', $exception->getMessage());
+        }
+    }
+
+    public function testConcurrentDifferentCodesKeepTheLosingCodeUnused(): void
+    {
+        $courseId = $this->insertCourse('published', 'paid');
+        $course = Db::name('courses')->where('id', $courseId)->find();
+        self::assertIsArray($course);
+        $batch = $this->service->generateBatch($courseId, 2, null, $this->staffId);
+        $learnerId = $this->insertLearner();
+
+        Db::commit();
+        try {
+            $results = $this->redeemConcurrently($learnerId, $courseId, $batch['codes']);
+            sort($results);
+
+            self::assertSame(['ENTITLEMENT_ALREADY_ACTIVE', 'OK'], $results);
+            self::assertSame(
+                1,
+                (int) Db::name('course_entitlements')
+                    ->where('learner_id', $learnerId)
+                    ->where('course_id', $courseId)
+                    ->where('status', 'active')
+                    ->count(),
+            );
+            $statusCounts = Db::name('activation_codes')
+                ->where('batch_id', (int) $batch['id'])
+                ->group('status')
+                ->column('COUNT(*)', 'status');
+            ksort($statusCounts);
+            self::assertSame(['redeemed' => 1, 'unused' => 1], $statusCounts);
+        } finally {
+            try {
+                $this->cleanupCommittedConcurrencyFixture(
+                    $learnerId,
+                    $courseId,
+                    (int) $batch['id'],
+                    (int) $course['department_id'],
+                    (int) $course['category_id'],
+                );
+            } finally {
+                Db::startTrans();
+            }
+        }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private function codeIdByPlain(string $plain): int
@@ -392,6 +454,91 @@ final class ActivationCodeTest extends TestCase
             ->value('id');
         self::assertNotNull($id);
         return (int) $id;
+    }
+
+    /** @param list<string> $codes @return list<string> */
+    private function redeemConcurrently(int $learnerId, int $courseId, array $codes): array
+    {
+        Db::connect()->close();
+        $children = [];
+        foreach ($codes as $code) {
+            $sockets = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, 0);
+            self::assertIsArray($sockets);
+            $pid = pcntl_fork();
+            self::assertNotSame(-1, $pid);
+            if ($pid === 0) {
+                fclose($sockets[0]);
+                Db::connect('mysql', true)->execute(
+                    'SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED',
+                );
+                fwrite($sockets[1], 'R');
+                fread($sockets[1], 1);
+                try {
+                    (new ActivationCodeService())->redeem($learnerId, $code);
+                    $result = 'OK';
+                } catch (BusinessException $exception) {
+                    $result = $exception->getMessage();
+                } catch (\Throwable $exception) {
+                    $result = $exception::class . ': ' . $exception->getMessage();
+                }
+                fwrite($sockets[1], $result);
+                fclose($sockets[1]);
+                exit(0);
+            }
+            fclose($sockets[1]);
+            $children[] = [$pid, $sockets[0]];
+        }
+
+        foreach ($children as [, $socket]) {
+            self::assertSame('R', fread($socket, 1));
+        }
+
+        Db::connect('mysql', true);
+        Db::startTrans();
+        $existing = Db::name('course_entitlements')
+            ->where('learner_id', $learnerId)
+            ->where('course_id', $courseId)
+            ->where('status', 'active')
+            ->lock(true)
+            ->find();
+        self::assertNull($existing);
+        foreach ($children as [, $socket]) {
+            fwrite($socket, 'G');
+        }
+        usleep(1_000_000);
+        Db::commit();
+
+        $results = [];
+        foreach ($children as [$pid, $socket]) {
+            $results[] = stream_get_contents($socket);
+            fclose($socket);
+            pcntl_waitpid($pid, $status);
+            self::assertTrue(pcntl_wifexited($status));
+            self::assertSame(0, pcntl_wexitstatus($status));
+        }
+        return $results;
+    }
+
+    private function cleanupCommittedConcurrencyFixture(
+        int $learnerId,
+        int $courseId,
+        int $batchId,
+        int $departmentId,
+        int $categoryId,
+    ): void {
+        $codeIds = Db::name('activation_codes')->where('batch_id', $batchId)->column('id');
+        Db::name('audit_log')->where('actor_id', $learnerId)->whereIn('target_id', $codeIds)->delete();
+        Db::name('audit_log')->where('actor_id', $this->staffId)->where('target_id', $batchId)->delete();
+        Db::name('course_entitlements')->where('learner_id', $learnerId)->where('course_id', $courseId)->delete();
+        Db::name('course_enrollments')->where('learner_id', $learnerId)->where('course_id', $courseId)->delete();
+        Db::name('activation_codes')->where('batch_id', $batchId)->delete();
+        Db::name('activation_code_batches')->where('id', $batchId)->delete();
+        Db::name('courses')->where('id', $courseId)->delete();
+        Db::name('learners')->where('account_id', $learnerId)->delete();
+        Db::name('staff_users')->where('account_id', $this->staffId)->delete();
+        Db::name('accounts')->whereIn('id', [$learnerId, $this->staffId])->delete();
+        Db::name('categories')->where('id', $categoryId)->delete();
+        Db::name('departments')->where('id', $departmentId)->delete();
     }
 
     private function insertStaff(): int

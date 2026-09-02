@@ -196,10 +196,10 @@ final class ActivationCodeService
     // -------------------------------------------------------------------------
 
     /**
-     * Redeem one code for a learner (see US3 tests). The row lock plus the
-     * unique active-entitlement index guarantee a single winner; the
-     * `grant()` idempotent path is never used to consume a code — an
-     * already-entitled learner is rejected before any state changes.
+     * Redeem one code for a learner (see US3 tests). The code-row lock
+     * serializes attempts for the same code. The active-entitlement unique
+     * index arbitrates different codes racing for the same learner/course;
+     * the loser rolls back and leaves its code unused.
      *
      * @return array{granted:true,course_id:int,course_title:string,source:string}
      */
@@ -240,24 +240,27 @@ final class ActivationCodeService
                 ->where('learner_id', $learnerId)
                 ->where('course_id', (int) $code['course_id'])
                 ->where('status', 'active')
-                ->lock(true)
                 ->find();
             if (is_array($active)) {
-                throw new BusinessException('CONFLICT', 'ENTITLEMENT_ALREADY_ACTIVE', [
-                    'course_id' => (int) $course['id'],
-                    'course_title' => (string) $course['title'],
-                ]);
+                throw $this->alreadyActive($course);
             }
 
             $now = $this->nowDatetime();
-            $entitlement = (new EntitlementService())->grant(
-                $learnerId,
-                (int) $code['course_id'],
-                'activation_code',
-                null,
-                (int) $code['id'],
-            );
-            Db::name('activation_codes')
+            try {
+                $entitlement = (new EntitlementService())->grant(
+                    $learnerId,
+                    (int) $code['course_id'],
+                    'activation_code',
+                    null,
+                    (int) $code['id'],
+                );
+            } catch (BusinessException $exception) {
+                if ($exception->getMessage() !== 'ENTITLEMENT_ALREADY_ACTIVE') {
+                    throw $exception;
+                }
+                throw $this->alreadyActive($course);
+            }
+            $updated = Db::name('activation_codes')
                 ->where('id', (int) $code['id'])
                 ->where('status', ActivationCode::STATUS_UNUSED)
                 ->update([
@@ -266,6 +269,9 @@ final class ActivationCodeService
                     'redeemed_at' => $now,
                     'updated_at' => $now,
                 ]);
+            if ($updated !== 1) {
+                throw new \RuntimeException('ACTIVATION_CODE_STATE_CHANGED');
+            }
             $this->writeAudit($learnerId, 'activation_code.redeem', (int) $code['id'], [
                 'course_id' => (int) $code['course_id'],
                 'batch_id' => (int) $code['batch_id'],
@@ -284,6 +290,15 @@ final class ActivationCodeService
     // -------------------------------------------------------------------------
     // 内部工具
     // -------------------------------------------------------------------------
+
+    /** @param array<string, mixed> $course */
+    private function alreadyActive(array $course): BusinessException
+    {
+        return new BusinessException('CONFLICT', 'ENTITLEMENT_ALREADY_ACTIVE', [
+            'course_id' => (int) $course['id'],
+            'course_title' => (string) $course['title'],
+        ]);
+    }
 
     /**
      * Insert a chunk of freshly generated codes. A duplicate hash (astronomic
