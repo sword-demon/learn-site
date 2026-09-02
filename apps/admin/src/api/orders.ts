@@ -23,6 +23,8 @@ export interface AdminListOrderParams {
   status?: AdminOrderStatus;
   course_id?: number;
   learner_id?: number;
+  from?: string;
+  to?: string;
   page?: number;
   limit?: number;
 }

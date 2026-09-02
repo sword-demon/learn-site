@@ -48,6 +48,9 @@ const filters = ref({
   status: '' as '' | AdminOrderStatus,
   course_id: null as number | null,
   learner_id: null as number | null,
+  from: '',
+  to: '',
+  date_range: [] as string[],
   page: 1,
   limit: 20,
 });
@@ -203,6 +206,8 @@ async function reload(): Promise<void> {
       status?: AdminOrderStatus;
       course_id?: number;
       learner_id?: number;
+      from?: string;
+      to?: string;
       page: number;
       limit: number;
     } = { page: filters.value.page, limit: filters.value.limit };
@@ -211,6 +216,8 @@ async function reload(): Promise<void> {
     const learnerId = positiveId(filters.value.learner_id, '学员');
     if (courseId !== undefined) params.course_id = courseId;
     if (learnerId !== undefined) params.learner_id = learnerId;
+    if (filters.value.from) params.from = filters.value.from;
+    if (filters.value.to) params.to = filters.value.to;
     const result = await listOrders(params);
     list.value = { ...result, items: result.items ?? [] };
     if ((list.value.items?.length ?? 0) === 0) {
@@ -236,6 +243,8 @@ async function openDetail(id: number): Promise<void> {
 }
 
 function applyFilters(): void {
+  filters.value.from = filters.value.date_range[0] ?? '';
+  filters.value.to = filters.value.date_range[1] ?? '';
   filters.value.page = 1;
   void reload();
 }
@@ -260,6 +269,14 @@ function formatMoney(amount: number, currency: string): string {
 }
 
 onMounted(() => {
+  const query = new URLSearchParams(window.location.search);
+  const from = query.get('from') ?? '';
+  const to = query.get('to') ?? '';
+  if (from && to) {
+    filters.value.from = from;
+    filters.value.to = to;
+    filters.value.date_range = [from, to];
+  }
   void Promise.all([reload(), loadCourseOptions(), loadLearnerOptions()]);
 });
 </script>
@@ -384,6 +401,19 @@ onMounted(() => {
               </div>
             </template>
           </el-select>
+        </el-form-item>
+        <el-form-item label="创建日期">
+          <el-date-picker
+            v-model="filters.date_range"
+            class="date-filter"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            clearable
+            data-field="created_at"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" native-type="submit" :loading="loading">
@@ -648,6 +678,9 @@ onMounted(() => {
 .option-filter {
   width: 260px;
 }
+.date-filter {
+  width: 270px;
+}
 .filters :deep(.el-input) {
   width: 150px;
 }
@@ -832,6 +865,7 @@ onMounted(() => {
   }
   .filter-control,
   .option-filter,
+  .date-filter,
   .filters :deep(.el-input) {
     width: 100%;
   }

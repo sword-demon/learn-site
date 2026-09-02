@@ -20,6 +20,7 @@
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^1.7.7",
+    "echarts": "^6.1.0",
     "element-plus": "^2.8.4",
     "nprogress": "^0.2.0",
     "pinia": "^2.2.4",

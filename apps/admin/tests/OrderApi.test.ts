@@ -38,10 +38,24 @@ describe('admin order API boundary', () => {
     mockHttp.get.mockResolvedValueOnce({ data: { ok: true, data: list } });
 
     await expect(
-      listOrders({ status: 'succeeded', course_id: 12, page: 2, limit: 20 }),
+      listOrders({
+        status: 'succeeded',
+        course_id: 12,
+        from: '2026-08-25',
+        to: '2026-08-25',
+        page: 2,
+        limit: 20,
+      }),
     ).resolves.toEqual(list);
     expect(mockHttp.get).toHaveBeenCalledWith('/orders', {
-      params: { status: 'succeeded', course_id: 12, page: 2, limit: 20 },
+      params: {
+        status: 'succeeded',
+        course_id: 12,
+        from: '2026-08-25',
+        to: '2026-08-25',
+        page: 2,
+        limit: 20,
+      },
     });
   });
 

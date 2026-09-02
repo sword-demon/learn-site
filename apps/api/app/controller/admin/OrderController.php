@@ -19,6 +19,7 @@ use support\Request;
  * observe but not manipulate the order book.
  *
  *   GET /api/admin/v1/orders?status=&course_id=&learner_id=&page=&limit=
+ *       &from=&to=
  *   GET /api/admin/v1/orders/{id}
  *
  * Both endpoints require `order.view` (Authorize middleware).
@@ -35,6 +36,11 @@ final class OrderController
         return $this->wrap(function () use ($request) {
             $page  = max(1, (int) $request->get('page', 1));
             $limit = max(1, min(200, (int) $request->get('limit', 20)));
+            $from = $this->dateOrNull($request->get('from'));
+            $to = $this->dateOrNull($request->get('to'));
+            if ($from !== null && $to !== null && $from > $to) {
+                throw new BusinessException('VALIDATION_FAILED', 'DATE_RANGE_INVALID');
+            }
             return $this->orders->adminList(
                 $this->staffId($request),
                 $this->status($request->get('status')),
@@ -43,6 +49,8 @@ final class OrderController
                 $page,
                 $limit,
                 $this->scope,
+                $from,
+                $to,
             );
         });
     }
@@ -106,6 +114,19 @@ final class OrderController
             throw new BusinessException('VALIDATION_FAILED', 'ORDER_STATUS_INVALID');
         }
         return $s;
+    }
+
+    private function dateOrNull(mixed $raw): ?string
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        $value = (string) $raw;
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        if ($date === false || $date->format('Y-m-d') !== $value) {
+            throw new BusinessException('VALIDATION_FAILED', 'DATE_INVALID');
+        }
+        return $value;
     }
 
     private function wrap(callable $fn): \support\Response

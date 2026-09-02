@@ -255,6 +255,10 @@ function readError(err: unknown, fallback: string): string {
 }
 
 onMounted(() => {
+  const statusQuery = new URLSearchParams(window.location.search).get('status');
+  if (statusQuery === 'draft' || statusQuery === 'published' || statusQuery === 'unpublished') {
+    filters.status = statusQuery;
+  }
   void reload();
 });
 </script>

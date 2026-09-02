@@ -17,8 +17,10 @@ final class DashboardController
         if ($staffAccountId <= 0) {
             return ApiResponse::fail(ApiResponse::UNAUTHENTICATED, 'UNAUTHENTICATED', $request->request_id ?? null);
         }
+        $rawRange = $request->get('range_days');
+        $rangeDays = $rawRange === null || $rawRange === '' ? null : (int) $rawRange;
         return ApiResponse::ok(
-            $this->dashboard->summary($staffAccountId, $request->permissions ?? []),
+            $this->dashboard->summary($staffAccountId, $request->permissions ?? [], $rangeDays),
             $request->request_id ?? null,
         );
     }

@@ -10,6 +10,22 @@ describe("DashboardSummaryDTO", () => {
         pending_reviews: null,
         abnormal_learning_maps: 1,
         unpublished_courses: 3,
+        pending_orders: null,
+        succeeded_orders: null,
+        paid_amount: null,
+        published_courses: 4,
+      },
+      timezone: "Asia/Shanghai",
+      range_days: 30,
+      order_trend: null,
+      operations_content: {
+        operations: {
+          unanswered_questions: 2,
+          pending_reviews: null,
+          abnormal_learning_maps: 1,
+          unpublished_courses: 3,
+        },
+        course_inventory: { draft: 3, published: 4, unpublished: 1 },
       },
       recent_orders: null,
     });
@@ -25,6 +41,29 @@ describe("DashboardSummaryDTO", () => {
         pending_reviews: 0,
         abnormal_learning_maps: 0,
         unpublished_courses: 0,
+        pending_orders: 2,
+        succeeded_orders: 1,
+        paid_amount: 199,
+        published_courses: 5,
+      },
+      timezone: "Asia/Shanghai",
+      range_days: 7,
+      order_trend: [
+        {
+          date: "2026-08-25",
+          created_orders: 1,
+          succeeded_orders: 1,
+          paid_amount: 199,
+        },
+      ],
+      operations_content: {
+        operations: {
+          unanswered_questions: 0,
+          pending_reviews: 0,
+          abnormal_learning_maps: 0,
+          unpublished_courses: 0,
+        },
+        course_inventory: { draft: 2, published: 5, unpublished: 1 },
       },
       recent_orders: [
         {

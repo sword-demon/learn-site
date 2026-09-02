@@ -423,6 +423,8 @@ final class OrderService
         int $page,
         int $limit,
         DataScopeService $scope,
+        ?string $fromDate = null,
+        ?string $toDate = null,
     ): array {
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
@@ -435,6 +437,12 @@ final class OrderService
         }
         if ($learnerId !== null && $learnerId > 0) {
             $q->where('o.learner_id', $learnerId);
+        }
+        if ($fromDate !== null) {
+            $q->where('o.created_at', '>=', $this->adminDateBoundary($fromDate, false));
+        }
+        if ($toDate !== null) {
+            $q->where('o.created_at', '<', $this->adminDateBoundary($toDate, true));
         }
         $allowed = $scope->allowedDepartmentIds($staffId, 'order.view');
         if ($allowed !== null) {
@@ -454,6 +462,21 @@ final class OrderService
             'page' => $page,
             'limit' => $limit,
         ];
+    }
+
+    private function adminDateBoundary(string $date, bool $exclusiveNextDay): string
+    {
+        $local = new \DateTimeImmutable($date . ' 00:00:00', new \DateTimeZone('Asia/Shanghai'));
+        if ($exclusiveNextDay) {
+            $local = $local->modify('+1 day');
+        }
+        $timezone = (string) (getenv('TZ') ?: 'UTC');
+        try {
+            $dbTimezone = new \DateTimeZone($timezone);
+        } catch (\Exception) {
+            $dbTimezone = new \DateTimeZone('UTC');
+        }
+        return $local->setTimezone($dbTimezone)->format('Y-m-d H:i:s');
     }
 
     /** @return array<string, mixed> */
