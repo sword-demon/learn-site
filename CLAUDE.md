@@ -96,6 +96,11 @@
 - 多 tab 测试:直接改 `route.path` 触发 computed 重算,不要模拟 `<el-tab-pane>` click(happy-dom 事件冒泡不稳定)
 - 重复 ≥3 次且只有单消费者之前不抽组件:6 个 inline `<section>` 比 `<TabSection :data="...">` 更易读
 
+### H7. Webman 后端开发走专用 skill(精确触发)
+- 仅在检测到 webman 框架时调用 `/webman-development`:`composer.json` / `composer.lock` 出现 `workerman/webman-framework`,或代码命中 `start.php` / `app/` / `config/process.php` / `config/route.php` 等 webman 约定路径
+- 当前 `apps/api` 是 ThinkPHP,**不要**加载该 skill;任何 ThinkPHP 改动走项目自身的 service / controller / route 约定
+- 任何 webman 修改前先按 skill 的「开始前检查」核对版本、配置与既有约定,不要按 PHP-FPM / Laravel / ThinkPHP 默认运行模型推断
+
 ## 项目特定信息
 
 - **技术栈**: `apps/admin` Vue+Element Plus 管理端,`apps/web` Vue+Element Plus 学习端,`apps/api` PHP/ThinkPHP,`packages/contracts` 共享类型
