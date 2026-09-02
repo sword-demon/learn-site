@@ -3,8 +3,8 @@
     <div class="foot-inner">
       <p class="foot-brand-name serif">拾阶学社</p>
       <nav class="foot-links" aria-label="页脚导航">
-        <router-link to="/">关于我们</router-link>
-        <router-link to="/maps">帮助中心</router-link>
+        <router-link to="/about">关于我们</router-link>
+        <router-link to="/help">帮助中心</router-link>
         <router-link to="/terms">用户协议</router-link>
         <router-link to="/refund">退款说明</router-link>
         <a v-if="contactEmail" :href="`mailto:${contactEmail}`">课程合作</a>

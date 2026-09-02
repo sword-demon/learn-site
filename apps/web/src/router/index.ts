@@ -94,6 +94,18 @@ const router = createRouter({
           component: () => import('@/views/me/CouponsView.vue'),
         },
         {
+          path: 'about',
+          name: 'about',
+          meta: { title: '关于我们' },
+          component: () => import('@/views/about/AboutView.vue'),
+        },
+        {
+          path: 'help',
+          name: 'help',
+          meta: { title: '帮助中心' },
+          component: () => import('@/views/help/HelpView.vue'),
+        },
+        {
           path: 'terms',
           name: 'terms',
           meta: { legalKey: 'terms', title: '用户协议' },
