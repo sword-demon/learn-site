@@ -82,6 +82,35 @@ describe('CourseStudentView', () => {
     expect(wrapper.text()).toContain('2026-08-28 11:00:00');
   });
 
+  it('renders activation-code acquisition and never offers free-access revoke', async () => {
+    courseStudentsApi.listCourseStudents.mockResolvedValue({
+      items: [{ ...student, source: 'activation_code' as const }],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    const wrapper = mount(CourseStudentView, { global: { plugins: [installElementPlus] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('激活码兑换');
+    expect(wrapper.find('button[data-action="revoke"]').exists()).toBe(false);
+
+    const select = wrapper.get('[data-field="source"]');
+    await select.get('.el-select__wrapper').trigger('click');
+    const option = select
+      .findAll('.el-select-dropdown__item')
+      .find((item) => item.text() === '激活码兑换');
+    expect(option).toBeDefined();
+    await option?.trigger('click');
+    await wrapper.get('form.filters').trigger('submit');
+    await flushPromises();
+    expect(courseStudentsApi.listCourseStudents).toHaveBeenLastCalledWith(12, {
+      source: 'activation_code',
+      page: 1,
+      limit: 20,
+    });
+  });
+
   it('hides reset and revoke commands without their respective permissions', async () => {
     authApi.hasPermission.mockImplementation((code: string) => code === 'course_student.view');
     const wrapper = mount(CourseStudentView, { global: { plugins: [installElementPlus] } });

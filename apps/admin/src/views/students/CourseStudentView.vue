@@ -28,7 +28,7 @@ const submittingId = ref<number | null>(null);
 
 const filters = ref({
   status: '' as '' | 'active' | 'revoked',
-  source: '' as '' | 'free' | 'purchase',
+  source: '' as '' | 'free' | 'purchase' | 'activation_code',
   learning_status: '' as '' | 'not_started' | 'in_progress' | 'completed',
   page: 1,
   limit: 20,
@@ -48,7 +48,7 @@ async function reload(): Promise<void> {
   try {
     const params: {
       status?: 'active' | 'revoked';
-      source?: 'free' | 'purchase';
+      source?: 'free' | 'purchase' | 'activation_code';
       learning_status?: 'not_started' | 'in_progress' | 'completed';
       page: number;
       limit: number;
@@ -133,7 +133,9 @@ onMounted(() => {
 });
 
 function sourceLabel(src: CourseStudentDTO['source']): string {
-  return src === 'free' ? '免费授权' : '购买';
+  if (src === 'free') return '免费授权';
+  if (src === 'activation_code') return '激活码兑换';
+  return '购买';
 }
 function entitlementLabel(s: CourseStudentDTO['entitlement_status']): string {
   return s === 'active' ? '有效' : '已撤销';
@@ -192,6 +194,7 @@ function revokeErrorMessage(error: unknown): string {
           <el-option label="全部" value="" />
           <el-option label="免费加入" value="free" />
           <el-option label="付费取得" value="purchase" />
+          <el-option label="激活码兑换" value="activation_code" />
         </el-select>
       </el-form-item>
       <el-form-item label="学习状态">

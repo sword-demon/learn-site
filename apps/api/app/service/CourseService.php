@@ -150,7 +150,7 @@ final class CourseService
     }
 
     /** @return array<string, mixed> */
-    public function publishCourse(int $id): array
+    public function publishCourse(int $id, ?int $actorStaffAccountId = null): array
     {
         $course = Course::find($id);
         if (!$course) {
@@ -158,6 +158,7 @@ final class CourseService
         }
         $status = (string) $course->status;
         if ($status === 'published') {
+            // Idempotent re-publish: no new dispatch, no duplicate inbox rows.
             return $this->getCourseTree($id);
         }
         $this->assertPublishable($course);
@@ -169,7 +170,34 @@ final class CourseService
             ]);
         });
         Logger::info('course.published', ['course_id' => (int) $course->id]);
+        if ($actorStaffAccountId !== null) {
+            $this->notifyCoursePublished((int) $course->id, $actorStaffAccountId);
+        }
         return $this->getCourseTree((int) $course->id);
+    }
+
+    /**
+     * Fire the course_published fan-out after the status flip has committed.
+     * NotificationDispatchService already tolerates enqueue failures (marks
+     * the dispatch `failed` for retry); this guard only keeps an unexpected
+     * dispatch-write error from failing the publish API itself (FR-008).
+     */
+    private function notifyCoursePublished(int $courseId, int $staffId): void
+    {
+        try {
+            $course = Db::name('courses')
+                ->where('id', $courseId)
+                ->field('id,title,summary')
+                ->find();
+            if (is_array($course)) {
+                (new NotificationDispatchService())->sendCoursePublished($course, $staffId);
+            }
+        } catch (\Throwable $e) {
+            Logger::warning('course.publish.notify_failed', [
+                'course_id' => $courseId,
+                'err' => $e->getMessage(),
+            ]);
+        }
     }
 
     /** @return array<string, mixed> */

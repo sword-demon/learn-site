@@ -48,6 +48,11 @@ final class AuthorizeLeakTest extends TestCase
         yield 'audit list' => ['/api/admin/v1/moderation-logs', 'GET', 'audit.view'];
         yield 'notification list' => ['/api/admin/v1/notifications', 'GET', 'notification.manage'];
         yield 'notification send' => ['/api/admin/v1/notifications/announcements', 'POST', 'notification.manage'];
+        yield 'activation code batch' => ['/api/admin/v1/courses/42/activation-code-batches', 'POST', 'activation_code.manage'];
+        yield 'activation code list' => ['/api/admin/v1/courses/42/activation-codes', 'GET', 'activation_code.manage'];
+        yield 'activation code void' => ['/api/admin/v1/courses/42/activation-codes/9/void', 'POST', 'activation_code.manage'];
+        yield 'course feedback list' => ['/api/admin/v1/courses/42/feedback', 'GET', 'course_feedback.manage'];
+        yield 'course feedback update' => ['/api/admin/v1/courses/42/feedback/9', 'PATCH', 'course_feedback.manage'];
         yield 'scheduled tasks list' => ['/api/admin/v1/scheduled-tasks', 'GET', 'scheduled_task.manage'];
         yield 'scheduled tasks run' => ['/api/admin/v1/scheduled-tasks/1/run', 'POST', 'scheduled_task.manage'];
         yield 'checkin list' => ['/api/admin/v1/checkins', 'GET', 'checkin.manage'];

@@ -5,7 +5,7 @@ export const CourseStudentDTO = z.object({
   login: z.string(),
   nickname: z.string(),
   account_status: z.enum(['active', 'disabled']),
-  source: z.enum(['free', 'purchase']),
+  source: z.enum(['free', 'purchase', 'activation_code']),
   entitlement_status: z.enum(['active', 'revoked']),
   progress_percent: z.number().int().min(0).max(100),
   learning_status: z.enum(['not_started', 'in_progress', 'completed']),

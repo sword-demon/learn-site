@@ -1,12 +1,20 @@
 import { z } from 'zod'
 
-export const NotificationType = z.enum(['announcement', 'internal_message'])
+export const NotificationType = z.enum(['announcement', 'internal_message', 'course_published'])
 export type NotificationType = z.infer<typeof NotificationType>
 
 export const AdminNotificationListItemDTO = z.object({
   id: z.number().int(),
   type: NotificationType,
   title: z.string(),
+  resource_type: z.string().nullable().optional(),
+  resource_id: z.number().int().positive().nullable().optional(),
+  fan_out_status: z
+    .enum(['pending', 'running', 'completed', 'failed'])
+    .nullable()
+    .optional(),
+  fan_out_done_count: z.number().int().nonnegative().nullable().optional(),
+  fan_out_error: z.string().nullable().optional(),
   sender_staff_id: z.number().int(),
   sender_login: z.string(),
   recipient_summary: z.string(),

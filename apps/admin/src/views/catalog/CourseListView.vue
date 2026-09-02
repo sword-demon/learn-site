@@ -48,10 +48,20 @@
         </template>
       </el-table-column>
       <el-table-column prop="updated_at" label="更新于" width="180" />
-      <el-table-column label="操作" width="320" fixed="right">
+      <el-table-column label="操作" width="430" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="goEdit(row.id)"> 编辑 </el-button>
           <el-button link type="primary" @click="goStudents(row.id)"> 学员名单 </el-button>
+          <el-button
+            v-if="canManageActivationCodes"
+            link
+            type="primary"
+            @click="goActivationCodes(row.id)"
+            >激活码</el-button
+          >
+          <el-button v-if="canManageFeedback" link type="primary" @click="goFeedback(row.id)"
+            >意见反馈</el-button
+          >
           <el-button link type="primary" @click="goPreview(row.id)"> 预览 </el-button>
           <el-button v-if="row.status !== 'published'" link type="success" @click="onPublish(row)">
             发布
@@ -80,13 +90,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { CourseDTO, CourseStatus } from '@learn-site/contracts';
 import { listCourses, publishCourse, unpublishCourse, deleteCourse } from '@/api/catalog';
+import { hasPermission } from '@/api/http';
 
 const router = useRouter();
+const canManageActivationCodes = computed(() => hasPermission('activation_code.manage'));
+const canManageFeedback = computed(() => hasPermission('course_feedback.manage'));
 const loading = ref(false);
 const status = ref<'idle' | 'error'>('idle');
 const errorMessage = ref('');
@@ -168,6 +181,14 @@ function goPreview(id: number): void {
 
 function goStudents(id: number): void {
   router.push(`/courses/${id}/students`);
+}
+
+function goActivationCodes(id: number): void {
+  router.push(`/courses/${id}/activation-codes`);
+}
+
+function goFeedback(id: number): void {
+  router.push(`/courses/${id}/feedback`);
 }
 
 async function onPublish(row: CourseDTO): Promise<void> {

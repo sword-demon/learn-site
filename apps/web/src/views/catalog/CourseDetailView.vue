@@ -148,6 +148,10 @@
                 />
               </div>
             </el-tab-pane>
+
+            <el-tab-pane v-if="detail.course.viewer_authorized" label="意见反馈" name="feedback">
+              <CourseFeedbackForm :course-id="detail.course.id" />
+            </el-tab-pane>
           </el-tabs>
         </section>
 
@@ -216,6 +220,13 @@
             show-icon
           />
 
+          <div
+            v-if="!detail.course.viewer_authorized && detail.course.price_mode === 'paid'"
+            class="buy-panel__redeem"
+          >
+            <ActivationCodeRedeemForm @success="onRedeemed" />
+          </div>
+
           <ShareBar
             :course-id="detail.course.id"
             :course-title="detail.course.title"
@@ -237,6 +248,9 @@ import { hasTokens } from '@/api/http';
 import { fetchCourseDetail, startCourse } from '@/api/learner';
 import { loginPathFor } from '@/router/guards';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
+import ActivationCodeRedeemForm from '@/components/ActivationCodeRedeemForm.vue';
+import CourseFeedbackForm from '@/components/CourseFeedbackForm.vue';
+import type { RedeemActivationCodeResult } from '@/api/activationCodes';
 import { hasRichHtml } from '@/utils/richHtml';
 import AccessGate from '@/views/catalog/AccessGate.vue';
 import ReviewTree from '@/views/catalog/ReviewTree.vue';
@@ -244,7 +258,7 @@ import ShareBar from '@/views/catalog/ShareBar.vue';
 
 defineOptions({ name: 'CourseDetailView' });
 
-type CourseTab = 'intro' | 'catalog' | 'reviews';
+type CourseTab = 'intro' | 'catalog' | 'reviews' | 'feedback';
 
 const MAP_HUES = ['#5B8FF9', '#5AD8A6', '#F6BD16', '#E86452', '#6DC8EC', '#945FB9'] as const;
 
@@ -337,7 +351,7 @@ function unlockCatalogLessons(): void {
 }
 
 // ponytail: previously duplicated across startFree() and onEntitled() (5 flags + unlock)
-type EntitlementSource = 'free' | 'purchase';
+type EntitlementSource = 'free' | 'purchase' | 'activation_code';
 
 function applyEntitlement(source?: EntitlementSource): void {
   if (!detail.value) return;
@@ -436,6 +450,11 @@ function lessonMeta(lesson: LessonSummaryDTO): string {
 
 function onEntitled(): void {
   applyEntitlement();
+}
+
+function onRedeemed(result: RedeemActivationCodeResult): void {
+  if (!detail.value || result.course_id !== detail.value.course.id) return;
+  applyEntitlement('activation_code');
 }
 </script>
 
@@ -780,6 +799,11 @@ function onEntitled(): void {
 .buy-panel__actions > .el-button {
   width: 100%;
   margin-left: 0;
+}
+
+.buy-panel__redeem {
+  padding-top: 14px;
+  border-top: 1px solid var(--line, #ebeef5);
 }
 
 @media (max-width: 900px) {

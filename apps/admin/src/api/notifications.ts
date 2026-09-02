@@ -1,18 +1,20 @@
 import {
   AdminNotificationDetailDTO,
   AdminNotificationListDTO,
+  AdminNotificationListItemDTO,
   ApiResponse,
   SendAnnouncementInput,
   SendInternalMessageInput,
   type AdminNotificationDetailDTO as AdminNotificationDetail,
+  type AdminNotificationListItemDTO as AdminNotificationListItem,
   type AdminNotificationListDTO as AdminNotificationList,
 } from '@learn-site/contracts';
 import { http } from '@/api/http';
 
-export type { AdminNotificationDetail, AdminNotificationList };
+export type { AdminNotificationDetail, AdminNotificationList, AdminNotificationListItem };
 
 export interface NotificationListParams {
-  type?: 'announcement' | 'internal_message' | '';
+  type?: 'announcement' | 'internal_message' | 'course_published' | '';
   from?: string;
   to?: string;
   page?: number;
@@ -57,6 +59,15 @@ export async function sendInternalMessage(
   const body = SendInternalMessageInput.parse(payload);
   const { data } = await http.post('/notifications/internal-messages', body);
   const parsed = ApiResponse(AdminNotificationDetailDTO).parse(data);
+  if (!parsed.ok) {
+    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+  }
+  return parsed.data;
+}
+
+export async function retryNotificationFanOut(id: number): Promise<AdminNotificationListItem> {
+  const { data } = await http.post(`/notifications/${id}/retry`);
+  const parsed = ApiResponse(AdminNotificationListItemDTO).parse(data);
   if (!parsed.ok) {
     throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
   }

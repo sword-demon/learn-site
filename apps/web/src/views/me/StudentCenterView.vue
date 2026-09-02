@@ -25,13 +25,15 @@ import type {
   OrderStatus,
 } from '@learn-site/contracts';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
+import ActivationCodeRedeemForm from '@/components/ActivationCodeRedeemForm.vue';
 import { hasRichHtml } from '@/utils/richHtml';
 import { useLearnerProfileStore } from '@/stores/learnerProfile';
 import { useNotificationStore } from '@/stores/notifications';
 
 defineOptions({ name: 'StudentCenterView' });
 
-type TabKey = 'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account' | 'coupons';
+type TabKey =
+  'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account' | 'coupons' | 'redeem';
 
 type CheckinPrompt = {
   dialogVisible: { value: boolean };
@@ -55,6 +57,7 @@ const TAB_BY_PATH: Record<string, TabKey> = {
   '/me/checkins': 'checkins',
   '/me/account': 'account',
   '/me/coupons': 'coupons',
+  '/me/redeem': 'redeem',
 };
 
 const activeTab = computed<TabKey>(() => TAB_BY_PATH[route.path] ?? 'learning');
@@ -321,6 +324,7 @@ function kindLabel(kind: LearnerNotificationDTO['kind']): string {
     entitlement_revoked: '授权',
     announcement: '公告',
     internal_message: '站内信',
+    course_published: '新课',
   }[kind];
 }
 
@@ -336,6 +340,7 @@ function kindTagType(
     entitlement_revoked: 'danger',
     announcement: 'primary',
     internal_message: 'info',
+    course_published: 'success',
   };
   return types[kind];
 }
@@ -349,6 +354,15 @@ function resourcePath(message: LearnerNotificationDTO): string | null {
     return payload?.course_id ? `/courses/${payload.course_id}` : null;
   }
   return null;
+}
+
+async function openMessageResource(message: LearnerNotificationDTO): Promise<void> {
+  const target = resourcePath(message);
+  if (!target || !message.resource_available) return;
+  if (!message.read) {
+    await markRead(message.id);
+  }
+  await router.push(target);
 }
 
 async function loadMessages(): Promise<void> {
@@ -551,6 +565,7 @@ onBeforeUnmount(() => {
       </el-tab-pane>
       <el-tab-pane label="每日签到" name="checkins" />
       <el-tab-pane label="优惠券" name="coupons" />
+      <el-tab-pane label="激活码兑换" name="redeem" />
       <el-tab-pane label="账户" name="account" />
     </el-tabs>
 
@@ -813,14 +828,17 @@ onBeforeUnmount(() => {
               {{ message.title }}
             </div>
             <div v-if="message.body" class="mbody">{{ message.body }}</div>
-            <router-link
+            <el-button
               v-if="message.resource_available && resourcePath(message)"
-              :to="resourcePath(message)!"
-              class="btn-link"
-              style="margin-top: 6px; display: inline-block"
+              link
+              type="primary"
+              class="btn-link message-resource-link"
+              :data-resource-id="message.id"
+              :loading="readingId === message.id"
+              @click="openMessageResource(message)"
             >
               查看关联内容
-            </router-link>
+            </el-button>
             <span v-else-if="message.resource_type" class="small muted">关联内容已不可用</span>
           </div>
           <div style="display: grid; gap: 8px; justify-items: end">
@@ -885,6 +903,15 @@ onBeforeUnmount(() => {
       </footer>
     </section>
 
+    <!-- 激活码兑换 -->
+    <section v-else-if="activeTab === 'redeem'" class="sc-section" data-tab="redeem">
+      <header class="account-head">
+        <p class="eyebrow"><span class="eyebrow-rule" />课程获取 · 激活码</p>
+        <h1 class="display">兑换课程</h1>
+      </header>
+      <ActivationCodeRedeemForm />
+    </section>
+
     <!-- 账户 -->
     <section v-else-if="activeTab === 'account'" class="sc-section" data-tab="account">
       <header class="account-head">
@@ -930,6 +957,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.message-resource-link.el-button {
+  height: auto;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
 .student-center-page {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);

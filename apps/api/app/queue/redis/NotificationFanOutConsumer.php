@@ -13,8 +13,8 @@ final class NotificationFanOutConsumer implements Consumer
 
     public string $connection = 'default';
 
-  public function consume($data): void
-  {
-    (new NotificationFanOutExecutor())->run(is_array($data) ? $data : []);
-  }
+    public function consume(mixed $data): void
+    {
+        (new NotificationFanOutExecutor())->run(is_array($data) ? $data : []);
+    }
 }

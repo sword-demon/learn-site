@@ -9,7 +9,7 @@ export type OrderStatus = z.infer<typeof OrderStatus>;
 export const StartCourseResponseDTO = z.object({
   course_id: z.number().int().positive(),
   entitled: z.boolean(),
-  source: z.enum(['free', 'purchase']),
+  source: z.enum(['free', 'purchase', 'activation_code']),
   price_mode: z.enum(['free', 'paid']),
   first_lesson: z.object({
     id: z.number().int().positive(),
@@ -39,7 +39,7 @@ export const MyLearningItemDTO = z.object({
   completed_at: z.string().nullable(),
   updated_at: z.string(),
   entitlement_status: z.enum(['active', 'revoked']),
-  entitlement_source: z.enum(['free', 'purchase']),
+  entitlement_source: z.enum(['free', 'purchase', 'activation_code']),
   revoked_at: z.string().nullable(),
   revoked_reason: z.string().nullable(),
   can_rejoin: z.boolean(),

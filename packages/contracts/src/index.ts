@@ -24,3 +24,5 @@ export * from "./dailyCheckin.js";
 export * from "./order.js";
 export * from "./banner.js";
 export * from "./coupon.js";
+export * from "./activationCode.js";
+export * from "./courseFeedback.js";

@@ -56,7 +56,10 @@ describe('learner order API', () => {
       },
     });
 
-    await expect(createCourseOrder(7, 99)).resolves.toMatchObject({ order_id: 43, paid_amount: 84 });
+    await expect(createCourseOrder(7, 99)).resolves.toMatchObject({
+      order_id: 43,
+      paid_amount: 84,
+    });
     expect(httpApi.post).toHaveBeenCalledWith('/courses/7/orders', { learner_coupon_id: 99 });
   });
 

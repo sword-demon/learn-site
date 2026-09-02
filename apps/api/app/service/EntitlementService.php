@@ -15,8 +15,10 @@ use support\think\Db;
  *     PublicLessonService to decide whether a course/lesson should be
  *     locked or open. Returns true only when an active row exists.
  *   - grant(): write — issues a `source='free'` entitlement immediately
- *     (POST /courses/{id}/start for free courses) or a `source='purchase'`
- *     entitlement once a paid order transitions to succeeded. revoke() is
+ *     (POST /courses/{id}/start for free courses), a `source='purchase'`
+ *     entitlement once a paid order transitions to succeeded, or a
+ *     `source='activation_code'` entitlement when a learner redeems a
+ *     valid code (010-course-notify-feedback-codes). revoke() is
  *     reserved for admin/Phase 10 (dept + audit) and is left as a stub
  *     here for completeness.
  *
@@ -68,27 +70,41 @@ final class EntitlementService
      * it without creating a new row. Otherwise inserts one and returns
      * the fresh row.
      *
-     * @param 'free'|'purchase' $source
-     * @return array{ id:int, learner_id:int, course_id:int, source:string, order_id:?int, status:string, created_at:string, updated_at:string }
+     * NOTE for activation-code redemption: the idempotent path must never
+     * be used to consume a code. ActivationCodeService::redeem() checks for
+     * an active entitlement first and throws ENTITLEMENT_ALREADY_ACTIVE
+     * without touching the code row (FR-015).
+     *
+     * @param 'free'|'purchase'|'activation_code' $source
+     * @return array{ id:int, learner_id:int, course_id:int, source:string, order_id:?int, activation_code_id:?int, status:string, created_at:string, updated_at:string }
      */
-    public function grant(int $learnerId, int $courseId, string $source, ?int $orderId = null): array
-    {
+    public function grant(
+        int $learnerId,
+        int $courseId,
+        string $source,
+        ?int $orderId = null,
+        ?int $activationCodeId = null,
+    ): array {
         if ($learnerId <= 0) {
             throw new BusinessException('VALIDATION_FAILED', 'LEARNER_INVALID');
         }
         if ($courseId <= 0) {
             throw new BusinessException('VALIDATION_FAILED', 'COURSE_INVALID');
         }
-        if ($source !== 'free' && $source !== 'purchase') {
+        if ($source !== 'free' && $source !== 'purchase' && $source !== 'activation_code') {
             throw new BusinessException('VALIDATION_FAILED', 'ENTITLEMENT_SOURCE_INVALID');
         }
         if ($source === 'purchase' && ($orderId === null || $orderId <= 0)) {
             throw new BusinessException('VALIDATION_FAILED', 'ENTITLEMENT_ORDER_REQUIRED');
         }
+        if ($source === 'activation_code' && ($orderId !== null || $activationCodeId === null || $activationCodeId <= 0)) {
+            // 兑换产生的访问权不挂订单,且必须能追溯到那一枚码。
+            throw new BusinessException('VALIDATION_FAILED', 'ENTITLEMENT_CODE_REQUIRED');
+        }
 
         $now = date('Y-m-d H:i:s');
 
-        return Db::transaction(function () use ($learnerId, $courseId, $source, $orderId, $now) {
+        return Db::transaction(function () use ($learnerId, $courseId, $source, $orderId, $activationCodeId, $now) {
             $existing = Db::name('course_entitlements')
                 ->where('learner_id', $learnerId)
                 ->where('course_id', $courseId)
@@ -105,6 +121,7 @@ final class EntitlementService
                 'course_id'  => $courseId,
                 'source'     => $source,
                 'order_id'   => $orderId,
+                'activation_code_id' => $activationCodeId,
                 'status'     => 'active',
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -299,6 +316,9 @@ final class EntitlementService
             'course_id'  => (int) $row['course_id'],
             'source'     => (string) $row['source'],
             'order_id'   => isset($row['order_id']) && $row['order_id'] !== null ? (int) $row['order_id'] : null,
+            'activation_code_id' => isset($row['activation_code_id']) && $row['activation_code_id'] !== null
+                ? (int) $row['activation_code_id']
+                : null,
             'status'     => (string) $row['status'],
             'created_at' => (string) ($row['created_at'] ?? ''),
             'updated_at' => (string) ($row['updated_at'] ?? ''),

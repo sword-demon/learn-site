@@ -72,6 +72,15 @@ final class Authorize implements MiddlewareInterface
         if (preg_match('#^/api/admin/v1/review-replies/(\d+)/(hide|restore)$#', $path)) {
             return 'review.moderate';
         }
+        if (preg_match('#^/api/admin/v1/courses/(\d+)/activation-code-batches$#', $path)) {
+            return 'activation_code.manage';
+        }
+        if (preg_match('#^/api/admin/v1/courses/(\d+)/activation-codes(?:/\d+/void)?$#', $path)) {
+            return 'activation_code.manage';
+        }
+        if (preg_match('#^/api/admin/v1/courses/(\d+)/feedback(?:/\d+)?$#', $path)) {
+            return 'course_feedback.manage';
+        }
         if (preg_match('#^/api/admin/v1/courses/(\d+)/students$#', $path)) {
             return 'course_student.view';
         }

@@ -54,6 +54,7 @@
           </el-button>
           <template v-else>
             <el-button type="primary" :loading="busy" @click="buy">前往购买</el-button>
+            <el-button @click="redeem">使用激活码</el-button>
             <el-button @click="goOrders">查看订单</el-button>
           </template>
           <el-button @click="closeDialog">稍后再说</el-button>
@@ -183,6 +184,11 @@ async function startFree(): Promise<void> {
 function buy(): void {
   closeDialog();
   router.push(`/checkout/${props.courseId}`);
+}
+
+function redeem(): void {
+  closeDialog();
+  router.push('/me/redeem');
 }
 </script>
 

@@ -48,6 +48,8 @@ final class PermissionSeeder extends AbstractSeed
         ['code' => 'checkin.manage', 'module' => 'checkin', 'description' => 'View and delete learner daily check-ins'],
         ['code' => 'banner.manage', 'module' => 'banner', 'description' => 'Manage home banners'],
         ['code' => 'coupon.manage', 'module' => 'promotion', 'description' => 'Manage coupon campaigns'],
+        ['code' => 'activation_code.manage', 'module' => 'catalog', 'description' => 'Create, list and void course activation codes'],
+        ['code' => 'course_feedback.manage', 'module' => 'catalog', 'description' => 'View and process course feedback'],
         ['code' => 'dashboard.view', 'module' => 'site', 'description' => 'Read admin dashboard'],
     ];
 

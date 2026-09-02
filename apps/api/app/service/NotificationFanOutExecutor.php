@@ -52,33 +52,48 @@ final class NotificationFanOutExecutor
             $kind = $this->kindForType((string) $dispatch['type']);
             $title = (string) $dispatch['title'];
             $body = (string) $dispatch['body'];
-            $done = 0;
+            $resourceType = isset($dispatch['resource_type']) && $dispatch['resource_type'] !== null
+                ? (string) $dispatch['resource_type']
+                : null;
+            $resourceId = isset($dispatch['resource_id']) && $dispatch['resource_id'] !== null
+                ? (int) $dispatch['resource_id']
+                : null;
+            $done = (int) Db::name('learner_notifications')
+                ->where('dispatch_id', $dispatchId)
+                ->count();
 
             foreach (array_chunk($learnerIds, self::CHUNK_SIZE) as $chunk) {
                 $chunkNow = date('Y-m-d H:i:s');
+                $existingIds = Db::name('learner_notifications')
+                    ->where('dispatch_id', $dispatchId)
+                    ->whereIn('learner_id', $chunk)
+                    ->column('learner_id');
+                $existing = array_fill_keys(array_map('intval', is_array($existingIds) ? $existingIds : []), true);
+                $missing = array_values(array_filter(
+                    $chunk,
+                    static fn (int $learnerId): bool => !isset($existing[$learnerId]),
+                ));
                 $rows = [];
-                foreach ($chunk as $learnerId) {
+                foreach ($missing as $learnerId) {
                     $rows[] = [
                         'learner_id' => $learnerId,
                         'kind' => $kind,
                         'title' => $title,
                         'body' => $body,
                         'payload_json' => null,
-                        'resource_type' => null,
-                        'resource_id' => null,
+                        'resource_type' => $resourceType,
+                        'resource_id' => $resourceId,
                         'dispatch_id' => $dispatchId,
                         'idempotency_key' => $dispatchId . ':' . $learnerId,
                         'read_at' => null,
                         'created_at' => $chunkNow,
                     ];
                 }
-                try {
+                if ($rows !== []) {
                     Db::name('learner_notifications')->insertAll($rows);
-                } catch (\Throwable) {
-                    // idempotency_key unique — safe on retry.
                 }
 
-                foreach ($chunk as $learnerId) {
+                foreach ($missing as $learnerId) {
                     $row = Db::name('learner_notifications')
                         ->where('learner_id', $learnerId)
                         ->where('idempotency_key', $dispatchId . ':' . $learnerId)
@@ -137,6 +152,14 @@ final class NotificationFanOutExecutor
         if ($type === NotificationDispatchService::TYPE_ANNOUNCEMENT) {
             return $this->activeLearnerIds();
         }
+        if ($type === NotificationDispatchService::TYPE_COURSE_PUBLISHED) {
+            return $this->activeLearnerIds(
+                (string) ($dispatch['created_at'] ?? ''),
+                isset($dispatch['recipient_snapshot_max_id']) && $dispatch['recipient_snapshot_max_id'] !== null
+                    ? (int) $dispatch['recipient_snapshot_max_id']
+                    : null,
+            );
+        }
         $dispatchId = (int) $dispatch['id'];
         $ids = Db::name('notification_dispatch_recipients')
             ->where('dispatch_id', $dispatchId)
@@ -146,14 +169,19 @@ final class NotificationFanOutExecutor
     }
 
     /** @return list<int> */
-    private function activeLearnerIds(): array
+    private function activeLearnerIds(?string $createdBefore = null, ?int $maxAccountId = null): array
     {
-        $ids = Db::name('accounts')
+        $query = Db::name('accounts')
             ->alias('a')
             ->join('learners l', 'l.account_id = a.id')
-            ->where('a.status', 'active')
-            ->order('a.id', 'asc')
-            ->column('a.id');
+            ->where('a.status', 'active');
+        if ($createdBefore !== null && $createdBefore !== '') {
+            $query->where('a.created_at', '<=', $createdBefore);
+        }
+        if ($maxAccountId !== null) {
+            $query->where('a.id', '<=', $maxAccountId);
+        }
+        $ids = $query->order('a.id', 'asc')->column('a.id');
         return array_values(array_filter(array_map('intval', is_array($ids) ? $ids : []), static fn (int $id): bool => $id > 0));
     }
 
@@ -162,6 +190,7 @@ final class NotificationFanOutExecutor
         return match ($type) {
             NotificationDispatchService::TYPE_ANNOUNCEMENT => NotificationDispatchService::KIND_ANNOUNCEMENT,
             NotificationDispatchService::TYPE_INTERNAL => NotificationDispatchService::KIND_INTERNAL,
+            NotificationDispatchService::TYPE_COURSE_PUBLISHED => NotificationDispatchService::KIND_COURSE_PUBLISHED,
             default => $type,
         };
     }

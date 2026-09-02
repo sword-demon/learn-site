@@ -157,6 +157,40 @@ const messagesFixture = {
   limit: 20,
 };
 
+const coursePublishedMessagesFixture = {
+  items: [
+    {
+      id: 3,
+      kind: 'course_published',
+      title: '新课上线:示例课',
+      body: '课程发布通知验证摘要',
+      dispatch_id: 77,
+      resource_type: 'course',
+      resource_id: 42,
+      resource_available: true,
+      payload: null,
+      read: false,
+      created_at: '2026-09-02 10:00:00',
+    },
+    {
+      id: 4,
+      kind: 'course_published',
+      title: '已下架课程',
+      body: '课程发布通知验证摘要',
+      dispatch_id: 77,
+      resource_type: 'course',
+      resource_id: 43,
+      resource_available: false,
+      payload: null,
+      read: false,
+      created_at: '2026-09-02 09:00:00',
+    },
+  ],
+  total: 2,
+  page: 1,
+  limit: 20,
+};
+
 const emptyCheckinsFixture = { items: [], total: 0, page: 1, limit: 20 };
 
 const profileFixture = {
@@ -336,6 +370,16 @@ describe('StudentCenterView', () => {
     expect(wrapper.find('[data-tab="learning"]').exists()).toBe(false);
   });
 
+  it('derives the activation-code tab from /me/redeem route.path', async () => {
+    setPath('/me/redeem');
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.find('[data-tab="redeem"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('兑换课程');
+    expect(wrapper.findComponent({ name: 'ActivationCodeRedeemForm' }).exists()).toBe(true);
+  });
+
   describe('learning tab', () => {
     it('renders persisted progress and a resume link', async () => {
       const wrapper = mountView();
@@ -437,6 +481,35 @@ describe('StudentCenterView', () => {
       expect(notificationsApi.markNotificationRead).toHaveBeenCalledWith(1);
       expect(notificationsApi.fetchUnreadCount).toHaveBeenCalledTimes(1);
       expect(wrapper.find('button[data-read-id="1"]').exists()).toBe(false);
+    });
+
+    it('renders course_published messages and marks read before opening the course', async () => {
+      notificationsApi.listNotifications.mockResolvedValue(coursePublishedMessagesFixture);
+      setPath('/me/messages');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('新课上线:示例课');
+      const tags = wrapper.findAll('.el-tag');
+      expect(tags.some((tag) => tag.text() === '新课')).toBe(true);
+      expect(wrapper.find('button[data-read-id="3"]').exists()).toBe(true);
+
+      notificationsApi.fetchUnreadCount.mockClear();
+      await wrapper.get('button[data-resource-id="3"]').trigger('click');
+      await flushPromises();
+      expect(notificationsApi.markNotificationRead).toHaveBeenCalledWith(3);
+      expect(notificationsApi.fetchUnreadCount).toHaveBeenCalledOnce();
+      expect(routerApi.push).toHaveBeenCalledWith('/courses/42');
+    });
+
+    it('shows the unavailable notice instead of an action when the course is gone', async () => {
+      notificationsApi.listNotifications.mockResolvedValue(coursePublishedMessagesFixture);
+      setPath('/me/messages');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('关联内容已不可用');
+      expect(wrapper.find('button[data-resource-id="4"]').exists()).toBe(false);
     });
   });
 

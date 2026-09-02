@@ -23,6 +23,9 @@ describe('learning', () => {
     const result = CreateOrderResponseDTO.safeParse({
       order_id: 42,
       status: 'pending',
+      list_price_snapshot: 199,
+      sale_price_snapshot: 199,
+      paid_amount: 199,
       payment: { type: 'native', code_url: 'weixin://wxpay/bizpayurl?pr=abc' },
     });
     expect(result.success).toBe(true);

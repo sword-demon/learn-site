@@ -5,14 +5,15 @@
 ## 功能概览
 
 - **课程与目录**：三级分类、富文本简介、章节与课节（Markdown / PDF / 视频）
-- **价格与访问**：免费 / 收费、标准价与限时优惠、购买订单与课程访问权
+- **价格与访问**：免费 / 收费、标准价与限时优惠、购买订单，以及免费加入 / 支付成功 / 激活码兑换三种课程访问权来源
+- **激活码**：管理端按已发布收费课程批量生成、脱敏查询与作废；学员从学员中心或课程详情兑换，一码一课一次使用
 - **优惠券**：满减规则、分类 / 课程 / 全站适用范围；学员领取中心与「我的优惠券」；结账选券抵扣；管理端活动配置、定向发放与核销记录
 - **学习体验**：学习进度、我的学习、学习地图、收藏与分享海报
 - **每日签到**：学员提交富文本「每日计划」（每自然日一次）；未签到时进入学习端自动弹窗提醒；独立签到历史页
-- **互动**：评价与树形回复、课节问答、站内消息
+- **互动**：评价与树形回复、课节问答、仅管理员可见的课程意见反馈、站内消息，以及课程发布后异步投递的「新课」消息
 - **首页运营**：轮播图管理（管理端上传、排序、启用 / 禁用）与学习端首页展示
 - **组织与权限**：部门 / 岗位 / 角色 RBAC、数据范围、用户级授权
-- **运营后台**：通知管理、签到记录查询与删除、优惠券管理、自动任务、审计日志
+- **运营后台**：通知投递状态与失败补投、签到记录查询与删除、优惠券管理、课程激活码、课程意见反馈、自动任务、审计日志
 - **合规页面**：学习端《用户协议》与《退款说明》（虚拟课程购买后原则上不退款）
 - **安全鉴权**：图形验证码登录、不透明访问令牌 + 刷新令牌（Redis 吊销与轮换）；关键接口限流
 
@@ -145,7 +146,7 @@ pnpm test              # 全工作区单测
 | `apps/api/` | `api` | `make rebuild-api` |
 | `packages/contracts/` | `web` + `admin`（API 若引用新契约字段也需 `api`） | `make rebuild-all` 或分别重建 |
 
-拉取含**数据库迁移**的更新后，除重建 `api` 外还需执行 `make migrate`（可选 `make seed` 以写入新权限码，如 `checkin.manage`、`coupon.manage`）。
+拉取含**数据库迁移**的更新后，除重建 `api` 外还需执行 `make migrate`（可选 `make seed` 以写入新权限码，如 `checkin.manage`、`coupon.manage`、`activation_code.manage`、`course_feedback.manage`）。
 
 ```bash
 # 示例：改了学习端首页后
@@ -168,9 +169,11 @@ make rebuild-api && make rebuild-web
 | 每日签到 | [`specs/005-learner-daily-checkin/spec.md`](./specs/005-learner-daily-checkin/spec.md) | 学员签到、弹窗提醒与管理端记录 |
 | 轮播图 | [`specs/006-admin-banner-carousel/spec.md`](./specs/006-admin-banner-carousel/spec.md) | 管理端轮播与学习端首页展示 |
 | 学员优惠券 | [`specs/009-learner-coupons/spec.md`](./specs/009-learner-coupons/spec.md) | 领取、结账抵扣与管理端活动 |
+| 发布通知、激活码与意见反馈 | [`specs/010-course-notify-feedback-codes/spec.md`](./specs/010-course-notify-feedback-codes/spec.md) | 新课异步消息、课程激活码与私密意见反馈 |
 | 快速验收 | [`specs/001-personal-learning-site/quickstart.md`](./specs/001-personal-learning-site/quickstart.md) | 从零启动与验收剧本 |
 | 签到验收 | [`specs/005-learner-daily-checkin/quickstart.md`](./specs/005-learner-daily-checkin/quickstart.md) | 签到功能端到端验证 |
 | 优惠券验收 | [`specs/009-learner-coupons/quickstart.md`](./specs/009-learner-coupons/quickstart.md) | 优惠券领取与下单端到端验证 |
+| 发布通知 / 激活码 / 反馈验收 | [`specs/010-course-notify-feedback-codes/quickstart.md`](./specs/010-course-notify-feedback-codes/quickstart.md) | 三项能力的双端验证与高性能抽查 |
 | API 契约 | [`specs/001-personal-learning-site/contracts/`](./specs/001-personal-learning-site/contracts/) | 学员端 / 管理端 REST 约定 |
 | 架构决策 | [`docs/adr/`](./docs/adr/) | ADR 记录 |
 | Agent 协作 | [`AGENTS.md`](./AGENTS.md) | Issue 跟踪与 triage 标签 |

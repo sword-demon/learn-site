@@ -28,6 +28,8 @@ import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView
 import ScheduledTaskRunLogView from '@/views/scheduled-tasks/ScheduledTaskRunLogView.vue';
 import BannerListView from '@/views/banners/BannerListView.vue';
 import CouponListView from '@/views/coupons/CouponListView.vue';
+import CourseActivationCodesView from '@/views/catalog/CourseActivationCodesView.vue';
+import CourseFeedbackView from '@/views/catalog/CourseFeedbackView.vue';
 import ForbiddenView from '@/views/errors/ForbiddenView.vue';
 import { hasTokens, mustChangePassword, permissionCodes } from '@/api/http';
 import { firstVisiblePath } from '@/layouts/AdminMenu';
@@ -218,6 +220,28 @@ const routes: RouteRecordRaw[] = [
           title: '课程学员',
           permission: 'course_student.view',
           breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程学员' }],
+        },
+      },
+      {
+        path: 'courses/:id/activation-codes',
+        name: 'course-activation-codes',
+        component: CourseActivationCodesView,
+        props: true,
+        meta: {
+          title: '课程激活码',
+          permission: 'activation_code.manage',
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程激活码' }],
+        },
+      },
+      {
+        path: 'courses/:id/feedback',
+        name: 'course-feedback',
+        component: CourseFeedbackView,
+        props: true,
+        meta: {
+          title: '课程意见反馈',
+          permission: 'course_feedback.manage',
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程意见反馈' }],
         },
       },
       {

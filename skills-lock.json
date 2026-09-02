@@ -145,6 +145,12 @@
       "skillPath": "skills/engineering/wayfinder/SKILL.md",
       "computedHash": "fa790eb4255b13d24d7e33ff4891ccd3d621558cc0ab87ae226777538ea16a8f"
     },
+    "webman-development": {
+      "source": "webman-php/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webman-development/SKILL.md",
+      "computedHash": "cfb43b114ab465ee3c62f9e444ef830d9d79f311ce575dac0c5fbde5e7b57019"
+    },
     "wizard": {
       "source": "mattpocock/skills",
       "sourceType": "github",

@@ -75,6 +75,9 @@ describe('CourseDetailView', () => {
     detail.course.viewer_entitlement_source = null;
     detail.course.viewer_revoked_reason = null;
     detail.course.viewer_can_rejoin = false;
+    detail.course.price_mode = 'free';
+    detail.course.list_price = 0;
+    detail.course.sale_price = 0;
     detail.chapters[0]!.lessons[0]!.locked = true;
     authApi.hasTokens.mockReturnValue(true);
     learnerApi.fetchCourseDetail.mockResolvedValue(detail);
@@ -190,6 +193,68 @@ describe('CourseDetailView', () => {
 
     expect(routerApi.push).toHaveBeenCalledWith('/login?redirect=%2Fcourses%2F9');
     expect(learnerApi.startCourse).not.toHaveBeenCalled();
+  });
+
+  it('shows activation-code redemption beside purchase for an unauthorized paid course', async () => {
+    detail.course.price_mode = 'paid';
+    detail.course.list_price = 199;
+    detail.course.viewer_authorized = false;
+    const wrapper = mount(CourseDetailView, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
+          AccessGate: { template: '<div><slot /></div>' },
+          ReviewTree: true,
+          ShareBar: true,
+          CourseFeedbackForm: true,
+          ActivationCodeRedeemForm: {
+            name: 'ActivationCodeRedeemForm',
+            template: '<form data-testid="redeem-form" />',
+          },
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[data-action="buy-course"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="redeem-form"]').exists()).toBe(true);
+    expect(wrapper.findComponent({ name: 'CourseFeedbackForm' }).exists()).toBe(false);
+  });
+
+  it('shows feedback only to entitled learners and unlocks after redemption', async () => {
+    detail.course.price_mode = 'paid';
+    detail.course.list_price = 199;
+    detail.course.viewer_authorized = false;
+    const wrapper = mount(CourseDetailView, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
+          AccessGate: { template: '<div><slot /></div>' },
+          ReviewTree: true,
+          ShareBar: true,
+          CourseFeedbackForm: {
+            name: 'CourseFeedbackForm',
+            template: '<div data-testid="feedback-form" />',
+          },
+          ActivationCodeRedeemForm: {
+            name: 'ActivationCodeRedeemForm',
+            template:
+              "<button data-testid=\"redeem-success\" @click=\"$emit('success', { granted: true, course_id: 9, course_title: 'Vue 组件设计', source: 'activation_code' })\" />",
+          },
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="feedback-form"]').exists()).toBe(false);
+    await wrapper.get('[data-testid="redeem-success"]').trigger('click');
+    await flushPromises();
+
+    expect(detail.course.viewer_authorized).toBe(true);
+    expect(detail.course.viewer_entitlement_source).toBe('activation_code');
+    expect(detail.chapters[0]!.lessons[0]!.locked).toBe(false);
+    expect(wrapper.find('[data-testid="redeem-form"]').exists()).toBe(false);
+    expect(wrapper.findComponent({ name: 'CourseFeedbackForm' }).exists()).toBe(true);
   });
 
   it('does not render stale course content after the public entry disappears', async () => {

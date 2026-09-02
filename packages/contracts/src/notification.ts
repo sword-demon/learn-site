@@ -6,6 +6,7 @@ export const LearnerNotificationKind = z.enum([
   'entitlement_revoked',
   'announcement',
   'internal_message',
+  'course_published',
 ])
 
 export const LearnerNotificationDTO = z.object({

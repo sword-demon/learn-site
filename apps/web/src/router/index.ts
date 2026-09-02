@@ -62,6 +62,13 @@ const router = createRouter({
           component: () => import('@/views/checkout/CheckoutView.vue'),
         },
         {
+          path: 'me/redeem',
+          name: 'redeem',
+          beforeEnter: requireLearnerAuth,
+          meta: { title: '激活码兑换' },
+          component: () => import('@/views/me/StudentCenterView.vue'),
+        },
+        {
           path: 'me/messages',
           name: 'messages',
           beforeEnter: requireLearnerAuth,

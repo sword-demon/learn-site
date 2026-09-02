@@ -14,6 +14,7 @@ final class LearnerDetailService
     }
 
     /**
+     * @param array{page?:int,limit?:int} $filters
      * @return array{learner:array<string,mixed>,items:list<array<string,mixed>>,total:int,page:int,limit:int}
      */
     public function listCourseProgress(int $staffId, int $learnerId, array $filters): array
@@ -50,6 +51,7 @@ final class LearnerDetailService
     }
 
     /**
+     * @param array{page?:int,limit?:int} $filters
      * @return array{learner:array<string,mixed>,items:list<array<string,mixed>>,total:int,page:int,limit:int}
      */
     public function listLessonRecords(int $staffId, int $learnerId, array $filters): array

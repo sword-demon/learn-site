@@ -27,7 +27,7 @@ final class CourseStudentService
             throw new BusinessException('VALIDATION_FAILED', 'ENTITLEMENT_STATUS_INVALID');
         }
         $source = (string) ($filters['source'] ?? '');
-        if ($source !== '' && !in_array($source, ['free', 'purchase'], true)) {
+        if ($source !== '' && !in_array($source, ['free', 'purchase', 'activation_code'], true)) {
             throw new BusinessException('VALIDATION_FAILED', 'ENTITLEMENT_SOURCE_INVALID');
         }
         $learningStatus = (string) ($filters['learning_status'] ?? '');

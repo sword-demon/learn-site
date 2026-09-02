@@ -46,7 +46,7 @@ export type LearnerSummaryDTO = z.infer<typeof LearnerSummaryDTO>
 export const LearnerCourseProgressDTO = z.object({
   course_id: z.number().int(),
   course_title: z.string(),
-  source: z.enum(['free', 'purchase']),
+  source: z.enum(['free', 'purchase', 'activation_code']),
   entitlement_status: z.enum(['active', 'revoked']),
   progress_percent: z.number().int().min(0).max(100),
   learning_status: z.enum(['not_started', 'in_progress', 'completed']),

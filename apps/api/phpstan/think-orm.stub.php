@@ -9,6 +9,7 @@ namespace support\think;
  *
  * @method static \think\db\Query name(string $name)
  * @method static \think\db\Query table(string|array|\think\db\Raw $table)
+ * @method static \think\db\Raw raw(mixed $value)
  * @method static mixed transaction(callable $callback)
  * @method static list<array<string, mixed>> query(string $sql, array $bind = [])
  */

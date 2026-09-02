@@ -60,7 +60,10 @@ final class CourseController
 
     public function publish(Request $request, string $id): \support\Response
     {
-        return $this->wrap(fn() => $this->service->publishCourse($this->id($id)));
+        return $this->wrap(fn() => $this->service->publishCourse(
+            $this->id($id),
+            (int) ($request->account_id ?? 0),
+        ));
     }
 
     public function unpublish(Request $request, string $id): \support\Response

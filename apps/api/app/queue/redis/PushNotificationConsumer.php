@@ -13,7 +13,7 @@ final class PushNotificationConsumer implements Consumer
 
     public string $connection = 'default';
 
-    public function consume($data): void
+    public function consume(mixed $data): void
     {
         if (!is_array($data)) {
             return;

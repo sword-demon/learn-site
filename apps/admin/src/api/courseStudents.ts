@@ -16,7 +16,7 @@ export type {
 
 export interface CourseStudentListParams {
   status?: '' | 'active' | 'revoked';
-  source?: '' | 'free' | 'purchase';
+  source?: '' | 'free' | 'purchase' | 'activation_code';
   learning_status?: '' | 'not_started' | 'in_progress' | 'completed';
   page?: number;
   limit?: number;

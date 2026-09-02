@@ -12,7 +12,6 @@ use Workerman\Crontab\Parser;
 final class ScheduleExpressionService
 {
     private const MIN_INTERVAL_SECONDS = 60;
-    private const LOOKAHEAD_SECONDS = 86400;
 
     public function isValid(string $expression): bool
     {
@@ -36,6 +35,7 @@ final class ScheduleExpressionService
         }
     }
 
+    /** @return array{valid:bool,next_run_at:?string,error:?string} */
     public function preview(string $expression): array
     {
         if (!$this->isSixField($expression) || !$this->isValid($expression)) {

@@ -29,7 +29,7 @@ final class HomeCache
             $cached = $redis->get($fullKey);
             if ($cached !== false && $cached !== null && $cached !== '') {
                 $decoded = json_decode((string) $cached, true);
-                if (is_array($decoded) || $decoded === []) {
+                if (is_array($decoded)) {
                     return $decoded;
                 }
             }

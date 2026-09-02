@@ -16,6 +16,7 @@ use App\support\Logger;
  */
 final class JobDispatcher
 {
+    /** @param array<string, mixed> $data */
     public function dispatch(string $queue, array $data): void
     {
         if ($this->shouldRunSync()) {
@@ -40,6 +41,7 @@ final class JobDispatcher
         return getenv('APP_ENV') === 'testing';
     }
 
+    /** @param array<string, mixed> $data */
     private function consumeSync(string $queue, array $data): void
     {
         match ($queue) {

@@ -44,7 +44,9 @@ describe('LegalDocumentView', () => {
   it('renders terms page with key sections', async () => {
     const wrapper = await mountLegal('/terms');
 
-    expect(wrapper.get('[data-view="legal-document"]').exists()).toBe(true);
+    expect(wrapper.get('[data-view="legal-document"]').attributes('data-view')).toBe(
+      'legal-document',
+    );
     expect(wrapper.text()).toContain('用户协议');
     expect(wrapper.text()).toContain('协议范围与接受');
     expect(wrapper.text()).toContain('付费课程与订单');
@@ -54,7 +56,9 @@ describe('LegalDocumentView', () => {
   it('renders refund page with no-refund policy', async () => {
     const wrapper = await mountLegal('/refund');
 
-    expect(wrapper.get('[data-view="legal-document"]').exists()).toBe(true);
+    expect(wrapper.get('[data-view="legal-document"]').attributes('data-view')).toBe(
+      'legal-document',
+    );
     expect(wrapper.text()).toContain('退款说明');
     expect(wrapper.text()).toContain('购买成功后不支持退款');
     expect(wrapper.text()).toContain('优惠券');

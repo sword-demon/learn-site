@@ -202,7 +202,11 @@ final class OrderService
         return $this->shapeCreateResponse($orderRow, $paymentEnvelope);
     }
 
-    /** @param array<string, mixed> $orderRow */
+    /**
+     * @param array<string, mixed> $orderRow
+     * @param array<string, mixed> $paymentEnvelope
+     * @return array<string, mixed>
+     */
     private function shapeCreateResponse(array $orderRow, array $paymentEnvelope): array
     {
         return [

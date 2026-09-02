@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { ElMessage } from 'element-plus';
 import type { AdminNotificationListItemDTO } from '@learn-site/contracts';
-import { getNotification, listNotifications } from '@/api/notifications';
+import { getNotification, listNotifications, retryNotificationFanOut } from '@/api/notifications';
 import NotificationComposeDialog from '@/views/notifications/NotificationComposeDialog.vue';
 
 defineOptions({ name: 'NotificationListView' });
@@ -15,9 +16,10 @@ const detailOpen = ref(false);
 const detailTitle = ref('');
 const detailBody = ref('');
 const detailMeta = ref('');
+const retryingId = ref<number | null>(null);
 
 const filters = ref({
-  type: '' as '' | 'announcement' | 'internal_message',
+  type: '' as '' | 'announcement' | 'internal_message' | 'course_published',
   from: '',
   to: '',
   page: 1,
@@ -25,7 +27,33 @@ const filters = ref({
 });
 
 function typeLabel(type: AdminNotificationListItemDTO['type']): string {
-  return type === 'announcement' ? '公告' : '站内信';
+  if (type === 'announcement') return '公告';
+  if (type === 'course_published') return '课程发布';
+  return '站内信';
+}
+
+function fanOutLabel(status: AdminNotificationListItemDTO['fan_out_status']): string {
+  const labels: Record<string, string> = {
+    pending: '待投递',
+    running: '投递中',
+    completed: '已完成',
+    failed: '失败',
+  };
+  return status ? (labels[status] ?? status) : '—';
+}
+
+function fanOutTagType(
+  status: AdminNotificationListItemDTO['fan_out_status'],
+): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
+  if (status === 'completed') return 'success';
+  if (status === 'failed') return 'danger';
+  if (status === 'running') return 'primary';
+  if (status === 'pending') return 'warning';
+  return 'info';
+}
+
+function isRetryable(row: AdminNotificationListItemDTO): boolean {
+  return row.fan_out_status === 'failed' || row.fan_out_status === 'pending';
 }
 
 async function reload(): Promise<void> {
@@ -35,7 +63,7 @@ async function reload(): Promise<void> {
     const params: {
       page: number;
       limit: number;
-      type?: 'announcement' | 'internal_message';
+      type?: 'announcement' | 'internal_message' | 'course_published';
       from?: string;
       to?: string;
     } = { page: filters.value.page, limit: filters.value.limit };
@@ -64,6 +92,24 @@ async function openDetail(row: AdminNotificationListItemDTO): Promise<void> {
   }
 }
 
+async function retryFanOut(row: AdminNotificationListItemDTO): Promise<void> {
+  retryingId.value = row.id;
+  try {
+    await retryNotificationFanOut(row.id);
+    ElMessage.success('已重新加入投递队列');
+    await reload();
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'DISPATCH_NOT_RETRYABLE') {
+      ElMessage.warning('当前状态不支持重试（已完成或投递中）');
+    } else {
+      ElMessage.error('重试失败，请稍后再试');
+    }
+  } finally {
+    retryingId.value = null;
+  }
+}
+
 onMounted(() => {
   void reload();
 });
@@ -84,6 +130,7 @@ onMounted(() => {
         <el-select v-model="filters.type" clearable placeholder="全部类型" style="width: 160px">
           <el-option label="公告" value="announcement" />
           <el-option label="站内信" value="internal_message" />
+          <el-option label="课程发布" value="course_published" />
         </el-select>
         <el-date-picker
           v-model="filters.from"
@@ -101,14 +148,39 @@ onMounted(() => {
       </div>
 
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <el-table v-loading="loading" :data="items" empty-text="暂无发送记录" @row-click="openDetail">
-        <el-table-column prop="type" label="类型" width="100">
+      <el-table v-loading="loading" :data="items" empty-text="暂无发送记录">
+        <el-table-column prop="type" label="类型" width="110">
           <template #default="{ row }">{{ typeLabel(row.type) }}</template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="220" />
+        <el-table-column prop="title" label="标题" min-width="200" />
         <el-table-column prop="recipient_summary" label="目标范围" width="140" />
+        <el-table-column label="投递进度" width="150">
+          <template #default="{ row }">
+            <el-tag :type="fanOutTagType(row.fan_out_status)" size="small">
+              {{ fanOutLabel(row.fan_out_status) }}
+            </el-tag>
+            <span v-if="row.fan_out_done_count != null" class="fan-out-count">
+              {{ row.fan_out_done_count }}/{{ row.recipient_count }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="sender_login" label="发送人" width="120" />
         <el-table-column prop="created_at" label="发送时间" width="180" />
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="{ row }">
+            <el-button
+              v-if="isRetryable(row)"
+              size="small"
+              type="primary"
+              link
+              :loading="retryingId === row.id"
+              @click.stop="retryFanOut(row)"
+            >
+              重试投递
+            </el-button>
+            <el-button size="small" link @click.stop="openDetail(row)">详情</el-button>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pager">
@@ -171,5 +243,10 @@ onMounted(() => {
   white-space: pre-wrap;
   font-family: inherit;
   margin: 0;
+}
+.fan-out-count {
+  margin-left: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

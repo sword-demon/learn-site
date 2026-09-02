@@ -258,7 +258,7 @@ export const PublicCourseDTO = z.object({
   sale_end_at: z.string().nullable(),
   viewer_authorized: z.boolean(),
   viewer_entitlement_status: z.enum(['active', 'revoked']).nullable().default(null),
-  viewer_entitlement_source: z.enum(['free', 'purchase']).nullable().default(null),
+  viewer_entitlement_source: z.enum(['free', 'purchase', 'activation_code']).nullable().default(null),
   viewer_revoked_reason: z.string().nullable().default(null),
   viewer_can_rejoin: z.boolean().default(false),
   learner_count: z.number().int().nonnegative(),

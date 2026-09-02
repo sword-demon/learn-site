@@ -23,6 +23,10 @@ Route::group($learnerV1, function () {
     Route::get('/checkins/today', [\App\controller\learner\CheckinController::class, 'today']);
     Route::post('/checkins', [\App\controller\learner\CheckinController::class, 'store']);
     Route::post('/coupons/{campaignId}/claim', [\App\controller\learner\CouponController::class, 'claim']);
+    // 010-course-notify-feedback-codes — activation code redemption (rate limited)
+    Route::post('/activation-codes/redeem', [\App\controller\learner\ActivationCodeController::class, 'redeem']);
+    // 010-course-notify-feedback-codes — private course feedback submission
+    Route::post('/courses/{courseId}/feedback', [\App\controller\learner\CourseFeedbackController::class, 'store']);
 })->middleware([
     \App\middleware\LearnerAuth::class,
     \App\middleware\RateLimit::class,
@@ -238,6 +242,16 @@ Route::group($adminV1, function () {
     Route::get('/courses/{courseId}/students', [\App\controller\admin\CourseStudentController::class, 'index']);
     Route::post('/courses/{courseId}/students/{accountId}/progress/reset', [\App\controller\admin\CourseStudentController::class, 'resetProgress']);
     Route::post('/courses/{courseId}/students/{accountId}/revoke', [\App\controller\admin\CourseStudentController::class, 'revoke']);
+
+    // 010-course-notify-feedback-codes — per-course activation codes (activation_code.manage)
+    Route::post('/courses/{courseId}/activation-code-batches', [\App\controller\admin\ActivationCodeController::class, 'createBatch']);
+    Route::get('/courses/{courseId}/activation-codes', [\App\controller\admin\ActivationCodeController::class, 'index']);
+    Route::post('/courses/{courseId}/activation-codes/{codeId}/void', [\App\controller\admin\ActivationCodeController::class, 'void']);
+
+    // 010-course-notify-feedback-codes — learner feedback (course_feedback.manage)
+    Route::get('/courses/{courseId}/feedback', [\App\controller\admin\CourseFeedbackController::class, 'index']);
+    Route::get('/courses/{courseId}/feedback/{feedbackId}', [\App\controller\admin\CourseFeedbackController::class, 'show']);
+    Route::patch('/courses/{courseId}/feedback/{feedbackId}', [\App\controller\admin\CourseFeedbackController::class, 'update']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,
@@ -261,6 +275,8 @@ Route::group($adminV1, function () {
     // 003-admin-notifications — dispatch announcements and internal messages
     Route::get('/notifications', [\App\controller\admin\NotificationController::class, 'index']);
     Route::get('/notifications/{id}', [\App\controller\admin\NotificationController::class, 'show']);
+    // 010-course-notify-feedback-codes — re-enqueue a stuck course_published fan-out
+    Route::post('/notifications/{id}/retry', [\App\controller\admin\NotificationController::class, 'retry']);
     Route::post('/notifications/announcements', [\App\controller\admin\NotificationController::class, 'storeAnnouncement']);
     Route::post('/notifications/internal-messages', [\App\controller\admin\NotificationController::class, 'storeInternalMessage']);
 

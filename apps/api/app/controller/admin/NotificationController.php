@@ -32,6 +32,11 @@ final class NotificationController
         return $this->wrap(fn (): array => $this->dispatches->show($this->parseId($id)));
     }
 
+    public function retry(Request $request, string $id): \support\Response
+    {
+        return $this->wrap(fn (): array => $this->dispatches->retryFanOut($this->parseId($id)));
+    }
+
     public function storeAnnouncement(Request $request): \support\Response
     {
         return $this->wrapCreated(fn (): array => $this->dispatches->sendAnnouncement(
@@ -94,6 +99,7 @@ final class NotificationController
             match ($exception->apiCode) {
                 'UNAUTHENTICATED' => ApiResponse::UNAUTHENTICATED,
                 'NOT_FOUND' => ApiResponse::NOT_FOUND,
+                'CONFLICT' => ApiResponse::CONFLICT,
                 default => ApiResponse::VALIDATION_FAILED,
             },
             $exception->getMessage(),
