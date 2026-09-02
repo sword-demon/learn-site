@@ -418,6 +418,12 @@ async function loadCheckins(): Promise<void> {
   }
 }
 
+function onCheckinSizeChange(next: number): void {
+  checkinLimit.value = next;
+  checkinPage.value = 1;
+  void loadCheckins();
+}
+
 // ── 账户 tab ──
 const profile = ref<LearnerProfileDTO | null>(null);
 const profileLoading = ref(true);
@@ -895,10 +901,12 @@ onBeforeUnmount(() => {
       <footer v-if="checkinTotal > checkinLimit" class="pager">
         <el-pagination
           v-model:current-page="checkinPage"
-          :page-size="checkinLimit"
-          layout="prev, pager, next"
+          v-model:page-size="checkinLimit"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
           :total="checkinTotal"
           @current-change="loadCheckins"
+          @size-change="onCheckinSizeChange"
         />
       </footer>
     </section>

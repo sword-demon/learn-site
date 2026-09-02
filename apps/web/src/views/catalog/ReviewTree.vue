@@ -18,13 +18,13 @@ const props = defineProps<{
   authorized: boolean;
 }>();
 
-const pageSize = 10;
+const pageSize = ref(10);
 const list = ref<ReviewListDTO>({
   items: [],
   viewer_review: null,
   total: 0,
   page: 1,
-  limit: pageSize,
+  limit: pageSize.value,
 });
 const loading = ref(false);
 const loadError = ref<string | null>(null);
@@ -60,17 +60,22 @@ const replyTargetLabel = computed(() => {
   return `回复 ${target.viewer_owned ? '我' : target.author_name}`;
 });
 
-async function loadList(page = 1): Promise<void> {
+async function loadList(page = 1, limit = pageSize.value): Promise<void> {
   if (props.courseId <= 0) return;
   loading.value = true;
   loadError.value = null;
   try {
-    list.value = await fetchCourseReviews(props.courseId, { page, limit: pageSize });
+    list.value = await fetchCourseReviews(props.courseId, { page, limit });
   } catch (error) {
     loadError.value = errorMessage(error, '评价暂时无法加载，请稍后再试。');
   } finally {
     loading.value = false;
   }
+}
+
+function onSizeChange(next: number): void {
+  pageSize.value = next;
+  void loadList(1, next);
 }
 
 async function openReview(id: number): Promise<void> {
@@ -433,14 +438,16 @@ watch(
       <el-empty v-else description="还没有评价，完成一个课节后再来写下第一条吧" :image-size="72" />
 
       <el-pagination
-        v-if="list.total > list.limit"
+        v-if="list.total > pageSize"
         class="review-pagination"
         :current-page="list.page"
-        :page-size="list.limit"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
         :total="list.total"
-        layout="prev, pager, next"
+        layout="total, sizes, prev, pager, next"
         aria-label="评价分页"
         @current-change="loadList"
+        @size-change="onSizeChange"
       />
     </template>
 

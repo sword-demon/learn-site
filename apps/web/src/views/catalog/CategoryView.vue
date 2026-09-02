@@ -64,11 +64,13 @@
       v-if="totalPages > 1"
       class="pager"
       :current-page="page"
-      :page-size="limit"
+      v-model:page-size="limit"
+      :page-sizes="[10, 20, 50]"
       :total="total"
-      layout="prev, pager, next"
+      layout="total, sizes, prev, pager, next"
       aria-label="分页"
       @current-change="goto"
+      @size-change="onSizeChange"
     />
   </main>
 </template>
@@ -87,11 +89,11 @@ const category = ref<CategoryBreadcrumbDTO | null>(null);
 const items = ref<CourseListItemDTO[]>([]);
 const total = ref(0);
 const page = ref(1);
-const limit = 20;
+const limit = ref(20);
 const loading = ref(true);
 const loadError = ref(false);
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)));
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit.value)));
 
 const lede = computed(() => {
   if (loading.value) return '正在铺开课程…';
@@ -109,6 +111,10 @@ function goto(next: number): void {
   router.replace({ query: { ...route.query, page: String(next) } });
 }
 
+function onSizeChange(): void {
+  goto(1);
+}
+
 async function load(): Promise<void> {
   const id = Number(route.params.id);
   if (!Number.isFinite(id) || id <= 0) {
@@ -121,7 +127,7 @@ async function load(): Promise<void> {
   loading.value = true;
   loadError.value = false;
   try {
-    const { category: cat, list } = await fetchCategoryCourses(id, page.value, limit);
+    const { category: cat, list } = await fetchCategoryCourses(id, page.value, limit.value);
     category.value = cat;
     items.value = list.items;
     total.value = list.total;
