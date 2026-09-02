@@ -14,6 +14,9 @@ final class RequestLogger implements MiddlewareInterface
     public function process(Request $request, callable $handler): Response
     {
         $rid = (string) ($request->header('x-request-id', '') ?: bin2hex(random_bytes(8)));
+        // ponytail: webman workers are long-lived; without reset(), the next
+        // request in this worker would inherit the prior request's id. Read
+        // sites already prefer $request->request_id, so clearing is enough.
         RequestId::set($rid);
         $request->request_id = $rid;
         $start = microtime(true);
@@ -40,6 +43,8 @@ final class RequestLogger implements MiddlewareInterface
                 'err' => $e->getMessage(),
             ]);
             throw $e;
+        } finally {
+            RequestId::reset();
         }
     }
 }

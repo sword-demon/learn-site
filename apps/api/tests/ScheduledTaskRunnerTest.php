@@ -79,6 +79,49 @@ final class ScheduledTaskRunnerTest extends TestCase
         self::assertSame('skipped', $result['status']);
     }
 
+    public function testHandlerExceptionClosesRunRowWithFailedStatus(): void
+    {
+        // ponytail: before the fix, a thrown handler left a row with
+        // finished_at=NULL — hasActiveRun() then guarded every future tick
+        // and the run logs piled up as ghosts. The fix writes the terminal
+        // row in its own try/catch and asserts status='failed' here.
+        $registry = new ScheduledTaskHandlerRegistry();
+        $registry->register(new class implements ScheduledTaskHandler {
+            public function code(): string
+            {
+                return 'notification.cleanup';
+            }
+
+            public function execute(array $params): array
+            {
+                throw new \RuntimeException('boom');
+            }
+
+            public function normalizeParams(array $params): array
+            {
+                return $params;
+            }
+        });
+
+        $executor = new ScheduledTaskExecutor($registry);
+        $result = $executor->run($this->taskId, 'schedule', null);
+
+        self::assertSame('failed', $result['status']);
+
+        $row = Db::name('scheduled_task_runs')
+            ->where('task_id', $this->taskId)
+            ->where('trigger_type', 'schedule')
+            ->order('id', 'desc')
+            ->find();
+        self::assertIsArray($row);
+        self::assertNotNull($row['finished_at'], 'finished_at must be set even when handler throws');
+        self::assertSame('failed', $row['status']);
+        self::assertSame(0, (int) Db::name('scheduled_task_runs')
+            ->where('task_id', $this->taskId)
+            ->whereNull('finished_at')
+            ->count(), 'no zombie running row should remain');
+    }
+
     public function testHandlerFailureDoesNotPreventSecondRun(): void
     {
         $registry = new ScheduledTaskHandlerRegistry();

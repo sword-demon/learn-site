@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\service;
 
 use App\scheduled\ScheduledTaskHandlerRegistry;
+use App\support\Logger;
 use support\think\Db;
 
 /**
@@ -42,10 +43,15 @@ final class ScheduledTaskExecutor
         $params = $this->decodeParams($task['params_json']);
         $params = $handler->normalizeParams($params);
         $startedAt = date('Y-m-d H:i:s');
+        // ponytail: stage 1 — claim the run as 'running'. If we get SIGKILLed
+        // between this insert and the terminal update below, the row stays
+        // open; SIGKILL zombies are rare, but a thrown handler that would
+        // also leave finished_at=NULL is the common case — and we close
+        // that path by writing the terminal row in its own tx.
         $runId = (int) Db::name('scheduled_task_runs')->insertGetId([
             'task_id' => $taskId,
             'trigger_type' => $triggerType,
-            'status' => 'success',
+            'status' => 'running',
             'started_at' => $startedAt,
             'finished_at' => null,
             'duration_ms' => null,
@@ -68,20 +74,33 @@ final class ScheduledTaskExecutor
 
         $durationMs = (int) round(microtime(true) * 1000) - $startMs;
         $finishedAt = date('Y-m-d H:i:s');
-
-        Db::name('scheduled_task_runs')->where('id', $runId)->update([
+        $terminal = [
             'status' => $status,
             'finished_at' => $finishedAt,
             'duration_ms' => $durationMs,
             'error_message' => $errorMessage,
             'context_json' => $context !== null ? json_encode($context, JSON_UNESCAPED_UNICODE) : null,
-        ]);
+        ];
 
-        Db::name('scheduled_tasks')->where('id', $taskId)->update([
-            'last_run_at' => $startedAt,
-            'last_run_status' => $status,
-            'updated_at' => $finishedAt,
-        ]);
+        try {
+            Db::name('scheduled_task_runs')->where('id', $runId)->update($terminal);
+            Db::name('scheduled_tasks')->where('id', $taskId)->update([
+                'last_run_at' => $startedAt,
+                'last_run_status' => $status,
+                'updated_at' => $finishedAt,
+            ]);
+        } catch (\Throwable $writeError) {
+            // ponytail: terminal-write failure is the only path that can
+            // leave a zombie running row. Log loudly so operators see it;
+            // next cron tick will see the open run and skip with the
+            // existing hasActiveRun() guard, surfacing the problem.
+            Logger::error('scheduled.run.terminal_write_failed', [
+                'run_id' => $runId,
+                'task_id' => $taskId,
+                'err' => $writeError->getMessage(),
+            ]);
+            throw $writeError;
+        }
 
         return [
             'run_id' => $runId,

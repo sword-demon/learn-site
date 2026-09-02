@@ -24,6 +24,21 @@ final class RateLimit implements MiddlewareInterface
         'POST /api/learner/v1/checkins' => ['key' => 'learner_checkin_create', 'limit' => 5, 'window' => 60],
     ];
 
+    /**
+     * Auth-bypass and code-redemption endpoints: if Redis is down we MUST
+     * fail closed — fail-open would let an attacker brute-force creds or
+     * guess activation codes whenever Redis blips. Read-side rules above
+     * stay fail-open (auth + business rules remain authoritative).
+     */
+    private const STRICT_KEYS = [
+        'learner_auth_login',
+        'learner_auth_register',
+        'learner_auth_refresh',
+        'admin_auth_login',
+        'admin_auth_refresh',
+        'learner_activation_code_redeem',
+    ];
+
     private const SCRIPT = <<<'LUA'
 local current = redis.call('INCR', KEYS[1])
 if current == 1 then
@@ -40,7 +55,18 @@ LUA;
         }
 
         $redis = $this->redis();
+        $strict = in_array($rule['key'], self::STRICT_KEYS, true);
         if ($redis === null) {
+            if ($strict) {
+                Logger::error('rate_limit.redis_unavailable_strict', ['rule' => $rule['key']]);
+                return ApiResponse::fail(
+                    ApiResponse::RATE_LIMITED,
+                    'RATE_LIMITED',
+                    $request->request_id ?? null,
+                )->withHeaders(['Retry-After' => (string) $rule['window']]);
+            }
+            // ponytail: fail open on read-side rules when Redis is down —
+            // auth + business rules remain authoritative.
             return $handler($request);
         }
 
@@ -59,7 +85,13 @@ LUA;
             $retryAfter = max(1, (int) ($result[1] ?? $rule['window']));
         } catch (\Throwable $exception) {
             Logger::error('rate_limit.redis_failed', ['err' => $exception->getMessage()]);
-            // ponytail: fail open when Redis is unavailable; auth and business rules remain authoritative.
+            if ($strict) {
+                return ApiResponse::fail(
+                    ApiResponse::RATE_LIMITED,
+                    'RATE_LIMITED',
+                    $request->request_id ?? null,
+                )->withHeaders(['Retry-After' => (string) $rule['window']]);
+            }
             return $handler($request);
         }
 
@@ -94,6 +126,16 @@ LUA;
             && preg_match('#^/api/learner/v1/coupons/[^/]+/claim$#', $request->path()) === 1
         ) {
             return ['key' => 'learner_coupon_claim', 'limit' => 10, 'window' => 60];
+        }
+
+        // 010: activation code redemption — throttles brute-force guessing
+        // (FR-020). Fail-open like the other rules; the code's entropy and
+        // hash-only storage carry the real protection.
+        if (
+            $request->method() === 'POST'
+            && $request->path() === '/api/learner/v1/activation-codes/redeem'
+        ) {
+            return ['key' => 'learner_activation_code_redeem', 'limit' => 8, 'window' => 60];
         }
 
         return null;

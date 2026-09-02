@@ -95,6 +95,59 @@ final class RateLimitTest extends TestCase
         self::assertSame(1, $calls);
     }
 
+    public function testStrictKeysFailClosedWhenRedisStubIsDown(): void
+    {
+        $this->redis->stayDown = true;
+        $called = false;
+        $response = (new RateLimit())->process(
+            $this->request('POST', '/api/learner/v1/auth/login', 42),
+            static function (Request $request) use (&$called): Response {
+                $called = true;
+                return ApiResponse::ok(['handled' => true]);
+            },
+        );
+
+        self::assertFalse($called, 'handler must not run when strict endpoint blocks on Redis-down');
+        self::assertSame(429, $response->getStatusCode());
+        $payload = json_decode((string) $response->rawBody(), true);
+        self::assertSame('RATE_LIMITED', $payload['error']['code'] ?? null);
+        self::assertSame('60', $response->getHeader('Retry-After'));
+    }
+
+    public function testStrictKeysFailClosedOnRedisException(): void
+    {
+        // ponytail: InMemoryRedis throws on the eval() call (post connection).
+        // The middleware must catch it and still 429 for STRICT_KEYS.
+        $this->redis->stayDown = true;
+        $called = false;
+        $response = (new RateLimit())->process(
+            $this->request('POST', '/api/admin/v1/auth/login', 7),
+            static function (Request $request) use (&$called): Response {
+                $called = true;
+                return ApiResponse::ok(['handled' => true]);
+            },
+        );
+
+        self::assertFalse($called);
+        self::assertSame(429, $response->getStatusCode());
+    }
+
+    public function testActivationCodeRedeemIsStrict(): void
+    {
+        $this->redis->stayDown = true;
+        $called = false;
+        $response = (new RateLimit())->process(
+            $this->request('POST', '/api/learner/v1/activation-codes/redeem', 0),
+            static function (Request $request) use (&$called): Response {
+                $called = true;
+                return ApiResponse::ok(['handled' => true]);
+            },
+        );
+
+        self::assertFalse($called);
+        self::assertSame(429, $response->getStatusCode());
+    }
+
     public function testKeyAuthAndBusinessRoutesAreMountedWithRateLimit(): void
     {
         if (Route::getRoutes() === []) {

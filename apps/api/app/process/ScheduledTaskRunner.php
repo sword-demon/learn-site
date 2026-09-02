@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\process;
 
 use App\queue\QueueNames;
+use App\support\Logger;
 use App\support\queue\JobDispatcher;
 use support\think\Db;
 use Workerman\Crontab\Crontab;
@@ -18,7 +19,7 @@ final class ScheduledTaskRunner
     /** @var array<int, Crontab> */
     private array $crontabs = [];
 
-    private ?string $lastSeenUpdatedAt = null;
+    private ?int $lastSeenMaxId = null;
 
     public function onWorkerStart(): void
     {
@@ -30,9 +31,18 @@ final class ScheduledTaskRunner
 
     private function maybeReload(): void
     {
-        $maxUpdated = Db::name('scheduled_tasks')->max('updated_at');
-        $maxUpdated = $maxUpdated !== null ? (string) $maxUpdated : null;
-        if ($maxUpdated === $this->lastSeenUpdatedAt) {
+        // ponytail: rely on max(id) instead of max(updated_at) string equality
+        // so back-to-back updates in the same second are still noticed. Cheap
+        // query on a small admin-managed table; the heartbeat is 30s.
+        try {
+            $maxId = (int) Db::name('scheduled_tasks')->max('id');
+        } catch (\Throwable $e) {
+            // ponytail: heartbeat must never throw — an uncaught exception
+            // kills the Timer and we silently stop discovering new tasks.
+            Logger::warning('scheduled.reload.heartbeat_failed', ['err' => $e->getMessage()]);
+            return;
+        }
+        if ($maxId === $this->lastSeenMaxId) {
             return;
         }
         $this->reload();
@@ -64,7 +74,6 @@ final class ScheduledTaskRunner
             });
         }
 
-        $maxUpdated = Db::name('scheduled_tasks')->max('updated_at');
-        $this->lastSeenUpdatedAt = $maxUpdated !== null ? (string) $maxUpdated : null;
+        $this->lastSeenMaxId = (int) Db::name('scheduled_tasks')->max('id');
     }
 }

@@ -84,18 +84,29 @@ final class AssetController
         $storagePath = $relDir . $name;
         $now = date('Y-m-d H:i:s');
         $actor = (int) ($request->account_id ?? 0);
-        $id = (int) Db::transaction(function () use ($kind, $storagePath, $mime, $size, $actor, $now) {
-            return Asset::create([
-                'kind'                => $kind,
-                'storage_path'        => $storagePath,
-                'mime_type'           => $mime !== '' ? $mime : ($kind === 'pdf' ? 'application/pdf' : 'video/mp4'),
-                'size_bytes'          => $size,
-                'status'              => 'ready', // ponytail: 'processing' once worker lands (Phase 9)
-                'created_by_staff_id' => $actor,
-                'created_at'          => $now,
-                'updated_at'          => $now,
-            ])->id;
-        });
+        $id = null;
+        try {
+            $id = (int) Db::transaction(function () use ($kind, $storagePath, $mime, $size, $actor, $now) {
+                return Asset::create([
+                    'kind'                => $kind,
+                    'storage_path'        => $storagePath,
+                    'mime_type'           => $mime !== '' ? $mime : ($kind === 'pdf' ? 'application/pdf' : 'video/mp4'),
+                    'size_bytes'          => $size,
+                    'status'              => 'ready', // ponytail: 'processing' once worker lands (Phase 9)
+                    'created_by_staff_id' => $actor,
+                    'created_at'          => $now,
+                    'updated_at'          => $now,
+                ])->id;
+            });
+        } finally {
+            // ponytail: DB tx can roll back AFTER the file hit disk (DB blip
+            // between move() and the insert). Without this, runtime/uploads/
+            // grows unbounded across the worker's lifetime. Unlink failure
+            // is non-fatal — a stale file is cheaper than a 5xx.
+            if ($id === null || $id <= 0) {
+                @unlink($absPath);
+            }
+        }
         Logger::info('asset.uploaded', ['id' => $id, 'kind' => $kind, 'size' => $size]);
         return ApiResponse::ok([
             'id'           => $id,
