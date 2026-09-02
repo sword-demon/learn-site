@@ -8,6 +8,7 @@ import type {
   CourseFeedbackStatus,
 } from '@learn-site/contracts';
 import { getFeedback, listFeedback, updateFeedbackStatus } from '@/api/courseFeedback';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'CourseFeedbackView' });
 
@@ -22,7 +23,7 @@ const courseId = computed(() => {
 const items = ref<AdminCourseFeedbackListItemDTO[]>([]);
 const total = ref(0);
 const page = ref(1);
-const limit = 20;
+const limit = ref(20);
 const status = ref<CourseFeedbackStatus | ''>('');
 const loading = ref(false);
 const listError = ref('');
@@ -67,7 +68,7 @@ async function reload(): Promise<void> {
   try {
     const params: { page: number; limit: number; status?: CourseFeedbackStatus } = {
       page: page.value,
-      limit,
+      limit: limit.value,
     };
     if (status.value) params.status = status.value;
     const result = await listFeedback(courseId.value, params);
@@ -91,8 +92,7 @@ function applyStatusFilter(): void {
   void reload();
 }
 
-function changePage(nextPage: number): void {
-  page.value = nextPage;
+function onPagerChange(): void {
   detailOpen.value = false;
   detail.value = null;
   detailError.value = '';
@@ -252,16 +252,11 @@ onMounted(() => {
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        v-if="total > limit"
-        class="pagination"
-        background
-        layout="total, prev, pager, next"
-        :current-page="page"
-        :page-size="limit"
+      <AdminListPager
+        v-model:page="page"
+        v-model:page-size="limit"
         :total="total"
-        :pager-count="5"
-        @current-change="changePage"
+        @change="onPagerChange"
       />
     </section>
 
@@ -437,12 +432,6 @@ onMounted(() => {
   color: #334e68;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pagination {
-  justify-content: flex-end;
-  padding: 14px 16px;
-  border-top: 1px solid #edf1f4;
 }
 
 .detail-content {

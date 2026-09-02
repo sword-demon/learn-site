@@ -16,6 +16,7 @@ import type {
   QuestionThreadDTO,
 } from '@learn-site/contracts';
 import { ChatDotRound, Close, Promotion } from '@element-plus/icons-vue';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'QuestionListView' });
 
@@ -23,7 +24,7 @@ const inbox = ref<AdminInboxDTO | null>(null);
 const loading = ref(false);
 const listError = ref<string | null>(null);
 const page = ref(1);
-const limit = 20;
+const limit = ref(20);
 
 const statusFilter = ref<QuestionStatus>('pending');
 const courseFilter = ref<number | ''>('');
@@ -86,7 +87,7 @@ async function loadInbox(): Promise<void> {
       ...(courseFilter.value === '' ? {} : { course_id: courseFilter.value }),
       ...(lessonFilter.value === '' ? {} : { lesson_id: lessonFilter.value }),
       page: page.value,
-      limit,
+      limit: limit.value,
     });
     inbox.value = { ...result, items: result.items ?? [] };
   } catch (err) {
@@ -112,8 +113,7 @@ function changeFilter(): void {
   void loadInbox();
 }
 
-function changePage(nextPage: number): void {
-  page.value = nextPage;
+function onPagerChange(): void {
   clearDetail();
   void loadInbox();
 }
@@ -328,16 +328,11 @@ onMounted(() => {
             </el-button>
           </li>
         </ol>
-        <el-pagination
-          v-if="inbox && inbox.total > limit"
-          class="pager"
-          background
-          layout="prev, pager, next"
-          :total="inbox.total"
-          :page-size="limit"
-          :current-page="page"
-          :pager-count="5"
-          @current-change="changePage"
+        <AdminListPager
+          v-model:page="page"
+          v-model:page-size="limit"
+          :total="inbox?.total ?? 0"
+          @change="onPagerChange"
         />
       </el-card>
 

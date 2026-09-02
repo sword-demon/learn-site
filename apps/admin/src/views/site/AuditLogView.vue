@@ -14,6 +14,7 @@ import {
 } from '@/api/audit';
 import { hasPermission } from '@/api/http';
 import { listStaff } from '@/api/org';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'AuditLogView' });
 
@@ -38,9 +39,6 @@ const filters = ref({
 });
 
 const total = computed(() => list.value?.total ?? 0);
-const totalPages = computed(() =>
-  list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
-);
 const canRestore = computed(() => hasPermission('review.moderate'));
 const hasMoreStaff = computed(
   () => staffOptionsPage.value * optionPageSize < staffOptionsTotal.value,
@@ -294,15 +292,12 @@ onMounted(() => void reload());
       <template #empty><el-empty description="还没有审核记录" :image-size="88" /></template>
     </el-table>
 
-    <nav v-if="list && totalPages > 1" class="pager" aria-label="分页">
-      <el-button :disabled="filters.page <= 1" @click="((filters.page -= 1), reload())">
-        上一页
-      </el-button>
-      <span>{{ filters.page }} / {{ totalPages }}</span>
-      <el-button :disabled="filters.page >= totalPages" @click="((filters.page += 1), reload())">
-        下一页
-      </el-button>
-    </nav>
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
+      :total="total"
+      @change="reload"
+    />
   </main>
 </template>
 
@@ -392,12 +387,6 @@ onMounted(() => void reload());
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-.pager {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: flex-end;
 }
 @media (max-width: 560px) {
   .filter-form {

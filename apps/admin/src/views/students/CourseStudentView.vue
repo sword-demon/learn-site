@@ -10,6 +10,7 @@ import {
   type CourseStudentDTO,
   type CourseStudentListDTO,
 } from '@/api/courseStudents';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'CourseStudentView' });
 
@@ -37,9 +38,6 @@ const filters = ref({
 const total = computed(() => list.value?.total ?? 0);
 const canReset = computed(() => hasPermission('course_student.reset'));
 const canRevoke = computed(() => hasPermission('course_student.revoke_free'));
-const totalPages = computed(() =>
-  list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
-);
 
 async function reload(): Promise<void> {
   if (courseId.value === null) return;
@@ -294,15 +292,12 @@ function revokeErrorMessage(error: unknown): string {
       <template #empty><el-empty description="还没有学员选修这门课" :image-size="88" /></template>
     </el-table>
 
-    <nav v-if="list && totalPages > 1" class="pager">
-      <el-button :disabled="filters.page <= 1" @click="((filters.page -= 1), reload())">
-        上一页
-      </el-button>
-      <span>{{ filters.page }} / {{ totalPages }}</span>
-      <el-button :disabled="filters.page >= totalPages" @click="((filters.page += 1), reload())">
-        下一页
-      </el-button>
-    </nav>
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
+      :total="total"
+      @change="reload"
+    />
   </main>
 </template>
 
@@ -413,12 +408,6 @@ function revokeErrorMessage(error: unknown): string {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-.pager {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: flex-end;
 }
 @media (max-width: 560px) {
   .filter-form {

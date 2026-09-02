@@ -8,6 +8,7 @@ import {
   type LearnerAccountDTO,
   type LearnerListDTO,
 } from '@/api/learners';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'LearnerListView' });
 
@@ -26,10 +27,6 @@ const filters = ref({
 });
 
 const total = computed(() => list.value?.total ?? 0);
-const totalPages = computed(() =>
-  list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
-);
-
 function statusLabel(status: LearnerAccountDTO['status']): string {
   return status === 'active' ? '正常' : '已停用';
 }
@@ -192,15 +189,12 @@ onMounted(() => {
       <template #empty><el-empty description="没有匹配的学员" :image-size="88" /></template>
     </el-table>
 
-    <nav v-if="list && totalPages > 1" class="pager">
-      <el-button :disabled="filters.page <= 1" @click="((filters.page -= 1), reload())">
-        上一页
-      </el-button>
-      <span>{{ filters.page }} / {{ totalPages }}</span>
-      <el-button :disabled="filters.page >= totalPages" @click="((filters.page += 1), reload())">
-        下一页
-      </el-button>
-    </nav>
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
+      :total="total"
+      @change="reload"
+    />
 
     <div v-if="resetDialog" class="modal-backdrop" @click.self="resetDialog = null">
       <div class="modal">
@@ -322,12 +316,6 @@ onMounted(() => {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-.pager {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: flex-end;
 }
 .modal-backdrop {
   position: fixed;

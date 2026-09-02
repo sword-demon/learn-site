@@ -19,6 +19,7 @@ import type {
 } from '@learn-site/contracts';
 import { ChatLineSquare } from '@element-plus/icons-vue';
 import ReviewReplyNode from './ReviewReplyNode.vue';
+import AdminListPager from '@/components/AdminListPager.vue';
 import { buildReviewReplyTree } from './reviewTree';
 
 defineOptions({ name: 'ReviewModerateView' });
@@ -28,7 +29,7 @@ const coursesLoading = ref(false);
 const courseId = ref<number | null>(null);
 const visibility = ref<ReviewVisibility | 'all'>('all');
 const page = ref(1);
-const limit = 20;
+const limit = ref(20);
 
 const items = ref<ReviewThreadDTO[]>([]);
 const total = ref(0);
@@ -78,7 +79,7 @@ async function loadList(): Promise<void> {
       course_id: courseId.value,
       visibility: visibility.value,
       page: page.value,
-      limit,
+      limit: limit.value,
     });
     total.value = res.total;
     items.value = res.items.map((review) => ({ review, replies: [] }));
@@ -192,6 +193,11 @@ async function submitReplyRestore(replyId: number): Promise<void> {
   }
 }
 
+function onPagerChange(): void {
+  active.value = null;
+  void loadList();
+}
+
 watch([courseId, visibility], () => {
   active.value = null;
   if (page.value === 1) {
@@ -199,10 +205,6 @@ watch([courseId, visibility], () => {
   } else {
     page.value = 1;
   }
-});
-watch(page, () => {
-  active.value = null;
-  void loadList();
 });
 
 const ratingStars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n);
@@ -314,16 +316,11 @@ onMounted(loadCourses);
             </button>
           </li>
         </ol>
-        <el-pagination
-          v-if="total > limit"
-          class="pager"
-          background
-          layout="prev, pager, next"
+        <AdminListPager
+          v-model:page="page"
+          v-model:page-size="limit"
           :total="total"
-          :page-size="limit"
-          :current-page="page"
-          :pager-count="5"
-          @current-change="(next: number) => (page = next)"
+          @change="onPagerChange"
         />
       </el-card>
 

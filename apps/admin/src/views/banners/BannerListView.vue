@@ -18,6 +18,7 @@ import {
 } from '@/api/banners';
 import { uploadBannerImage, type UploadCoverInput, type UploadCoverResult } from '@/api/covers';
 import CourseCoverUpload from '@/views/catalog/CourseCoverUpload.vue';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'BannerListView' });
 
@@ -335,13 +336,11 @@ onMounted(() => void reload());
       </el-table-column>
     </el-table>
 
-    <el-pagination
-      v-model:current-page="filters.page"
-      class="pager"
-      :page-size="filters.limit"
-      layout="total, prev, pager, next"
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
       :total="total"
-      @current-change="reload"
+      @change="reload"
     />
 
     <el-dialog

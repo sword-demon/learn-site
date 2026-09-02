@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { AdminCheckinListItemDTO } from '@learn-site/contracts';
 import { deleteCheckin, getCheckin, listCheckins } from '@/api/checkins';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'CheckinListView' });
 
@@ -135,13 +136,11 @@ onMounted(() => {
       </el-table-column>
     </el-table>
 
-    <el-pagination
-      v-model:current-page="filters.page"
-      class="pager"
-      :page-size="filters.limit"
-      layout="total, prev, pager, next"
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
       :total="total"
-      @current-change="reload"
+      @change="reload"
     />
 
     <el-drawer v-model="detailOpen" title="签到详情" size="40%">

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { listLearnerLessonRecords } from '@/api/learners';
+import AdminListPager from '@/components/AdminListPager.vue';
 import type { LearnerLessonRecordListDTO } from '@learn-site/contracts';
 
 defineOptions({ name: 'LearnerLearningRecordsView' });
@@ -13,12 +14,9 @@ const list = ref<LearnerLessonRecordListDTO | null>(null);
 const loading = ref(false);
 const errorMsg = ref<string | null>(null);
 const page = ref(1);
-const limit = 20;
+const limit = ref(20);
 
 const total = computed(() => list.value?.total ?? 0);
-const totalPages = computed(() =>
-  list.value ? Math.max(1, Math.ceil(list.value.total / list.value.limit)) : 1,
-);
 const learnerTitle = computed(() => {
   const learner = list.value?.learner;
   if (!learner) return `学员 #${learnerId.value}`;
@@ -32,7 +30,7 @@ async function reload(): Promise<void> {
   try {
     list.value = await listLearnerLessonRecords(learnerId.value, {
       page: page.value,
-      limit,
+      limit: limit.value,
     });
   } catch (err) {
     const code = (err as { code?: string }).code;
@@ -83,11 +81,12 @@ onMounted(() => {
       <template #empty><el-empty description="暂无学习记录" :image-size="88" /></template>
     </el-table>
 
-    <nav v-if="list && totalPages > 1" class="pager">
-      <el-button :disabled="page <= 1" @click="((page -= 1), reload())">上一页</el-button>
-      <span>{{ page }} / {{ totalPages }}</span>
-      <el-button :disabled="page >= totalPages" @click="((page += 1), reload())">下一页</el-button>
-    </nav>
+    <AdminListPager
+      v-model:page="page"
+      v-model:page-size="limit"
+      :total="total"
+      @change="reload"
+    />
   </main>
 </template>
 
@@ -121,11 +120,5 @@ onMounted(() => {
 .data {
   width: 100%;
   background: #fff;
-}
-.pager {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: flex-end;
 }
 </style>

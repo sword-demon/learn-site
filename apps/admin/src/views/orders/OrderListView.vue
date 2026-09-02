@@ -11,6 +11,7 @@ import { listCourses, type ListCoursesParams } from '@/api/catalog';
 import { listLearners, type LearnerAccountDTO } from '@/api/learners';
 import type { CourseDTO } from '@learn-site/contracts';
 import { Document, RefreshRight, Search, Tickets, User } from '@element-plus/icons-vue';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'OrderListView' });
 
@@ -235,18 +236,6 @@ async function openDetail(id: number): Promise<void> {
 }
 
 function applyFilters(): void {
-  filters.value.page = 1;
-  void reload();
-}
-
-function changePage(p: number): void {
-  if (p < 1) return;
-  filters.value.page = p;
-  void reload();
-}
-
-function changePageSize(size: number): void {
-  filters.value.limit = size;
   filters.value.page = 1;
   void reload();
 }
@@ -479,17 +468,11 @@ onMounted(() => {
           <el-table-column prop="created_at" label="创建时间" min-width="175" />
           <template #empty><el-empty description="暂无订单记录" :image-size="88" /></template>
         </el-table>
-        <el-pagination
-          v-if="total > 0"
-          class="pager"
-          background
-          layout="total, prev, pager, next, sizes"
+        <AdminListPager
+          v-model:page="filters.page"
+          v-model:page-size="filters.limit"
           :total="total"
-          :page-size="filters.limit"
-          :current-page="filters.page"
-          :page-sizes="[10, 20, 50]"
-          @current-change="changePage"
-          @size-change="changePageSize"
+          @change="reload"
         />
       </el-card>
 

@@ -90,6 +90,23 @@ describe('LearnerListView', () => {
     });
   });
 
+  it('shows numbered pagination when multiple pages exist', async () => {
+    learnersApi.listLearners.mockResolvedValueOnce({
+      items: [],
+      total: 45,
+      page: 1,
+      limit: 20,
+    });
+    const wrapper = mountLearners();
+    await flushPromises();
+
+    const pager = wrapper.find('.el-pagination');
+    expect(pager.exists()).toBe(true);
+    expect(pager.find('.el-pager').exists()).toBe(true);
+    expect(pager.text()).toContain('1');
+    expect(pager.text()).toContain('3');
+  });
+
   it('keeps an Element Plus table empty state when no learners match', async () => {
     learnersApi.listLearners.mockResolvedValueOnce({
       items: [],

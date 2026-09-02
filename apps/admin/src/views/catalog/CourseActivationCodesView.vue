@@ -10,6 +10,7 @@ import {
   voidActivationCode,
   type ActivationCodeStatus,
 } from '@/api/activationCodes';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -229,18 +230,11 @@ onMounted(() => {
       </el-table-column>
     </el-table>
 
-    <el-pagination
-      class="pager"
-      layout="total, prev, pager, next"
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
       :total="total"
-      :page-size="filters.limit"
-      :current-page="filters.page"
-      @current-change="
-        (page: number) => {
-          filters.page = page;
-          reload();
-        }
-      "
+      @change="reload"
     />
 
     <el-dialog v-model="createOpen" title="生成激活码" width="480px">

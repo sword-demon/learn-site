@@ -7,6 +7,7 @@ import {
   listScheduledTaskRuns,
   type AdminScheduledTask,
 } from '@/api/scheduledTasks';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'ScheduledTaskRunLogView' });
 
@@ -159,15 +160,12 @@ onMounted(async () => {
         </el-table-column>
       </el-table>
 
-      <div class="pager">
-        <el-pagination
-          v-model:current-page="filters.page"
-          :page-size="filters.per_page"
-          layout="total, prev, pager, next"
-          :total="total"
-          @current-change="reload"
-        />
-      </div>
+      <AdminListPager
+        v-model:page="filters.page"
+        v-model:page-size="filters.per_page"
+        :total="total"
+        @change="reload"
+      />
     </el-card>
 
     <el-dialog v-model="detailOpen" title="执行详情" width="560px">

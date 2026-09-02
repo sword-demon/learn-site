@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus';
 import type { AdminNotificationListItemDTO } from '@learn-site/contracts';
 import { getNotification, listNotifications, retryNotificationFanOut } from '@/api/notifications';
 import NotificationComposeDialog from '@/views/notifications/NotificationComposeDialog.vue';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'NotificationListView' });
 
@@ -183,15 +184,12 @@ onMounted(() => {
         </el-table-column>
       </el-table>
 
-      <div class="pager">
-        <el-pagination
-          v-model:current-page="filters.page"
-          :page-size="filters.limit"
-          :total="total"
-          layout="total, prev, pager, next"
-          @current-change="reload"
-        />
-      </div>
+      <AdminListPager
+        v-model:page="filters.page"
+        v-model:page-size="filters.limit"
+        :total="total"
+        @change="reload"
+      />
     </el-card>
 
     <NotificationComposeDialog v-model="composeOpen" @sent="reload" />

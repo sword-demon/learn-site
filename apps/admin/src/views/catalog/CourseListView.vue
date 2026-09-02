@@ -74,17 +74,11 @@
       </el-table-column>
     </el-table>
 
-    <el-pagination
-      class="pager"
-      layout="total, prev, pager, next, sizes"
+    <AdminListPager
+      v-model:page="filters.page"
+      v-model:page-size="filters.limit"
       :total="total"
-      :page-size="filters.limit"
-      :current-page="filters.page"
-      :page-sizes="[10, 20, 50]"
-      @update:current-page="(p: number) => (filters.page = p)"
-      @update:page-size="(s: number) => (filters.limit = s)"
-      @current-change="reload"
-      @size-change="reload"
+      @change="reload"
     />
   </section>
 </template>
@@ -95,6 +89,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { CourseDTO, CourseStatus } from '@learn-site/contracts';
 import { listCourses, publishCourse, unpublishCourse, deleteCourse } from '@/api/catalog';
+import AdminListPager from '@/components/AdminListPager.vue';
 import { hasPermission } from '@/api/http';
 
 const router = useRouter();
@@ -289,9 +284,5 @@ onMounted(() => {
 }
 .table {
   width: 100%;
-}
-.pager {
-  margin-top: 16px;
-  justify-content: flex-end;
 }
 </style>

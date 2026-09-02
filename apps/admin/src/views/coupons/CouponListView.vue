@@ -20,6 +20,7 @@ import {
   type CouponListParams,
 } from '@/api/coupons';
 import { listCategoriesFlat, listCourses } from '@/api/catalog';
+import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'CouponListView' });
 
@@ -561,16 +562,13 @@ onMounted(load);
       </el-table-column>
     </el-table>
 
-    <el-pagination
-      v-model:current-page="filters.page"
+    <AdminListPager
+      v-model:page="filters.page"
       v-model:page-size="filters.limit"
       :total="total"
       :page-sizes="[20, 50, 100]"
-      layout="total, sizes, prev, pager, next"
-      class="coupons__pager"
       data-action="pager"
-      @current-change="load"
-      @size-change="load"
+      @change="load"
     />
 
     <el-dialog
@@ -820,9 +818,6 @@ onMounted(load);
 }
 .coupons__alert {
   margin-bottom: 8px;
-}
-.coupons__pager {
-  justify-content: flex-end;
 }
 .coupons__grant-hint {
   margin: 0 0 8px;
