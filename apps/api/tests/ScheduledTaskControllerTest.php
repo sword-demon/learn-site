@@ -43,7 +43,12 @@ final class ScheduledTaskControllerTest extends TestCase
         $service = new ScheduledTaskService();
         $list = $service->list();
         self::assertNotEmpty($list);
-        self::assertSame('notification.cleanup', $list[0]['handler_code']);
+        $task = array_values(array_filter(
+            $list,
+            fn (array $item): bool => (int) ($item['id'] ?? 0) === $this->taskId,
+        ))[0] ?? null;
+        self::assertIsArray($task);
+        self::assertSame('notification.cleanup', $task['handler_code']);
 
         $detail = $service->show($this->taskId);
         self::assertSame($this->taskId, $detail['id']);
@@ -116,6 +121,34 @@ final class ScheduledTaskControllerTest extends TestCase
         self::assertTrue($payload['ok'] ?? false);
     }
 
+    public function testOrderExpiryTaskAppearsAsAvailableInControllerList(): void
+    {
+        $taskId = $this->insertTask(
+            'order.cancel_expired',
+            '超时未支付订单自动取消',
+            '0 * * * * *',
+            ['batch_size' => 200],
+        );
+        $request = new Request("GET /api/admin/v1/scheduled-tasks HTTP/1.1\r\nHost: test\r\n\r\n");
+        /** @phpstan-ignore-next-line */
+        $request->account_id = $this->staffId;
+        $response = (new ScheduledTaskController(
+            new ScheduledTaskService(),
+            new \App\service\ScheduledTaskRunService(),
+        ))->index($request);
+        $payload = json_decode((string) $response->rawBody(), true);
+        $items = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+        $task = array_values(array_filter(
+            $items,
+            static fn (array $item): bool => (int) ($item['id'] ?? 0) === $taskId,
+        ))[0] ?? null;
+
+        self::assertIsArray($task);
+        self::assertSame('order.cancel_expired', $task['handler_code']);
+        self::assertSame('超时未支付订单自动取消', $task['name']);
+        self::assertSame('available', $task['handler_status']);
+    }
+
     private function insertStaff(): int
     {
         $now = date('Y-m-d H:i:s');
@@ -140,16 +173,22 @@ final class ScheduledTaskControllerTest extends TestCase
         return $id;
     }
 
-    private function insertTask(): int
-    {
+    /** @param array<string, mixed> $params */
+    private function insertTask(
+        string $handlerCode = 'notification.cleanup',
+        string $name = '测试清理',
+        string $expression = '0 30 3 * * *',
+        array $params = ['batch_size' => 500],
+    ): int {
         $now = date('Y-m-d H:i:s');
+        Db::name('scheduled_tasks')->where('handler_code', $handlerCode)->delete();
         return (int) Db::name('scheduled_tasks')->insertGetId([
-            'handler_code' => 'notification.cleanup',
-            'name' => '测试清理',
+            'handler_code' => $handlerCode,
+            'name' => $name,
             'description' => '测试',
-            'schedule_expression' => '0 30 3 * * *',
+            'schedule_expression' => $expression,
             'enabled' => 1,
-            'params_json' => json_encode(['batch_size' => 500], JSON_UNESCAPED_UNICODE),
+            'params_json' => json_encode($params, JSON_UNESCAPED_UNICODE),
             'last_run_at' => null,
             'last_run_status' => null,
             'created_at' => $now,

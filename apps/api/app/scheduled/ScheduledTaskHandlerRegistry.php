@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\scheduled;
 
+use App\scheduled\handler\ExpiredOrderCancellationHandler;
 use App\scheduled\handler\NotificationCleanupHandler;
 
 /**
@@ -17,6 +18,7 @@ final class ScheduledTaskHandlerRegistry
     public function __construct()
     {
         $this->register(new NotificationCleanupHandler());
+        $this->register(new ExpiredOrderCancellationHandler());
     }
 
     public function register(ScheduledTaskHandler $handler): void

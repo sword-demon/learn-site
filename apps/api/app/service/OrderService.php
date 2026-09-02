@@ -361,6 +361,53 @@ final class OrderService
     }
 
     /**
+     * Cancel one batch of pending orders that reached the payment timeout.
+     * The order row lock arbitrates races with payment callbacks.
+     */
+    public function cancelExpiredPending(int $timeoutMinutes = 15, int $batchSize = 200): int
+    {
+        $timeoutMinutes = max(1, $timeoutMinutes);
+        $batchSize = max(1, min(200, $batchSize));
+        $cutoff = date('Y-m-d H:i:s', time() - $timeoutMinutes * 60);
+        $ids = Db::name('orders')
+            ->where('status', 'pending')
+            ->where('created_at', '<=', $cutoff)
+            ->order('id', 'asc')
+            ->limit($batchSize)
+            ->column('id');
+
+        $cancelled = 0;
+        foreach ($ids as $id) {
+            $changed = Db::transaction(function () use ($id, $cutoff): bool {
+                $row = Db::name('orders')
+                    ->where('id', (int) $id)
+                    ->where('status', 'pending')
+                    ->where('created_at', '<=', $cutoff)
+                    ->lock(true)
+                    ->find();
+                if (!$row) {
+                    return false;
+                }
+
+                Db::name('orders')->where('id', (int) $id)->update([
+                    'status' => 'cancelled',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                if ($this->coupons !== null) {
+                    $this->coupons->releaseOnTerminal((int) $id);
+                }
+                Logger::info('order.cancelled', ['order_id' => (int) $id]);
+                return true;
+            });
+            if ($changed) {
+                $cancelled++;
+            }
+        }
+
+        return $cancelled;
+    }
+
+    /**
      * Admin read-only listing (Phase 14 / US10 — T077).
      *
      * Read-only by design — there is no admin mark-as-paid path.

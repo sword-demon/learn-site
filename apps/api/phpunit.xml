@@ -43,6 +43,7 @@
             <file>tests/RoleControllerTest.php</file>
             <file>tests/CatalogContractTest.php</file>
             <file>tests/PaymentContractTest.php</file>
+            <file>tests/OrderCouponTest.php</file>
             <file>tests/ProgressServiceTest.php</file>
             <file>tests/LearnerProfileTest.php</file>
             <file>tests/AssetStorageTest.php</file>
@@ -61,6 +62,7 @@
             <file>tests/UnreadCounterTest.php</file>
             <file>tests/HomeCacheTest.php</file>
             <file>tests/CourseDeletionTest.php</file>
+            <file>tests/ScheduledTaskControllerTest.php</file>
         </testsuite>
     </testsuites>
     <source>

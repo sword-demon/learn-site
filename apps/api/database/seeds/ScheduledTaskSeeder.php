@@ -27,6 +27,13 @@ final class ScheduledTaskSeeder extends AbstractSeed
                 'schedule_expression' => '0 30 3 * * *',
                 'params_json' => json_encode(['batch_size' => 500], JSON_UNESCAPED_UNICODE),
             ],
+            [
+                'handler_code' => 'order.cancel_expired',
+                'name' => '超时未支付订单自动取消',
+                'description' => '取消创建满 15 分钟仍未支付的订单，并释放锁定优惠券',
+                'schedule_expression' => '0 * * * * *',
+                'params_json' => json_encode(['batch_size' => 200], JSON_UNESCAPED_UNICODE),
+            ],
         ];
 
         foreach ($tasks as $task) {

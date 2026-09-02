@@ -199,6 +199,60 @@ final class OrderCouponTest extends TestCase
         self::assertNull($res['learner_coupon_id']);
     }
 
+    public function testExpiredPendingOrderIsCancelledAndCouponReleased(): void
+    {
+        $campaignId = $this->seedCampaign();
+        $coupon = $this->coupons->claimByLearner($campaignId, $this->learnerId);
+        $order = $this->orders->createPending($this->learnerId, $this->courseId, $coupon['id']);
+        Db::name('orders')->where('id', $order['order_id'])->update([
+            'created_at' => date('Y-m-d H:i:s', time() - 16 * 60),
+        ]);
+
+        $cancelled = $this->orders->cancelExpiredPending(15, 200);
+
+        self::assertSame(1, $cancelled);
+        self::assertSame(
+            'cancelled',
+            Db::name('orders')->where('id', $order['order_id'])->value('status'),
+        );
+        $couponRow = Db::name('learner_coupons')->where('id', $coupon['id'])->find();
+        self::assertSame('unused', $couponRow['status']);
+        self::assertNull($couponRow['locked_order_id']);
+    }
+
+    public function testRecentPendingOrderIsNotCancelled(): void
+    {
+        $order = $this->orders->createPending($this->learnerId, $this->courseId);
+
+        $cancelled = $this->orders->cancelExpiredPending(15, 200);
+
+        self::assertSame(0, $cancelled);
+        self::assertSame(
+            'pending',
+            Db::name('orders')->where('id', $order['order_id'])->value('status'),
+        );
+    }
+
+    public function testLateSuccessCallbackDoesNotReviveExpiredOrder(): void
+    {
+        $order = $this->orders->createPending($this->learnerId, $this->courseId);
+        Db::name('orders')->where('id', $order['order_id'])->update([
+            'created_at' => date('Y-m-d H:i:s', time() - 16 * 60),
+        ]);
+
+        self::assertSame(1, $this->orders->cancelExpiredPending(15, 200));
+        $this->orders->markSucceeded((int) $order['order_id'], 'late-provider-ref');
+
+        self::assertSame(
+            'cancelled',
+            Db::name('orders')->where('id', $order['order_id'])->value('status'),
+        );
+        self::assertSame(
+            0,
+            (int) Db::name('course_entitlements')->where('order_id', $order['order_id'])->count(),
+        );
+    }
+
     /** @param array<string, mixed> $overrides */
     private function seedCampaign(array $overrides = []): int {
         $payload = array_merge([

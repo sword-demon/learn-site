@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\queue\redis;
 
 use App\service\OrderService;
-use App\support\payment\PaymentAdapter;
 use Webman\RedisQueue\Consumer;
 
 final class PaymentNotifyConsumer implements Consumer
@@ -26,14 +25,8 @@ final class PaymentNotifyConsumer implements Consumer
             return;
         }
 
-        // ponytail: pull the bound adapter from the container — switching
-        // from FakePaymentAdapter to a real provider is a container binding
-        // change, not a code change here. Hard-coding `new FakePaymentAdapter()`
-        // would write fake provider_ref on real payments.
-        $orders = new OrderService(
-            entitlements: new \App\service\EntitlementService(),
-            payment: \support\Container::get(PaymentAdapter::class),
-        );
+        /** @var OrderService $orders */
+        $orders = \support\Container::get(OrderService::class);
 
         match ($status) {
             'succeeded' => $orders->markSucceeded($orderId, $providerRef),
