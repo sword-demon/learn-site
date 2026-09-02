@@ -394,7 +394,12 @@ final class OrderService
             $q->where('c.department_id', 'in', $allowed);
         }
         $total = (clone $q)->count();
-        $rows = $q->order('o.id', 'desc')->page($page, $limit)->select()->toArray();
+        $rows = $q
+            ->field('o.*, c.title AS title, c.department_id AS department_id')
+            ->order('o.id', 'desc')
+            ->page($page, $limit)
+            ->select()
+            ->toArray();
         $items = array_map(fn($r) => $this->shapeAdminOrder($r), $rows);
         return [
             'items' => $items,
@@ -410,6 +415,7 @@ final class OrderService
         $row = Db::name('orders')->alias('o')
             ->join('courses c', 'o.course_id = c.id')
             ->where('o.id', $orderId)
+            ->field('o.*, c.title AS title, c.department_id AS department_id')
             ->find();
         if (!$row) {
             throw new BusinessException('NOT_FOUND', 'ORDER_NOT_FOUND');
