@@ -17,10 +17,14 @@ export const ApiOk = <T extends z.ZodTypeAny>(data: T) =>
 export const ApiErr = z.object({
   ok: z.literal(false),
   data: z.null(),
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-  }),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      course_id: z.number().int().positive().optional(),
+      course_title: z.string().optional(),
+    })
+    .passthrough(),
   meta: z
     .object({
       request_id: z.string(),

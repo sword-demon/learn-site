@@ -10,8 +10,12 @@ namespace App\service;
  */
 final class BusinessException extends \RuntimeException
 {
-    public function __construct(public readonly string $apiCode, string $message)
-    {
+    /** @param array<string, mixed> $details */
+    public function __construct(
+        public readonly string $apiCode,
+        string $message,
+        public readonly array $details = [],
+    ) {
         parent::__construct($message);
     }
 }

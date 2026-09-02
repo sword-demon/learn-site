@@ -67,6 +67,11 @@ final class ActivationCodeTest extends TestCase
             self::assertSame(substr($normalized, -4), (string) $row['code_suffix']);
             self::assertSame('unused', (string) $row['status']);
             self::assertSame($courseId, (int) $row['course_id']);
+            self::assertMatchesRegularExpression(
+                '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
+                (string) $row['created_at'],
+            );
+            self::assertSame((string) $row['created_at'], (string) $row['updated_at']);
         }
 
         $audit = Db::name('audit_log')
@@ -228,16 +233,24 @@ final class ActivationCodeTest extends TestCase
         self::assertNull($entitlement['order_id']);
         self::assertNotNull($entitlement['activation_code_id']);
 
-        $codeRow = Db::name('activation_codes')->where('id', (int) $entitlement['activation_code_id'])->find();
+        $normalized = str_replace('-', '', $code);
+        $codeHash = hash('sha256', $normalized);
+
+        $codeRow = Db::name('activation_codes')->where('code_hash', $codeHash)->find();
+        self::assertIsArray($codeRow);
         self::assertSame('redeemed', (string) $codeRow['status']);
         self::assertSame($learnerId, (int) $codeRow['redeemed_by_learner_id']);
         self::assertNotNull($codeRow['redeemed_at']);
+        self::assertSame((int) $codeRow['id'], (int) $entitlement['activation_code_id']);
 
         // 不创建任何购买订单 (FR-013)。
         self::assertSame(0, (int) Db::name('orders')->where('learner_id', $learnerId)->count());
         self::assertSame(
             1,
-            (int) Db::name('audit_log')->where('action', 'activation_code.redeem')->count(),
+            (int) Db::name('audit_log')
+                ->where('action', 'activation_code.redeem')
+                ->where('target_id', (int) $codeRow['id'])
+                ->count(),
         );
     }
 
@@ -357,6 +370,8 @@ final class ActivationCodeTest extends TestCase
             self::fail('already-entitled learner must not consume a code');
         } catch (BusinessException $e) {
             self::assertSame('ENTITLEMENT_ALREADY_ACTIVE', $e->getMessage());
+            self::assertSame($courseId, (int) ($e->details['course_id'] ?? 0));
+            self::assertNotSame('', (string) ($e->details['course_title'] ?? ''));
         }
         self::assertSame(
             'unused',

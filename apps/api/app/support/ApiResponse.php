@@ -69,20 +69,31 @@ final class ApiResponse
         return json(self::envelope(true, $data, null, $requestId));
     }
 
-    public static function fail(string $code, string $message, ?string $requestId = null): Response
-    {
+    /** @param array<string, mixed> $details */
+    public static function fail(
+        string $code,
+        string $message,
+        ?string $requestId = null,
+        array $details = [],
+    ): Response {
         $status = self::STATUS_BY_CODE[$code] ?? 400;
+        $error = ['code' => $code, 'message' => $message];
+        foreach ($details as $key => $value) {
+            if ($key !== 'code' && $key !== 'message') {
+                $error[$key] = $value;
+            }
+        }
         return json(
-            self::envelope(false, null, ['code' => $code, 'message' => $message], $requestId),
+            self::envelope(false, null, $error, $requestId),
         )->withStatus($status);
     }
 
     /**
-     * @param array{code: string, message: string}|null $error
+     * @param array<string, mixed>|null $error
      * @return array{
      *     ok: bool,
      *     data: mixed,
-     *     error?: array{code: string, message: string},
+     *     error?: array<string, mixed>,
      *     meta?: array{request_id: string}
      * }
      */

@@ -88,7 +88,7 @@ final class ActivationCodeService
 
             $plaintexts = [];
             foreach (array_chunk($drafts, self::CHUNK_SIZE) as $chunk) {
-                array_push($plaintexts, ...$this->insertChunk($batchId, $courseId, $expires, $chunk));
+                array_push($plaintexts, ...$this->insertChunk($batchId, $courseId, $expires, $chunk, $now));
             }
             return [$batchId, $plaintexts];
         });
@@ -243,7 +243,10 @@ final class ActivationCodeService
                 ->lock(true)
                 ->find();
             if (is_array($active)) {
-                throw new BusinessException('CONFLICT', 'ENTITLEMENT_ALREADY_ACTIVE');
+                throw new BusinessException('CONFLICT', 'ENTITLEMENT_ALREADY_ACTIVE', [
+                    'course_id' => (int) $course['id'],
+                    'course_title' => (string) $course['title'],
+                ]);
             }
 
             $now = $this->nowDatetime();
@@ -295,6 +298,7 @@ final class ActivationCodeService
         int $courseId,
         ?string $expires,
         array $drafts,
+        string $now,
     ): array {
         for ($attempt = 0; $attempt < self::HASH_RETRY; $attempt++) {
             $rows = array_map(static fn (array $draft): array => [
@@ -304,6 +308,8 @@ final class ActivationCodeService
                 'code_prefix' => substr($draft[0], 0, 4),
                 'code_suffix' => substr($draft[0], -4),
                 'expires_at' => $expires,
+                'created_at' => $now,
+                'updated_at' => $now,
             ], $drafts);
             try {
                 Db::name('activation_codes')->insertAll($rows);

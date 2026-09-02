@@ -47,6 +47,7 @@ final class ActivationCodeController
             },
             $exception->getMessage(),
             request()->request_id ?? null,
+            $exception->details,
         );
     }
 
