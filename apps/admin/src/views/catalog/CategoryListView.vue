@@ -73,51 +73,24 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import type {
-  CategoryDTO,
-  CategoryStatus,
-  CreateCategoryInput,
-  UpdateCategoryInput,
-} from '@learn-site/contracts';
+import type { CategoryDTO, CategoryStatus } from '@learn-site/contracts';
 import {
   listCategoryTree,
   createCategory,
   updateCategory,
   setCategoryStatus,
   deleteCategory,
-  type CategoryNode,
 } from '@/api/catalog';
-
-interface FlatRow extends CategoryDTO {
-  depth: number;
-}
+import mapper from '@/api/catalog-mapper';
+import type { FlatCategoryRow } from '@/api/types/catalog-views';
 
 const loading = ref(false);
 const saving = ref(false);
 const status = ref<'idle' | 'error'>('idle');
 const errorMessage = ref('');
-const tree = ref<CategoryNode[]>([]);
+const flatRows = ref<FlatCategoryRow[]>([]);
 const dialogVisible = ref(false);
-const draft = reactive<{ id: number | null; parent_id: number | null; name: string; sort: number }>(
-  {
-    id: null,
-    parent_id: null,
-    name: '',
-    sort: 0,
-  },
-);
-
-function flatten(nodes: CategoryNode[], depth: number, acc: FlatRow[]): FlatRow[] {
-  for (const n of nodes) {
-    acc.push({ ...n, depth });
-    if (n.children?.length) {
-      flatten(n.children, depth + 1, acc);
-    }
-  }
-  return acc;
-}
-
-const flatRows = computed<FlatRow[]>(() => flatten(tree.value, 1, []));
+const draft = mapper.toCategoryEditorForm();
 
 const dialogTitle = computed(() => (draft.id === null ? '新增分类' : '编辑分类'));
 
@@ -127,21 +100,16 @@ const parentLabel = computed(() => {
   return row ? row.name : `#${draft.parent_id}`;
 });
 
-function findDepth(nodes: CategoryNode[], id: number): number {
-  for (const n of nodes) {
-    if (n.id === id) return n.depth;
-    const inner = findDepth(n.children ?? [], id);
-    if (inner) return inner;
-  }
-  return 0;
-}
+// No longer needed - mapper handles this automatically
 
 async function reload(): Promise<void> {
   loading.value = true;
   status.value = 'idle';
   errorMessage.value = '';
   try {
-    tree.value = await listCategoryTree();
+    // Use mapper to convert DTOs to formatted flat rows
+    const dtoList = await listCategoryTree();
+    flatRows.value = mapper.toCategoryFlatList(dtoList as any);
   } catch (err: unknown) {
     status.value = 'error';
     errorMessage.value = readError(err, '加载分类失败');
@@ -150,19 +118,18 @@ async function reload(): Promise<void> {
   }
 }
 
-function openCreate(parentId: number | null): void {
-  draft.id = null;
+async function openCreate(parentId: number | null): void {
+  // Use mapper to prepare empty form state
+  Object.assign(draft, mapper.toCategoryEditorForm());
   draft.parent_id = parentId;
   draft.name = '';
   draft.sort = 0;
   dialogVisible.value = true;
 }
 
-function openEdit(row: CategoryDTO): void {
-  draft.id = row.id;
-  draft.parent_id = row.parent_id;
-  draft.name = row.name;
-  draft.sort = row.sort;
+async function openEdit(row: CategoryDTO): void {
+  // Use mapper to prepare form from DTO
+  Object.assign(draft, mapper.toCategoryEditorForm(row));
   dialogVisible.value = true;
 }
 
@@ -174,26 +141,26 @@ async function save(): Promise<void> {
   saving.value = true;
   try {
     if (draft.id === null) {
-      const input: CreateCategoryInput = {
-        parent_id: draft.parent_id ?? 0,
-        name: draft.name.trim(),
-        sort: draft.sort,
-      };
-      if (input.parent_id > 0) {
-        const d = findDepth(tree.value, input.parent_id);
-        if (d >= 3) {
+      // Validate depth before creating (invariant: max 3 levels)
+      if (draft.parent_id !== null) {
+        const parentRow = flatRows.value.find(r => r.id === draft.parent_id);
+        if (parentRow && parentRow.depth >= 3) {
           ElMessage.error('分类最多 3 层');
           saving.value = false;
           return;
         }
       }
-      await createCategory(input);
-    } else {
-      const input: UpdateCategoryInput = {
+      
+      await createCategory({
+        parent_id: draft.parent_id ?? 0,
         name: draft.name.trim(),
         sort: draft.sort,
-      };
-      await updateCategory(draft.id, input);
+      });
+    } else {
+      await updateCategory(draft.id, {
+        name: draft.name.trim(),
+        sort: draft.sort,
+      });
     }
     dialogVisible.value = false;
     ElMessage.success('已保存');
