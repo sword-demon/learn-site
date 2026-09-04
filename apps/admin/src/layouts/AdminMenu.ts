@@ -41,6 +41,8 @@ const ENTRIES: readonly AdminMenuEntry[] = [
   { path: '/banners', label: '轮播图管理', permission: 'banner.manage' },
   { path: '/coupons', label: '优惠券管理', permission: 'coupon.manage' },
   { path: '/site/profile', label: '站点资料', permission: 'site.manage' },
+  { path: '/site/payment-config', label: '支付配置', permission: 'site.manage' },
+  { path: '/site/payment-whitelist', label: '支付白名单', permission: 'site.manage' },
   { path: '/site/audit', label: '审计日志', permission: 'audit.view' },
   {
     path: '/org',

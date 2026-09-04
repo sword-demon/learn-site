@@ -212,3 +212,30 @@ Commit 15 计划在 `compose.test.yaml` 加两条新 gate：(a) `composer valida
 
 **Takeaway for next time:**
 plan quality-gate commit 时三问：(1) 命令依赖的 binary 在目标 image 里装了吗？(2) 当前被门控的全部文件都已经合规吗？没有就先有一个独立的 "make resources compliant" commit。(3) 三个不要混在一起：先修 Dockerfile / 先跑 format / 再 flip gate——三个独立 commit，每个独立可回滚，符合 H4。
+
+## Lesson: 异步队列必须显式传递业务依赖
+
+**What happened in the code:**
+支付回调在请求路径由 `PaymentNotifyController` 交给 `JobDispatcher`，随后由 `PaymentNotifyConsumer` 更新订单。原实现让 consumer 直接从全局容器获取 `OrderService`，请求测试中的容器没有这项绑定时，任务虽然入队却无法完成业务处理；现在 dispatcher 把 controller 使用的同一实例显式传入 consumer，同时保留独立 worker 入口的容器回退。
+
+**The principle at work:**
+**Dependency Inversion** + **Loose Coupling**。队列消费者依赖的是订单服务契约，不应依赖某个运行上下文恰好已经注册了什么；显式传递依赖让同步派发和异步执行使用同一组业务边界。
+
+**Why it matters:**
+异步路径通常在请求返回后才暴露问题，隐式容器依赖会把装配错误变成难以关联的队列失败。显式传递依赖既让测试可控，也保留了 worker 启动时由容器装配的生产入口。
+
+**Takeaway for next time:**
+请求内创建的 dispatcher/consumer 必须显式传递请求路径已有的业务服务；只有独立 worker 入口才允许使用全局容器作为装配边界。
+
+---
+
+### Also worth noting: MySQL nullable unique 不能表达 active 唯一
+
+**In the code:**
+`20260904000001_payment_config_and_whitelist.php` 保留 `(phone, deleted_at)` 索引用于历史记录，同时增加生成列 `active_phone = IF(deleted_at IS NULL, phone, NULL)` 和唯一索引 `uk_payment_whitelist_active`。针对同一 active 手机号的第二次写入已在本地 MySQL 被 `1062` 拒绝，软删后仍可重新添加。
+
+**The principle:**
+**Fail Fast** + **数据库约束优先**。约束必须表达真实业务不变量，而不是只复述字段组合；MySQL 允许唯一索引中的多个 `NULL`，所以 nullable 组合唯一不能替代「最多一条 active 记录」。
+
+**Takeaway:**
+软删表需要 active 唯一时，先验证目标数据库的 `NULL` 语义，再用生成列或等价的非空唯一键，并留下重复写入测试。

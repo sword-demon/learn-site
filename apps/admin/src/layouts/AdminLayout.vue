@@ -113,6 +113,8 @@ const menuIcons: Record<string, Component> = {
   '/orders': ShoppingCart,
   '/learners': User,
   '/site/profile': OfficeBuilding,
+  '/site/payment-config': ShoppingCart,
+  '/site/payment-whitelist': ShoppingCart,
   '/site/audit': Files,
   '/org': OfficeBuilding,
   '/org/departments': Folder,

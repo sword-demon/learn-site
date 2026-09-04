@@ -22,6 +22,8 @@ import LearnerLearningRecordsView from '@/views/students/LearnerLearningRecordsV
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
+import PaymentConfigView from '@/views/site/PaymentConfigView.vue';
+import PaymentWhitelistView from '@/views/site/PaymentWhitelistView.vue';
 import NotificationListView from '@/views/notifications/NotificationListView.vue';
 import CheckinListView from '@/views/checkins/CheckinListView.vue';
 import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView.vue';
@@ -285,6 +287,18 @@ const routes: RouteRecordRaw[] = [
         name: 'site-profile',
         component: SiteProfileView,
         meta: { title: '站点资料', permission: 'site.manage' },
+      },
+      {
+        path: 'site/payment-config',
+        name: 'site-payment-config',
+        component: PaymentConfigView,
+        meta: { title: '支付配置', permission: 'site.manage' },
+      },
+      {
+        path: 'site/payment-whitelist',
+        name: 'site-payment-whitelist',
+        component: PaymentWhitelistView,
+        meta: { title: '支付白名单', permission: 'site.manage' },
       },
       {
         path: 'site/audit',
