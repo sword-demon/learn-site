@@ -27,7 +27,12 @@ interface PaymentAdapter
      * @return array<string,mixed> keys: type ('wechat_native'|...), plus
      *         provider-specific fields (e.g. code_url).
      */
-    public function createCharge(int $orderId, float $amount, string $currency): array;
+    public function createCharge(
+        int $orderId,
+        float $amount,
+        string $currency,
+        ?string $channel = null,
+    ): array;
 
     /**
      * Parse an inbound provider notification. Implementations should
@@ -35,4 +40,6 @@ interface PaymentAdapter
      * null when the request cannot be parsed / signature is invalid.
      */
     public function parseNotify(\support\Request $request): ?NotifyResult;
+
+    public function setSuccessHandler(callable $handler): void;
 }

@@ -53,13 +53,25 @@ final class OrderController
             return ApiResponse::fail(ApiResponse::CONFLICT, 'ALREADY_ENTITLED');
         }
         $body = $this->readJson($request);
-        $couponId = $this->parseCouponId($body['learner_coupon_id'] ?? null);
         try {
-            $payload = $this->orders->createPending($learnerId, $courseId, $couponId);
+            $couponId = $this->parseCouponId($body['learner_coupon_id'] ?? null);
+            $channel = $this->parseChannel($body['channel'] ?? null);
+            $payload = $this->orders->createPending($learnerId, $courseId, $couponId, $channel);
         } catch (BusinessException $e) {
             return ApiResponse::fail($e->apiCode, $e->getMessage());
         }
         return ApiResponse::ok($payload);
+    }
+
+    private function parseChannel(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return 'wxpay';
+        }
+        if (is_string($value) && in_array($value, ['wxpay', 'alipay'], true)) {
+            return $value;
+        }
+        throw new BusinessException(ApiResponse::VALIDATION_FAILED, 'INVALID_PAYMENT_CHANNEL');
     }
 
     private function parseCouponId(mixed $value): ?int

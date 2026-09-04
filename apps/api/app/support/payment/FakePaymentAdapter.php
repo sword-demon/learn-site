@@ -41,7 +41,7 @@ final class FakePaymentAdapter implements PaymentAdapter
         $this->delayMs = max(0, $delayMs ?? (int) (getenv('FAKE_PAYMENT_DELAY_MS') ?: 3000));
     }
 
-    public function createCharge(int $orderId, float $amount, string $currency): array
+    public function createCharge(int $orderId, float $amount, string $currency, ?string $channel = null): array
     {
         $codeUrl = sprintf('fake://wechat-native?order_id=%d&amount=%.2f&currency=%s', $orderId, $amount, $currency);
         return [

@@ -37,12 +37,12 @@ final class OrderService
         private readonly EntitlementService $entitlements,
         private readonly PaymentAdapter $payment,
         private readonly ?CouponService $coupons = null,
+        private readonly ?PaymentConfigService $paymentConfig = null,
+        private readonly ?PaymentWhitelistService $paymentWhitelist = null,
     ) {
-        if ($payment instanceof FakePaymentAdapter) {
-            $payment->setSuccessHandler(function (int $orderId, string $providerRef): void {
-                $this->markSucceeded($orderId, $providerRef);
-            });
-        }
+        $payment->setSuccessHandler(function (int $orderId, string $providerRef): void {
+            $this->markSucceeded($orderId, $providerRef);
+        });
     }
 
     /**
@@ -62,7 +62,12 @@ final class OrderService
      *     payment: {...} }
      */
     /** @return array<string, mixed> */
-    public function createPending(int $learnerId, int $courseId, ?int $learnerCouponId = null): array
+    public function createPending(
+        int $learnerId,
+        int $courseId,
+        ?int $learnerCouponId = null,
+        ?string $channel = null,
+    ): array
     {
         $course = Db::name('courses')->where('id', $courseId)->find();
         if (!$course || $course['status'] !== 'published') {
@@ -73,6 +78,12 @@ final class OrderService
         }
         if ((float) ($course['list_price'] ?? 0) <= 0) {
             throw new BusinessException('VALIDATION_FAILED', 'COURSE_PRICE_INVALID');
+        }
+        if ($this->paymentConfig?->isWhitelistOnly() === true) {
+            $phone = Db::name('accounts')->where('id', $learnerId)->value('login');
+            if (!is_string($phone) || $this->paymentWhitelist?->isWhitelisted($phone) !== true) {
+                throw new BusinessException('FORBIDDEN', 'NOT_IN_WHITELIST');
+            }
         }
 
         // A pending order already represents a confirmed price. Reuse its
@@ -95,7 +106,8 @@ final class OrderService
                 throw new BusinessException('CONFLICT', 'ORDER_PENDING_COUPON_MISMATCH');
             }
             $amount = (float) $existingPending['paid_amount'];
-            $paymentEnvelope = $this->payment->createCharge($orderId, $amount, 'CNY');
+            $paymentEnvelope = $this->payment->createCharge($orderId, $amount, 'CNY', $channel);
+            $this->syncProvider($orderId, $paymentEnvelope);
             if ($this->payment instanceof FakePaymentAdapter) {
                 $this->payment->scheduleSuccess($orderId);
             }
@@ -195,11 +207,21 @@ final class OrderService
         ]);
 
         $effectiveAmount = (float) $orderRow['paid_amount'];
-        $paymentEnvelope = $this->payment->createCharge($orderId, $effectiveAmount, 'CNY');
+        $paymentEnvelope = $this->payment->createCharge($orderId, $effectiveAmount, 'CNY', $channel);
+        $this->syncProvider($orderId, $paymentEnvelope);
         if ($this->payment instanceof FakePaymentAdapter) {
             $this->payment->scheduleSuccess($orderId);
         }
         return $this->shapeCreateResponse($orderRow, $paymentEnvelope);
+    }
+
+    /** @param array<string, mixed> $paymentEnvelope */
+    private function syncProvider(int $orderId, array $paymentEnvelope): void
+    {
+        $provider = $paymentEnvelope['provider'] ?? null;
+        if (is_string($provider) && $provider !== '') {
+            Db::name('orders')->where('id', $orderId)->update(['provider' => $provider]);
+        }
     }
 
     /**
@@ -277,9 +299,10 @@ final class OrderService
      * same transaction. Only PaymentAdapter::onNotify() should call
      * this; OrderController must not.
      */
-    public function markSucceeded(int $orderId, string $providerRef): void
+    public function markSucceeded(int $orderId, string $providerRef): bool
     {
-        Db::transaction(function () use ($orderId, $providerRef) {
+        $changed = false;
+        Db::transaction(function () use ($orderId, $providerRef, &$changed) {
             $row = Db::name('orders')->where('id', $orderId)->lock(true)->find();
             if (!$row) {
                 throw new BusinessException('NOT_FOUND', 'ORDER_NOT_FOUND');
@@ -303,6 +326,7 @@ final class OrderService
                 'succeeded_at' => $nowDt,
                 'updated_at'   => $nowDt,
             ]);
+            $changed = true;
             $this->entitlements->grant(
                 (int) $row['learner_id'],
                 (int) $row['course_id'],
@@ -321,13 +345,14 @@ final class OrderService
                 'course_id'  => (int) $row['course_id'],
             ]);
         });
+        return $changed;
     }
 
     /**
      * Mark an order as failed/cancelled/unknown. Idempotent. Does NOT
      * grant an entitlement. status must be one of failed|cancelled|unknown.
      */
-    public function markFailed(int $orderId, string $status, ?string $providerRef = null): void
+    public function markFailed(int $orderId, string $status, ?string $providerRef = null): bool
     {
         if (!in_array($status, ['failed', 'cancelled', 'unknown'], true)) {
             throw new BusinessException('VALIDATION_FAILED', 'ORDER_STATUS_INVALID');
@@ -340,7 +365,8 @@ final class OrderService
         if ($providerRef !== null) {
             $patch['provider_ref'] = $providerRef;
         }
-        Db::transaction(function () use ($orderId, $status, $patch) {
+        $changed = false;
+        Db::transaction(function () use ($orderId, $status, $patch, &$changed) {
             $row = Db::name('orders')->where('id', $orderId)->lock(true)->find();
             if (!$row) {
                 throw new BusinessException('NOT_FOUND', 'ORDER_NOT_FOUND');
@@ -353,11 +379,13 @@ final class OrderService
                 return;
             }
             Db::name('orders')->where('id', $orderId)->update($patch);
+            $changed = true;
             if ($this->coupons !== null) {
                 $this->coupons->releaseOnTerminal($orderId);
             }
             Logger::info('order.' . $status, ['order_id' => $orderId]);
         });
+        return $changed;
     }
 
     /**

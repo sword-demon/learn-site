@@ -156,6 +156,15 @@ final class CourseService
         if (!$course) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
         }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $courseRow = $course->toArray();
+            DataScopeService::assertCourseAccessibleFromScope(
+                (new DataScopeService())->resolveForCourses($actorStaffAccountId),
+                (int) $courseRow['department_id'],
+                (int) $courseRow['created_by_staff_id'],
+                $actorStaffAccountId,
+            );
+        }
         $status = (string) $course->status;
         if ($status === 'published') {
             // Idempotent re-publish: no new dispatch, no duplicate inbox rows.

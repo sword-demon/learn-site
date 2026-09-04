@@ -9,6 +9,7 @@ use App\queue\redis\NotificationFanOutConsumer;
 use App\queue\redis\PaymentNotifyConsumer;
 use App\queue\redis\PushNotificationConsumer;
 use App\queue\redis\ScheduledTaskConsumer;
+use App\service\OrderService;
 use App\support\Logger;
 
 /**
@@ -16,6 +17,10 @@ use App\support\Logger;
  */
 final class JobDispatcher
 {
+    public function __construct(private readonly ?OrderService $orders = null)
+    {
+    }
+
     /** @param array<string, mixed> $data */
     public function dispatch(string $queue, array $data): void
     {
@@ -47,7 +52,7 @@ final class JobDispatcher
         match ($queue) {
             QueueNames::NOTIFICATION_FAN_OUT => (new NotificationFanOutConsumer())->consume($data),
             QueueNames::NOTIFICATION_PUSH => (new PushNotificationConsumer())->consume($data),
-            QueueNames::PAYMENT_NOTIFY => (new PaymentNotifyConsumer())->consume($data),
+            QueueNames::PAYMENT_NOTIFY => (new PaymentNotifyConsumer($this->orders))->consume($data),
             QueueNames::SCHEDULED_TASK => (new ScheduledTaskConsumer())->consume($data),
             default => throw new \InvalidArgumentException('Unknown queue: ' . $queue),
         };

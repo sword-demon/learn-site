@@ -35,7 +35,10 @@ final class DashboardService
 
     public function __construct(private readonly DataScopeService $scope) {}
 
-    /** @param string[] $permissionCodes @return array<string, bool> */
+    /**
+     * @param string[] $permissionCodes
+     * @return array<string, bool>
+     */
     public static function visibleSections(array $permissionCodes): array
     {
         $super = in_array('*', $permissionCodes, true);
@@ -51,7 +54,10 @@ final class DashboardService
         return in_array($days, [7, 30, 90], true) ? $days : 30;
     }
 
-    /** @param string[] $permissionCodes @return array<string, mixed> */
+    /**
+     * @param string[] $permissionCodes
+     * @return array<string, mixed>
+     */
     public function summary(int $staffAccountId, array $permissionCodes, ?int $rangeDays = null): array
     {
         $visible = self::visibleSections($permissionCodes);
@@ -124,14 +130,20 @@ final class DashboardService
         return (int) $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id')->count();
     }
 
-    /** @param ScopeShape $scope @param DashboardWindow $window */
+    /**
+     * @param ScopeShape $scope
+     * @param DashboardWindow $window
+     */
     private function succeededOrderCount(array $scope, int $staffAccountId, array $window): int
     {
         $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->where('o.status', 'succeeded')->where('o.succeeded_at', '>=', $window['start'])->where('o.succeeded_at', '<', $window['end']);
         return (int) $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id')->count();
     }
 
-    /** @param ScopeShape $scope @param DashboardWindow $window */
+    /**
+     * @param ScopeShape $scope
+     * @param DashboardWindow $window
+     */
     private function paidAmount(array $scope, int $staffAccountId, array $window): float
     {
         $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->where('o.status', 'succeeded')->where('o.succeeded_at', '>=', $window['start'])->where('o.succeeded_at', '<', $window['end']);
@@ -139,7 +151,10 @@ final class DashboardService
         return round((float) $value, 2);
     }
 
-    /** @param ScopeShape $scope @return array{draft:int,published:int,unpublished:int} */
+    /**
+     * @param ScopeShape $scope
+     * @return array{draft:int,published:int,unpublished:int}
+     */
     private function courseInventory(array $scope, int $staffAccountId, bool $needed): array
     {
         if (!$needed) {
@@ -157,7 +172,11 @@ final class DashboardService
         return $result;
     }
 
-    /** @param ScopeShape $scope @param DashboardWindow $window @return list<array{date:string,created_orders:int,succeeded_orders:int,paid_amount:float}> */
+    /**
+     * @param ScopeShape $scope
+     * @param DashboardWindow $window
+     * @return list<array{date:string,created_orders:int,succeeded_orders:int,paid_amount:float}>
+     */
     private function orderTrend(array $scope, int $staffAccountId, array $window): array
     {
         $createdQuery = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->where('o.created_at', '>=', $window['start'])->where('o.created_at', '<', $window['end'])->field($this->localDayExpression('o.created_at') . ' AS day, COUNT(*) AS total')->group('day');
@@ -183,7 +202,10 @@ final class DashboardService
         return $points;
     }
 
-    /** @param ScopeShape $scope @return list<array{id:int,course_id:int,course_title:string,status:string,paid_amount:float,created_at:string}> */
+    /**
+     * @param ScopeShape $scope
+     * @return list<array{id:int,course_id:int,course_title:string,status:string,paid_amount:float,created_at:string}>
+     */
     private function recentOrders(array $scope, int $staffAccountId): array
     {
         $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->field('o.id,o.course_id,c.title AS course_title,o.status,o.paid_amount,o.created_at');

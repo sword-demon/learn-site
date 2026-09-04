@@ -28,7 +28,6 @@ final class CouponService
     private const TIMEZONE = 'Asia/Shanghai';
     private const DEFAULT_CLAIM_LIMIT = 1;
     private const DEFAULT_USE_LIMIT = 1;
-    private const DEFAULT_TOTAL_QUOTA = 10000;
     private const MAX_NAME_LENGTH = 120;
     private const MAX_GRANT_BATCH = 500;
     private const MAX_PAGE_LIMIT = 200;
@@ -209,7 +208,10 @@ final class CouponService
         return $this->shapeAdminCampaign($this->loadCampaignRow($campaignId));
     }
 
-    /** 停用活动；未使用/已锁定的实例级联作废。 @return array<string, mixed> */
+    /**
+     * 停用活动；未使用/已锁定的实例级联作废。
+     * @return array<string, mixed>
+     */
     public function disableCampaign(int $campaignId, int $staffId): array
     {
         $this->assertActor($staffId);
@@ -222,7 +224,7 @@ final class CouponService
         }
 
         $now = $this->nowDatetime();
-        Db::transaction(function () use ($campaignId, $row, $now) {
+        Db::transaction(function () use ($campaignId, $now) {
             Db::name('coupon_campaigns')
                 ->where('id', $campaignId)
                 ->where('status', self::STATUS_ACTIVE)
@@ -244,7 +246,10 @@ final class CouponService
         return $this->shapeAdminCampaign($this->loadCampaignRow($campaignId));
     }
 
-    /** 查询单个活动详情。 @return array<string, mixed> */
+    /**
+     * 查询单个活动详情。
+     * @return array<string, mixed>
+     */
     public function showCampaign(int $campaignId): array
     {
         $row = $this->loadCampaignRow($campaignId);
@@ -393,7 +398,10 @@ final class CouponService
     // 学员领取中心与我的优惠券
     // -------------------------------------------------------------------------
 
-    /** 当前可公开领取的活动列表。 @return list<array<string, mixed>> */
+    /**
+     * 当前可公开领取的活动列表。
+     * @return list<array<string, mixed>>
+     */
     public function listClaimable(int $learnerId): array
     {
         $this->assertLearner($learnerId);
@@ -820,21 +828,30 @@ final class CouponService
     // 内部辅助
     // -------------------------------------------------------------------------
 
-    /** 读取活动行（无锁）。 @return array<string, mixed>|null */
+    /**
+     * 读取活动行（无锁）。
+     * @return array<string, mixed>|null
+     */
     private function loadCampaignRow(int $campaignId): ?array
     {
         $row = Db::name('coupon_campaigns')->where('id', $campaignId)->find();
         return is_array($row) ? $row : null;
     }
 
-    /** 读取活动行并加行锁（FOR UPDATE）。 @return array<string, mixed>|null */
+    /**
+     * 读取活动行并加行锁（FOR UPDATE）。
+     * @return array<string, mixed>|null
+     */
     private function loadCampaignRowForUpdate(int $campaignId): ?array
     {
         $row = Db::name('coupon_campaigns')->where('id', $campaignId)->lock(true)->find();
         return is_array($row) ? $row : null;
     }
 
-    /** 写入适用范围关联表（分类或课程）。 @param array<string, mixed> $payload */
+    /**
+     * 写入适用范围关联表（分类或课程）。
+     * @param array<string, mixed> $payload
+     */
     private function insertScopeJunctions(int $campaignId, array $payload): void
     {
         if ($payload['scope_type'] === self::SCOPE_CATEGORY) {
@@ -860,7 +877,8 @@ final class CouponService
      * 判断活动适用范围是否包含目标课程。
      * category 范围含子树（通过 categories.path 匹配）。
      *
-     * @param array<string, mixed> $coupon  learner_coupons 与 coupon_campaigns 联结行
+     * @param array<string, mixed> $coupon learner_coupons 与 coupon_campaigns 联结行
+     * @param array<string, mixed> $course
      */
     private function campaignMatchesCourse(array $coupon, array $course): bool
     {
@@ -900,7 +918,10 @@ final class CouponService
         return false;
     }
 
-    /** 按活动统计学员已使用张数。 @return array<int, int> */
+    /**
+     * 按活动统计学员已使用张数。
+     * @return array<int, int>
+     */
     private function countUsedByLearner(int $learnerId): array
     {
         $rows = Db::name('learner_coupons')
@@ -916,7 +937,11 @@ final class CouponService
         return $out;
     }
 
-    /** 校验并规范化创建/更新活动的输入。 @param array<string, mixed> $input */
+    /**
+     * 校验并规范化创建/更新活动的输入。
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
     private function validateCampaignInput(array $input, bool $creating): array
     {
         $name = $this->validateName($input['name'] ?? null);
@@ -1082,7 +1107,10 @@ final class CouponService
         return $this->validateIso8601ToSql($value, 'expected_updated_at');
     }
 
-    /** 校验分类 ID 列表。 @return list<int> */
+    /**
+     * 校验分类 ID 列表。
+     * @return list<int>
+     */
     private function validateCategoryIds(mixed $value): array
     {
         if (!is_array($value)) {
@@ -1101,7 +1129,10 @@ final class CouponService
         return $out;
     }
 
-    /** 校验课程 ID 列表。 @return list<int> */
+    /**
+     * 校验课程 ID 列表。
+     * @return list<int>
+     */
     private function validateCourseIds(mixed $value): array
     {
         if (!is_array($value)) {
@@ -1120,7 +1151,10 @@ final class CouponService
         return $out;
     }
 
-    /** 校验学员 ID 列表；去重且不超过 MAX_GRANT_BATCH。 @return list<int> */
+    /**
+     * 校验学员 ID 列表；去重且不超过 MAX_GRANT_BATCH。
+     * @return list<int>
+     */
     private function validateLearnerIds(mixed $value): array
     {
         if (!is_array($value) || $value === []) {
@@ -1147,7 +1181,10 @@ final class CouponService
         return $out;
     }
 
-    /** 解析实例过期时间：优先 use_ends_at，否则取 claim_ends_at。 @param array<string, mixed> $row */
+    /**
+     * 解析实例过期时间：优先 use_ends_at，否则取 claim_ends_at。
+     * @param array<string, mixed> $row
+     */
     private function resolveExpiresAt(array $row): string
     {
         return $row['use_ends_at'] !== null
@@ -1184,7 +1221,10 @@ final class CouponService
         }
     }
 
-    /** 写入 audit_log（H3：管理端写操作必经）。 @param array<string,mixed> $payload */
+    /**
+     * 写入 audit_log（H3：管理端写操作必经）。
+     * @param array<string, mixed> $payload
+     */
     private function writeAudit(int $staffId, string $action, int $targetId, array $payload): void
     {
         Db::name('audit_log')->insert([
@@ -1249,7 +1289,11 @@ final class CouponService
     // 响应体整形
     // -------------------------------------------------------------------------
 
-    /** 管理端活动 DTO。 @param array<string, mixed> $row */
+    /**
+     * 管理端活动 DTO。
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
     private function shapeAdminCampaign(array $row): array
     {
         $scopeType = (string) $row['scope_type'];
@@ -1290,7 +1334,11 @@ final class CouponService
         ];
     }
 
-    /** 学习端可领取活动 DTO。 @param array<string, mixed> $row */
+    /**
+     * 学习端可领取活动 DTO。
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
     private function shapePublicCampaign(array $row, ?int $remaining): array
     {
         $scopeSummary = $this->scopeSummary($row);
@@ -1312,7 +1360,12 @@ final class CouponService
         ];
     }
 
-    /** 学员券实例 DTO。 @param array<string, mixed> $row */
+    /**
+     * 学员券实例 DTO。
+     * @param array<string, mixed> $row
+     * @param array<string, mixed>|null $campaign
+     * @return array<string, mixed>
+     */
     private function shapeLearnerCoupon(array $row, ?array $campaign): array
     {
         $campaign = $campaign ?? $this->loadCampaignRow((int) $row['campaign_id']);
@@ -1332,7 +1385,10 @@ final class CouponService
         ];
     }
 
-    /** 适用范围摘要文案（全站 / 指定分类 / 指定课程）。 @param array<string, mixed> $row */
+    /**
+     * 适用范围摘要文案（全站 / 指定分类 / 指定课程）。
+     * @param array<string, mixed> $row
+     */
     private function scopeSummary(array $row): string
     {
         $scope = (string) $row['scope_type'];

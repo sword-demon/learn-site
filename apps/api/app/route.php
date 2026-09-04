@@ -15,7 +15,6 @@ Route::group($learnerV1, function () {
     Route::post('/auth/refresh', [\App\controller\learner\AuthController::class, 'refresh']);
     Route::get('/auth/captcha', [\App\controller\learner\AuthController::class, 'captcha']);
     Route::get('/home', [\App\controller\learner\HomeController::class, 'home']);
-
 })->middleware([\App\middleware\RateLimit::class]);
 
 Route::group($learnerV1, function () {
@@ -57,6 +56,7 @@ Route::group($learnerV1, function () {
     // Phase 6 / US3 — acquisition, progress, resume (auth required)
     Route::post('/courses/{id}/start',       [\App\controller\learner\LearningController::class, 'start']);
     Route::post('/courses/{id}/orders',      [\App\controller\learner\OrderController::class, 'create']);
+    Route::get('/payment/options',           [\App\controller\learner\PaymentController::class, 'options']);
     Route::get('/orders',                    [\App\controller\learner\OrderController::class, 'index']);
     Route::get('/orders/{id}',               [\App\controller\learner\OrderController::class, 'show']);
     Route::get('/my/learning',               [\App\controller\learner\LearningController::class, 'myLearning']);
@@ -97,14 +97,18 @@ Route::group($learnerV1, function () {
     Route::get('/courses/{courseId}/checkout-coupons', [\App\controller\learner\CouponController::class, 'checkoutOptions']);
 })->middleware([\App\middleware\LearnerAuth::class]);
 
-// The fake notify seam is test-only. Production settles through the delayed
-// FakePaymentAdapter callback and must not expose a caller-controlled status
-// transition route. A future real provider will add a signed callback here.
+// Fake notify remains test-only. Z-Pay callbacks are signed and available in
+// every environment because the provider must reach them in production.
 if (getenv('APP_ENV') === 'testing') {
     Route::group('/api/internal/v1', function () {
         Route::post('/payments/fake/notify', [\App\controller\internal\PaymentNotifyController::class, 'fake']);
     });
 }
+
+Route::group('/api/internal/v1', function () {
+    Route::post('/payments/zpay/notify', [\App\controller\internal\PaymentNotifyController::class, 'zpayNotify']);
+    Route::get('/payments/zpay/return', [\App\controller\internal\PaymentNotifyController::class, 'zpayReturn']);
+});
 
 Route::get('/api/media/assets/{id}', [\App\controller\media\CourseMediaController::class, 'show'])
     ->middleware([\App\middleware\OptionalLearnerAuth::class]);
@@ -302,6 +306,14 @@ Route::group($adminV1, function () {
     Route::post('/coupons/{id}/disable', [\App\controller\admin\CouponController::class, 'disable']);
     Route::post('/coupons/{id}/grants', [\App\controller\admin\CouponController::class, 'grants']);
     Route::get('/coupon-redemptions', [\App\controller\admin\CouponController::class, 'redemptions']);
+
+    // Z-Pay Payment Configuration (site.manage)
+    Route::get('/payment/config', [\App\controller\admin\PaymentConfigController::class, 'get']);
+    Route::patch('/payment/config', [\App\controller\admin\PaymentConfigController::class, 'update']);
+    Route::get('/payment/whitelist', [\App\controller\admin\PaymentWhitelistController::class, 'index']);
+    Route::post('/payment/whitelist', [\App\controller\admin\PaymentWhitelistController::class, 'create']);
+    Route::patch('/payment/whitelist/{id}', [\App\controller\admin\PaymentWhitelistController::class, 'update']);
+    Route::delete('/payment/whitelist/{id}', [\App\controller\admin\PaymentWhitelistController::class, 'delete']);
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,
