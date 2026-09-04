@@ -81,12 +81,7 @@ onMounted(() => {
       <template #empty><el-empty description="暂无学习记录" :image-size="88" /></template>
     </el-table>
 
-    <AdminListPager
-      v-model:page="page"
-      v-model:page-size="limit"
-      :total="total"
-      @change="reload"
-    />
+    <AdminListPager v-model:page="page" v-model:page-size="limit" :total="total" @change="reload" />
   </main>
 </template>
 

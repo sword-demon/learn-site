@@ -1,6 +1,6 @@
 /**
  * UI-specific types for catalog views.
- * 
+ *
  * These extend or reshape backend DTOs for frontend consumption.
  * They differ from @learn-site/contracts by:
  * - Guaranteeing required properties (e.g., children always exists as array)
@@ -8,15 +8,11 @@
  * - Providing form-friendly structures for editors
  */
 
-import type { 
+import type {
   CategoryDTO as BackendCategoryDTO,
   CourseDTO as BackendCourseDTO,
   CourseTreeDTO as BackendCourseTreeDTO,
-  PaginatedCourses as BackendPaginatedCourses,
-  ChapterDTO as BackendChapterDTO,
-  LessonDTO as BackendLessonDTO,
   PriceMode,
-  CourseStatus,
 } from '@learn-site/contracts';
 
 // ─── Category View Types ───────────────────────────────────────
@@ -26,14 +22,14 @@ import type {
  * I1: children ALWAYS exists, even when empty [].
  */
 export interface CategoryNode extends Omit<BackendCategoryDTO, 'children'> {
-  children: CategoryNode[];  // Not optional!
+  children: CategoryNode[]; // Not optional!
 }
 
 /**
  * Flattened category row with depth info for table display.
  */
 export interface FlatCategoryRow extends Omit<BackendCategoryDTO, 'depth' | 'children'> {
-  depth: number;  // Explicit depth field for indentation
+  depth: number; // Explicit depth field for indentation
 }
 
 /**
@@ -60,12 +56,12 @@ export interface CourseTableView {
   cover_url?: string | null;
   teacher_name: string;
   summary: string;
-  
+
   // Pre-formatted fields (I4, I5)
-  formatted_price: string;      // "免费" or "¥199.00" or "¥99.00 / ¥199.00"
+  formatted_price: string; // "免费" or "¥199.00" or "¥99.00 / ¥199.00"
   status_label: '草稿' | '已发布' | '已下架';
   status_type: 'info' | 'success' | 'warning';
-  
+
   // Original fields preserved for operations
   intro_rich_text: string;
   price_mode: PriceMode;
@@ -97,10 +93,10 @@ export interface CourseEditorForm {
   sale_price?: number;
   sale_start_at?: string | null;
   sale_end_at?: string | null;
-  created_by_staff_id?: number;  // Only set on update
-  
+  created_by_staff_id?: number; // Only set on update
+
   // Children guarantees (F3: arrays never undefined)
-  chapters: CourseChapterForm[];  // Always array, not optional
+  chapters: CourseChapterForm[]; // Always array, not optional
 }
 
 /**
@@ -112,7 +108,7 @@ export interface CourseChapterForm {
   title: string;
   sort: number;
   status: 'enabled' | 'disabled';
-  lessons: CourseLessonForm[];  // Always array, never undefined
+  lessons: CourseLessonForm[]; // Always array, never undefined
 }
 
 /**
@@ -152,7 +148,7 @@ export interface MapOptions {
    * @default false
    */
   strict?: boolean;
-  
+
   /**
    * Optional logger for non-fatal mapping errors.
    * Used when strict=false to avoid silent failures in production.

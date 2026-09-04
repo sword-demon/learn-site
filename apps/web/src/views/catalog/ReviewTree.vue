@@ -439,9 +439,9 @@ watch(
 
       <el-pagination
         v-if="list.total > pageSize"
+        v-model:page-size="pageSize"
         class="review-pagination"
         :current-page="list.page"
-        v-model:page-size="pageSize"
         :page-sizes="[10, 20, 50]"
         :total="list.total"
         layout="total, sizes, prev, pager, next"

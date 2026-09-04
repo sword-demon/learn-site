@@ -35,6 +35,8 @@ import {
   FavoriteToggleDTO,
   LearnerProfileDTO,
   LearnerProfileUpdateInput,
+  PaymentChannel,
+  PaymentOptionsDTO,
 } from '@learn-site/contracts';
 import { http } from '@/api/http';
 
@@ -205,12 +207,27 @@ export async function startCourse(courseId: number): Promise<StartCourseResponse
 export async function createCourseOrder(
   courseId: number,
   learnerCouponId?: number | null,
+  channel?: PaymentChannel,
 ): Promise<CreateOrderResponseDTO> {
   try {
-    const body =
-      learnerCouponId && learnerCouponId > 0 ? { learner_coupon_id: learnerCouponId } : {};
+    const body: { learner_coupon_id?: number; channel?: PaymentChannel } = {};
+    if (learnerCouponId && learnerCouponId > 0) body.learner_coupon_id = learnerCouponId;
+    if (channel !== undefined) body.channel = channel;
     const { data } = await http.post(`/courses/${courseId}/orders`, body);
     const parsed = ApiResponse(CreateOrderResponseDTO).parse(data);
+    if (!parsed.ok) {
+      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+    }
+    return parsed.data;
+  } catch (err) {
+    throwApi(err);
+  }
+}
+
+export async function fetchPaymentOptions(): Promise<PaymentOptionsDTO> {
+  try {
+    const { data } = await http.get('/payment/options');
+    const parsed = ApiResponse(PaymentOptionsDTO).parse(data);
     if (!parsed.ok) {
       throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
     }

@@ -33,7 +33,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.{test,spec}.ts'],
+    exclude: ['**/e2e/**'],
     server: {
       deps: {
         inline: ['element-plus'],

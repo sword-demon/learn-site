@@ -7,6 +7,7 @@ const learnerApi = vi.hoisted(() => ({
   fetchCourseDetail: vi.fn(),
   createCourseOrder: vi.fn(),
   fetchOrder: vi.fn(),
+  fetchPaymentOptions: vi.fn(),
 }));
 
 const couponsApi = vi.hoisted(() => ({
@@ -66,6 +67,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   learnerApi.fetchCourseDetail.mockResolvedValue(detail);
   couponsApi.fetchCheckoutCoupons.mockResolvedValue(checkout);
+  learnerApi.fetchPaymentOptions.mockResolvedValue({
+    enabled: true,
+    enabled_channels: ['wxpay', 'alipay'],
+  });
   learnerApi.createCourseOrder.mockResolvedValue({
     order_id: 9001,
     status: 'pending',
@@ -118,11 +123,42 @@ describe('CheckoutView coupon integration', () => {
     vm.agreed = true;
     await vm.submitOrder();
 
-    expect(learnerApi.createCourseOrder).toHaveBeenCalledWith(42, 501);
+    expect(learnerApi.createCourseOrder).toHaveBeenCalledWith(42, 501, 'wxpay');
     expect(vm.selectedCouponId).toBeNull();
     expect(vm.submitError).toBe('所选优惠券已失效,请重新选择优惠券。');
     expect(wrapper.text()).toContain('所选优惠券已失效,请重新选择优惠券。');
     expect(couponsApi.fetchCheckoutCoupons).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
+  });
+
+  it('disables unavailable channels and selects the first enabled channel', async () => {
+    learnerApi.fetchPaymentOptions.mockResolvedValueOnce({
+      enabled: true,
+      enabled_channels: ['alipay'],
+    });
+    const wrapper = mount(CheckoutView);
+    await flushPromises();
+
+    expect(wrapper.get('[data-action="pay-wechat"]').classes()).toContain('is-disabled');
+    expect(wrapper.get('[data-action="pay-alipay"]').classes()).not.toContain('is-disabled');
+    expect((wrapper.vm as unknown as { paymentMethod: string }).paymentMethod).toBe('alipay');
+    wrapper.unmount();
+  });
+
+  it('sends the selected alipay channel when submitting', async () => {
+    const wrapper = mount(CheckoutView);
+    await flushPromises();
+
+    const vm = wrapper.vm as unknown as {
+      paymentMethod: string;
+      agreed: boolean;
+      submitOrder: () => Promise<void>;
+    };
+    vm.paymentMethod = 'alipay';
+    vm.agreed = true;
+    await vm.submitOrder();
+
+    expect(learnerApi.createCourseOrder).toHaveBeenCalledWith(42, null, 'alipay');
     wrapper.unmount();
   });
 

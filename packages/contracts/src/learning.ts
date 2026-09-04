@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaymentChannel } from './paymentConfig.js';
 
 // ─── Phase 6 / US3 — entitlement, progress, orders ─────────────────
 
@@ -71,15 +72,29 @@ export const LessonProgressDTO = z.object({
 export type LessonProgressDTO = z.infer<typeof LessonProgressDTO>;
 
 // POST /courses/{id}/orders
-export const PaymentEnvelopeDTO = z.object({
-  type: z.string(),
-  code_url: z.string(),
-  out_trade_no: z.string().optional(),
-  amount: z.number().optional(),
-  currency: z.string().optional(),
-  provider: z.string().optional(),
-});
+export const PaymentEnvelopeDTO = z
+  .object({
+    type: z.string(),
+    code_url: z.string().min(1).optional(),
+    redirect_url: z.string().url().optional(),
+    out_trade_no: z.string().optional(),
+    amount: z.number().optional(),
+    currency: z.string().optional(),
+    provider: z.string().optional(),
+    channel: z.enum(['wxpay', 'alipay']).optional(),
+  })
+  .refine((value) => value.code_url !== undefined || value.redirect_url !== undefined, {
+    message: 'PAYMENT_URL_REQUIRED',
+    path: ['code_url'],
+  });
 export type PaymentEnvelopeDTO = z.infer<typeof PaymentEnvelopeDTO>;
+
+// GET /payment/options
+export const PaymentOptionsDTO = z.object({
+  enabled: z.boolean(),
+  enabled_channels: z.array(PaymentChannel),
+});
+export type PaymentOptionsDTO = z.infer<typeof PaymentOptionsDTO>;
 
 export const CreateOrderResponseDTO = z.object({
   order_id: z.number().int().positive(),

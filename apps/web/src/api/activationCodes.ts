@@ -52,9 +52,9 @@ export function activationCodeErrorMessage(error: unknown): string {
     };
     const envelope = mapped.response?.data?.error;
     if (
-      envelope?.message === 'ENTITLEMENT_ALREADY_ACTIVE'
-      && typeof envelope.course_title === 'string'
-      && envelope.course_title.trim() !== ''
+      envelope?.message === 'ENTITLEMENT_ALREADY_ACTIVE' &&
+      typeof envelope.course_title === 'string' &&
+      envelope.course_title.trim() !== ''
     ) {
       return `你已拥有「${envelope.course_title.trim()}」，激活码未被消耗。`;
     }

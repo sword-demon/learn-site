@@ -63,6 +63,13 @@
             <file>tests/HomeCacheTest.php</file>
             <file>tests/CourseDeletionTest.php</file>
             <file>tests/ScheduledTaskControllerTest.php</file>
+            <file>tests/PaymentConfigServiceTest.php</file>
+            <file>tests/PaymentConfigControllerTest.php</file>
+            <file>tests/PaymentWhitelistServiceTest.php</file>
+            <file>tests/PaymentWhitelistControllerTest.php</file>
+            <file>tests/OrderServiceWhitelistTest.php</file>
+            <file>tests/ZPayPaymentAdapterTest.php</file>
+            <file>tests/PaymentNotifyControllerTest.php</file>
         </testsuite>
     </testsuites>
     <source>

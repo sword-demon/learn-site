@@ -62,9 +62,9 @@
 
     <el-pagination
       v-if="totalPages > 1"
+      v-model:page-size="limit"
       class="pager"
       :current-page="page"
-      v-model:page-size="limit"
       :page-sizes="[10, 20, 50]"
       :total="total"
       layout="total, sizes, prev, pager, next"

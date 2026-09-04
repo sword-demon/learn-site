@@ -83,3 +83,5 @@ auto-imports.d.ts
 
 # Docker Compose 本地覆盖
 compose.override.yaml
+## CE scratch space
+.context/compound-engineering/

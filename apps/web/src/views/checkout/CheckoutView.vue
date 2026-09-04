@@ -57,6 +57,7 @@
               class="checkout-payment__method"
               data-action="pay-wechat"
               data-method="wechat"
+              :disabled="!channelEnabled('wxpay')"
             >
               <span
                 class="checkout-payment__method-icon checkout-payment__method-icon--wechat"
@@ -70,6 +71,7 @@
               class="checkout-payment__method"
               data-action="pay-alipay"
               data-method="alipay"
+              :disabled="!channelEnabled('alipay')"
             >
               <span
                 class="checkout-payment__method-icon checkout-payment__method-icon--alipay"
@@ -144,7 +146,12 @@
             data-action="create-order"
             :icon="ShoppingCart"
             :loading="submitting"
-            :disabled="!agreed || submitting"
+            :disabled="
+              !agreed ||
+              submitting ||
+              !paymentOptions.enabled ||
+              paymentOptions.enabled_channels.length === 0
+            "
             @click="submitOrder"
           >
             {{ submitLabel }}
@@ -167,7 +174,15 @@
             本次订单未完成支付,可以重新确认价格后再试。
           </p>
           <div v-if="payment" class="checkout-payment__code-box">
-            <code>{{ payment.code_url }}</code>
+            <a
+              v-if="payment.redirect_url"
+              :href="payment.redirect_url"
+              target="_blank"
+              rel="noreferrer"
+            >
+              打开支付页面
+            </a>
+            <code v-else>{{ payment.code_url }}</code>
           </div>
           <p class="checkout-payment__meta">订单 #{{ order.order_id }}</p>
           <div class="checkout-payment__actions">
@@ -202,9 +217,16 @@ import { Refresh, ShoppingCart } from '@element-plus/icons-vue';
 import type {
   CreateOrderResponseDTO,
   OrderDTO,
+  PaymentChannel,
+  PaymentOptionsDTO,
   PublicCourseDetailDTO,
 } from '@learn-site/contracts';
-import { createCourseOrder, fetchCourseDetail, fetchOrder } from '@/api/learner';
+import {
+  createCourseOrder,
+  fetchCourseDetail,
+  fetchOrder,
+  fetchPaymentOptions,
+} from '@/api/learner';
 import { fetchCheckoutCoupons, type CheckoutCouponsResult } from '@/api/coupons';
 
 defineOptions({ name: 'CheckoutView' });
@@ -223,6 +245,7 @@ const submitting = ref(false);
 const refreshing = ref(false);
 const submitError = ref('');
 const paymentMethod = ref<PaymentMethod>('wechat');
+const paymentOptions = ref<PaymentOptionsDTO>({ enabled: false, enabled_channels: [] });
 const agreed = ref(false);
 const couponsLoading = ref(false);
 const couponOptions = ref<CouponOption[]>([]);
@@ -267,8 +290,28 @@ async function loadCoupons(): Promise<void> {
   }
 }
 
+function channelEnabled(channel: PaymentChannel): boolean {
+  return paymentOptions.value.enabled && paymentOptions.value.enabled_channels.includes(channel);
+}
+
+function selectAvailablePaymentMethod(): void {
+  if (channelEnabled(paymentMethod.value === 'wechat' ? 'wxpay' : 'alipay')) return;
+  const first = paymentOptions.value.enabled_channels[0];
+  if (first === 'wxpay') paymentMethod.value = 'wechat';
+  if (first === 'alipay') paymentMethod.value = 'alipay';
+}
+
+async function loadPaymentOptions(): Promise<void> {
+  try {
+    paymentOptions.value = await fetchPaymentOptions();
+    selectAvailablePaymentMethod();
+  } catch {
+    paymentOptions.value = { enabled: false, enabled_channels: [] };
+  }
+}
+
 async function load(): Promise<void> {
-  await Promise.all([loadCourse(), loadCoupons()]);
+  await Promise.all([loadCourse(), loadCoupons(), loadPaymentOptions()]);
 }
 
 watch(id, () => void load(), { immediate: true });
@@ -340,7 +383,8 @@ async function submitOrder(): Promise<void> {
   submitting.value = true;
   submitError.value = '';
   try {
-    const created = await createCourseOrder(id.value, selectedCouponId.value);
+    const channel = paymentMethod.value === 'wechat' ? 'wxpay' : 'alipay';
+    const created = await createCourseOrder(id.value, selectedCouponId.value, channel);
     payment.value = created.payment;
     await refreshOrderById(created.order_id);
     startPolling();

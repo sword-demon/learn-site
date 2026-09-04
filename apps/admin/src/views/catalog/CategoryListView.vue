@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { CategoryDTO, CategoryStatus } from '@learn-site/contracts';
 import {
@@ -118,7 +118,7 @@ async function reload(): Promise<void> {
   }
 }
 
-async function openCreate(parentId: number | null): void {
+async function openCreate(parentId: number | null): Promise<void> {
   // Use mapper to prepare empty form state
   Object.assign(draft, mapper.toCategoryEditorForm());
   draft.parent_id = parentId;
@@ -127,7 +127,7 @@ async function openCreate(parentId: number | null): void {
   dialogVisible.value = true;
 }
 
-async function openEdit(row: CategoryDTO): void {
+async function openEdit(row: CategoryDTO): Promise<void> {
   // Use mapper to prepare form from DTO
   Object.assign(draft, mapper.toCategoryEditorForm(row));
   dialogVisible.value = true;
@@ -143,14 +143,14 @@ async function save(): Promise<void> {
     if (draft.id === null) {
       // Validate depth before creating (invariant: max 3 levels)
       if (draft.parent_id !== null) {
-        const parentRow = flatRows.value.find(r => r.id === draft.parent_id);
+        const parentRow = flatRows.value.find((r) => r.id === draft.parent_id);
         if (parentRow && parentRow.depth >= 3) {
           ElMessage.error('分类最多 3 层');
           saving.value = false;
           return;
         }
       }
-      
+
       await createCategory({
         parent_id: draft.parent_id ?? 0,
         name: draft.name.trim(),

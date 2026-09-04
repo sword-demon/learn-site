@@ -11,9 +11,13 @@ describe('learning', () => {
     expect(OrderStatus.options).toEqual(['pending', 'succeeded', 'failed', 'cancelled', 'unknown']);
   });
 
-  it('PaymentEnvelopeDTO requires type + code_url', () => {
+  it('PaymentEnvelopeDTO requires type + a payment URL', () => {
     expect(
       PaymentEnvelopeDTO.safeParse({ type: 'native', code_url: 'weixin://wxpay/bizpayurl?pr=abc' })
+        .success,
+    ).toBe(true);
+    expect(
+      PaymentEnvelopeDTO.safeParse({ type: 'redirect', redirect_url: 'https://z-pay.cn/submit.php' })
         .success,
     ).toBe(true);
     expect(PaymentEnvelopeDTO.safeParse({ type: 'native' }).success).toBe(false);

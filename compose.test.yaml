@@ -20,6 +20,9 @@ x-common-db: &common-db
   DB_PASSWORD: ${MYSQL_PASSWORD}
   REDIS_HOST: redis
   REDIS_PORT: 6379
+  PAYMENT_DRIVER: fake
+  PAYMENT_KEY_ENC_KEY: ${PAYMENT_KEY_ENC_KEY:-}
+  APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
 
 services:
   api:

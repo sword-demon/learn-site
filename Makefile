@@ -12,7 +12,7 @@ API_PORT     ?= 8787
 
 .PHONY: help env bootstrap up down restart ps logs build rebuild rebuild-web rebuild-admin rebuild-api rebuild-all \
 	migrate seed backup restore rehearse-restore verify-images verify-migrations verify-runtime-boundaries \
-	health sh-api test test-api test-web test-e2e test-perf e2e-down debug prototype
+	health sh-api lint typecheck phpstan test test-api test-web test-fmt test-e2e test-perf e2e-down debug prototype
 
 help:
 	@echo "make bootstrap   # .env + 构建启动 + 迁移 + 种子 + 健康检查"
@@ -31,6 +31,9 @@ help:
 	@echo "make rehearse-restore BACKUP_DIR=... # 临时 Compose project 恢复演练"
 	@echo "make verify-images / verify-migrations / verify-runtime-boundaries"
 	@echo "make sh-api      # 进入 api 容器"
+	@echo "make lint        # 前端 ESLint"
+	@echo "make typecheck   # 前端 vue-tsc"
+	@echo "make phpstan     # Compose 内 PHPStan（512M）"
 	@echo "make test        # api-test + frontend-test"
 	@echo "make test-api    # PHPUnit (compose test profile)"
 	@echo "make test-web    # 前端 typecheck + build"
@@ -111,6 +114,16 @@ health:
 
 sh-api:
 	$(COMPOSE) exec api bash
+
+lint:
+	pnpm lint
+
+typecheck:
+	pnpm --filter @learn-site/admin typecheck
+	pnpm --filter @learn-site/web typecheck
+
+phpstan: .env
+	$(COMPOSE_TEST) run --rm --build --no-deps api-test sh -c 'php -d memory_limit=512M vendor/bin/phpstan analyse app --no-progress --memory-limit=512M'
 
 test: test-api test-web test-fmt
 

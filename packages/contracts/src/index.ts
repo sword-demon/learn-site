@@ -26,3 +26,5 @@ export * from "./banner.js";
 export * from "./coupon.js";
 export * from "./activationCode.js";
 export * from "./courseFeedback.js";
+export * from "./paymentConfig.js";
+export * from "./paymentWhitelist.js";

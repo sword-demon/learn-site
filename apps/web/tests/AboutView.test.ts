@@ -42,7 +42,9 @@ describe('AboutView', () => {
     expect(wrapper.text()).toContain('把每一次学习，收进自己的课程档案');
     expect(wrapper.text()).toContain('从一门课开始。');
     expect(wrapper.text()).toContain('拾阶学社致力于结构化在线学习。');
-    expect(wrapper.get('a[href="mailto:courses@example.test"]').text()).toBe('courses@example.test');
+    expect(wrapper.get('a[href="mailto:courses@example.test"]').text()).toBe(
+      'courses@example.test',
+    );
   });
 
   it('shows fallback copy when body_html is empty', async () => {

@@ -101,6 +101,10 @@
 - 当前 `apps/api` 是 ThinkPHP,**不要**加载该 skill;任何 ThinkPHP 改动走项目自身的 service / controller / route 约定
 - 任何 webman 修改前先按 skill 的「开始前检查」核对版本、配置与既有约定,不要按 PHP-FPM / Laravel / ThinkPHP 默认运行模型推断
 
+### H8. 队列依赖与 nullable unique 约束必须显式验证
+- 请求内创建的 dispatcher/consumer 必须显式传递已有业务服务;只有独立 worker 入口才允许回退到全局容器
+- MySQL 软删表的 active 唯一性不能仅依赖包含 nullable `deleted_at` 的复合唯一索引;使用生成列或等价的非空唯一键,并用重复写入测试验证
+
 ## 项目特定信息
 
 - **技术栈**: `apps/admin` Vue+Element Plus 管理端,`apps/web` Vue+Element Plus 学习端,`apps/api` PHP/ThinkPHP,`packages/contracts` 共享类型

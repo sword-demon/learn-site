@@ -79,5 +79,6 @@ export type LearnerOrderListDTO = z.infer<typeof LearnerOrderListDTO>;
 
 export const OrderCreateInput = z.object({
   learner_coupon_id: z.number().int().positive().nullable().optional(),
+  channel: z.enum(['wxpay', 'alipay']).optional(),
 });
 export type OrderCreateInput = z.infer<typeof OrderCreateInput>;
