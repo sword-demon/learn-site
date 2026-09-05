@@ -150,6 +150,31 @@
                 <el-icon class="el-icon--right"><ArrowRight /></el-icon>
               </el-button>
             </footer>
+
+            <el-alert
+              v-if="nextActionError"
+              title="下一步暂时读不到，请从课程目录继续。"
+              type="warning"
+              :closable="false"
+              show-icon
+              data-testid="learning-action-error"
+            />
+            <div
+              v-else-if="nextAction"
+              class="lesson-next-action"
+              data-testid="learning-action-next"
+            >
+              <span>
+                <strong>{{ nextAction.title }}</strong>
+                <small>{{ nextAction.reason }}</small>
+              </span>
+              <router-link
+                v-if="nextAction.availability !== 'unavailable'"
+                :to="nextAction.target.path"
+              >
+                继续
+              </router-link>
+            </div>
           </article>
         </section>
 
@@ -169,10 +194,12 @@ import { ArrowLeft, ArrowRight, Check, Lock } from '@element-plus/icons-vue';
 import type {
   ChapterWithLessonSummariesDTO,
   LessonDeliveryDTO,
+  LearnerNextActionDTO,
   PublicCourseDetailDTO,
 } from '@learn-site/contracts';
 import { fetchCourseDetail, fetchLesson, fetchMediaObjectUrl } from '@/api/learner';
 import { useLearningProgress } from '@/composables/useLearningProgress';
+import { fetchNextAction } from '@/api/learningAction';
 import { canParticipateInCourseQa } from '@/utils/courseAccess';
 import QuestionPanel from '@/views/learn/QuestionPanel.vue';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
@@ -202,6 +229,8 @@ const completionPending = ref(false);
 const completed = ref(false);
 const completionError = ref('');
 const mediaObjectUrl = ref('');
+const nextAction = ref<LearnerNextActionDTO['action']>(null);
+const nextActionError = ref(false);
 
 // ponytail: H1 route-param guard via computed + Number.isFinite + business bounds
 const courseId = computed(() => Number(route.params.courseId));
@@ -350,10 +379,22 @@ async function completeLesson(): Promise<void> {
   try {
     const progress = await learningProgress.completeDocument(delivery.value.kind);
     completed.value = progress.completed;
+    if (progress.completed) await refreshNextAction();
   } catch {
     completionError.value = '完成状态提交失败，请稍后重试。';
   } finally {
     completionPending.value = false;
+  }
+}
+
+async function refreshNextAction(): Promise<void> {
+  nextActionError.value = false;
+  try {
+    const result = await fetchNextAction();
+    nextAction.value = result.action ?? result.fallback;
+  } catch {
+    nextAction.value = null;
+    nextActionError.value = true;
   }
 }
 
@@ -367,6 +408,7 @@ async function openPdf(): Promise<void> {
   try {
     const progress = await learningProgress.reportDocumentOpen('pdf');
     completed.value = progress.completed;
+    if (progress.completed) void refreshNextAction();
   } catch {
     /* best-effort */
   }
@@ -383,6 +425,7 @@ function onVideoTimeUpdate(event: Event): void {
       .heartbeat(Math.floor(video.currentTime || 0), Math.floor(video.duration || 0))
       .then((progress) => {
         completed.value = progress.completed;
+        if (progress.completed) void refreshNextAction();
       })
       .catch(() => undefined);
   }, 30_000) as unknown as number;
@@ -395,6 +438,7 @@ function onVideoEnded(event: Event): void {
     .heartbeat(Math.floor(video.duration || 0), Math.floor(video.duration || 0))
     .then((progress) => {
       completed.value = progress.completed;
+      if (progress.completed) void refreshNextAction();
     })
     .catch(() => undefined);
 }
@@ -417,6 +461,7 @@ async function bootstrapLesson(): Promise<void> {
     try {
       const progress = await learningProgress.reportDocumentOpen('markdown');
       completed.value = progress.completed;
+      if (progress.completed) await refreshNextAction();
     } catch {
       /* best-effort */
     }
@@ -441,6 +486,32 @@ watch(
 </script>
 
 <style scoped>
+.lesson-next-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--seal, #34566b);
+  background: var(--paper, #fff);
+}
+
+.lesson-next-action span {
+  display: grid;
+  gap: 4px;
+}
+
+.lesson-next-action small {
+  color: var(--ink-3, #6b7b6e);
+}
+
+.lesson-next-action a {
+  flex: 0 0 auto;
+  color: var(--seal, #34566b);
+  font-weight: 700;
+}
+
 .lesson-page {
   display: grid;
   gap: 0;

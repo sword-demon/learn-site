@@ -7,6 +7,7 @@ export const LearnerNotificationKind = z.enum([
   'announcement',
   'internal_message',
   'course_published',
+  'learning_reminder',
 ])
 
 export const LearnerNotificationDTO = z.object({
@@ -15,9 +16,22 @@ export const LearnerNotificationDTO = z.object({
   title: z.string(),
   body: z.string().nullable(),
   dispatch_id: z.number().int().positive().nullable().optional(),
-  resource_type: z.enum(['question', 'course']).nullable(),
+  resource_type: z.enum([
+    'question',
+    'course',
+    'lesson',
+    'learning_map',
+    'order',
+    'coupon',
+    'course_list',
+    'map_list',
+    'coupon_list',
+    'order_list',
+  ]).nullable(),
   resource_id: z.number().int().positive().nullable(),
+  resource_path: z.string().min(1).nullable(),
   resource_available: z.boolean(),
+  resource_unavailable_reason: z.string().nullable(),
   payload: z.unknown().nullable(),
   read: z.boolean(),
   created_at: z.string(),

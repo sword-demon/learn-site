@@ -33,6 +33,18 @@ use support\think\Db;
  */
 final class OrderService
 {
+    private const PENDING_TIMEOUT_MINUTES = 15;
+
+    public static function pendingDeadline(\DateTimeImmutable $createdAt, int $timeoutMinutes = self::PENDING_TIMEOUT_MINUTES): \DateTimeImmutable
+    {
+        return $createdAt->modify('+' . max(1, $timeoutMinutes) . ' minutes');
+    }
+
+    public static function isPendingWithin(\DateTimeImmutable $createdAt, \DateTimeImmutable $now, int $timeoutMinutes = self::PENDING_TIMEOUT_MINUTES): bool
+    {
+        return $now < self::pendingDeadline($createdAt, $timeoutMinutes);
+    }
+
     public function __construct(
         private readonly EntitlementService $entitlements,
         private readonly PaymentAdapter $payment,
@@ -396,24 +408,31 @@ final class OrderService
     {
         $timeoutMinutes = max(1, $timeoutMinutes);
         $batchSize = max(1, min(200, $batchSize));
-        $cutoff = date('Y-m-d H:i:s', time() - $timeoutMinutes * 60);
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai'));
         $ids = Db::name('orders')
             ->where('status', 'pending')
-            ->where('created_at', '<=', $cutoff)
             ->order('id', 'asc')
             ->limit($batchSize)
-            ->column('id');
+            ->field('id, created_at')
+            ->select()
+            ->toArray();
 
         $cancelled = 0;
-        foreach ($ids as $id) {
-            $changed = Db::transaction(function () use ($id, $cutoff): bool {
+        foreach ($ids as $row) {
+            $id = (int) $row['id'];
+            $created = $this->storedTime((string) $row['created_at']);
+            if (self::isPendingWithin($created, $now, $timeoutMinutes)) continue;
+            $changed = Db::transaction(function () use ($id, $now, $timeoutMinutes): bool {
                 $row = Db::name('orders')
                     ->where('id', (int) $id)
                     ->where('status', 'pending')
-                    ->where('created_at', '<=', $cutoff)
                     ->lock(true)
                     ->find();
                 if (!$row) {
+                    return false;
+                }
+                $rowCreated = $this->storedTime((string) $row['created_at']);
+                if (self::isPendingWithin($rowCreated, $now, $timeoutMinutes)) {
                     return false;
                 }
 
@@ -433,6 +452,12 @@ final class OrderService
         }
 
         return $cancelled;
+    }
+
+    private function storedTime(string $value): \DateTimeImmutable
+    {
+        return (new \DateTimeImmutable($value, new \DateTimeZone('UTC')))
+            ->setTimezone(new \DateTimeZone('Asia/Shanghai'));
     }
 
     /**

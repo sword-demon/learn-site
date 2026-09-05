@@ -37,6 +37,16 @@
             <file>tests/LearningMapRouteTest.php</file>
         </testsuite>
         <testsuite name="Contract">
+            <file>tests/LearnerReminderEvaluationMigrationTest.php</file>
+            <file>tests/OrderExpiryTest.php</file>
+            <file>tests/LearningActionServiceTest.php</file>
+            <file>tests/LearningActionControllerTest.php</file>
+            <file>tests/LearningActionProgressRefreshTest.php</file>
+            <file>tests/LearningReminderRuleTest.php</file>
+            <file>tests/LearningReminderThrottleTest.php</file>
+            <file>tests/LearningReminderConcurrencyTest.php</file>
+            <file>tests/LearnerNotificationResourceTest.php</file>
+            <file>tests/LearningActionLoopIntegrationTest.php</file>
             <file>tests/RateLimitTest.php</file>
             <file>tests/MigrationReleaseGateTest.php</file>
             <file>tests/LearnerControllerTest.php</file>

@@ -34,6 +34,13 @@ final class ScheduledTaskSeeder extends AbstractSeed
                 'schedule_expression' => '0 * * * * *',
                 'params_json' => json_encode(['batch_size' => 200], JSON_UNESCAPED_UNICODE),
             ],
+            [
+                'handler_code' => 'learner.reminder.evaluate',
+                'name' => '学习行动提醒评估',
+                'description' => '每 5 分钟评估收藏、订单、优惠券和长期未学习提醒',
+                'schedule_expression' => '0 */5 * * * *',
+                'params_json' => json_encode(['batch_size' => 200], JSON_UNESCAPED_UNICODE),
+            ],
         ];
 
         foreach ($tasks as $task) {

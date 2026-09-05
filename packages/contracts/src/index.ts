@@ -6,6 +6,7 @@ export * from "./home.js";
 export * from "./tokenEnvelope.js";
 export * from "./catalog.js";
 export * from "./learning.js";
+export * from "./learningAction.js";
 export * from "./dashboard.js";
 export * from "./org.js";
 export * from "./qa.js";

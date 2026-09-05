@@ -325,6 +325,7 @@ function kindLabel(kind: LearnerNotificationDTO['kind']): string {
     announcement: '公告',
     internal_message: '站内信',
     course_published: '新课',
+    learning_reminder: '学习提醒',
   }[kind];
 }
 
@@ -341,19 +342,13 @@ function kindTagType(
     announcement: 'primary',
     internal_message: 'info',
     course_published: 'success',
+    learning_reminder: 'warning',
   };
   return types[kind];
 }
 
 function resourcePath(message: LearnerNotificationDTO): string | null {
-  if (message.resource_type === 'course' && message.resource_id) {
-    return `/courses/${message.resource_id}`;
-  }
-  if (message.resource_type === 'question') {
-    const payload = message.payload as { course_id?: number } | null;
-    return payload?.course_id ? `/courses/${payload.course_id}` : null;
-  }
-  return null;
+  return message.resource_path;
 }
 
 async function openMessageResource(message: LearnerNotificationDTO): Promise<void> {
@@ -845,7 +840,9 @@ onBeforeUnmount(() => {
             >
               查看关联内容
             </el-button>
-            <span v-else-if="message.resource_type" class="small muted">关联内容已不可用</span>
+            <span v-else-if="message.resource_type" class="small muted">
+              {{ message.resource_unavailable_reason ?? '关联内容已不可用' }}
+            </span>
           </div>
           <div style="display: grid; gap: 8px; justify-items: end">
             <time class="when small muted">{{ message.created_at }}</time>
