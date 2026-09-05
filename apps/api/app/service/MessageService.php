@@ -16,6 +16,7 @@ final class MessageService
     public const KIND_ENTITLEMENT_REVOKED = 'entitlement_revoked';
     public const KIND_ANNOUNCEMENT = 'announcement';
     public const KIND_INTERNAL_MESSAGE = 'internal_message';
+    public const KIND_LEARNING_REMINDER = 'learning_reminder';
 
     public function __construct(
         private readonly ?PushNotificationService $push = null,

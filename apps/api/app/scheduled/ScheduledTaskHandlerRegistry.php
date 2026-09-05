@@ -6,6 +6,7 @@ namespace App\scheduled;
 
 use App\scheduled\handler\ExpiredOrderCancellationHandler;
 use App\scheduled\handler\NotificationCleanupHandler;
+use App\scheduled\handler\LearningReminderHandler;
 
 /**
  * Registry of code-registered scheduled task handlers.
@@ -19,6 +20,7 @@ final class ScheduledTaskHandlerRegistry
     {
         $this->register(new NotificationCleanupHandler());
         $this->register(new ExpiredOrderCancellationHandler());
+        $this->register(new LearningReminderHandler());
     }
 
     public function register(ScheduledTaskHandler $handler): void

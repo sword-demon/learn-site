@@ -10,6 +10,41 @@
     />
 
     <div v-else>
+      <section v-if="session.loggedIn" class="learning-action" data-testid="learning-action">
+        <el-skeleton v-if="actionLoading" animated :rows="2" />
+        <el-alert
+          v-else-if="actionError"
+          title="下一步暂时读不到，请从课程目录继续。"
+          type="warning"
+          :closable="false"
+          show-icon
+        />
+        <el-alert
+          v-else-if="action?.availability === 'unavailable'"
+          :title="action.availability_reason ?? '这个学习目标暂时不可用。'"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+        <div v-else-if="action" class="learning-action__body" :data-action-state="actionState">
+          <div>
+            <p class="learning-action__eyebrow">下一步行动</p>
+            <h2>{{ action.title }}</h2>
+            <p>{{ action.reason }}</p>
+            <p v-if="actionState === 'degraded'" class="learning-action__degraded">
+              学习状态暂时不完整，已展示服务端确认的可用入口。
+            </p>
+          </div>
+          <router-link
+            v-if="action.target.path"
+            :to="action.target.path"
+            class="learning-action__link"
+          >
+            继续
+          </router-link>
+        </div>
+        <el-empty v-else description="暂时没有可继续的学习行动" />
+      </section>
       <HomeBannerCarousel v-if="banners.length > 0" :banners="banners" :headline="bannerHeadline" />
 
       <div class="home-grid">
@@ -121,8 +156,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
-import type { CategoryNode, CourseListItemDTO } from '@learn-site/contracts';
+import type { CategoryNode, CourseListItemDTO, LearnerNextActionDTO } from '@learn-site/contracts';
 import { fetchCategoryCourses } from '@/api/learner';
+import { fetchNextAction } from '@/api/learningAction';
 import { useLoginFamilyStore } from '@/api/login';
 import { useHomeStore } from '@/stores/home';
 import CourseEntryRow from '@/components/CourseEntryRow.vue';
@@ -140,6 +176,10 @@ const bannerHeadline = computed(() => intro.value?.title?.trim() ?? '');
 const selectedId = ref<number | null>(null);
 const courses = ref<CourseListItemDTO[]>([]);
 const allCourseTotal = ref(0);
+const action = ref<Awaited<ReturnType<typeof fetchNextAction>>['action']>(null);
+const actionState = ref<LearnerNextActionDTO['state'] | null>(null);
+const actionLoading = ref(false);
+const actionError = ref(false);
 const listLoading = ref(false);
 const listError = ref(false);
 const MAP_FALLBACKS = [
@@ -251,12 +291,77 @@ onMounted(async () => {
   selectedId.value = parseCatQuery();
   allCourseTotal.value = recentCourses.value.length;
   await loadCourses(selectedId.value);
+  if (session.loggedIn) {
+    actionLoading.value = true;
+    try {
+      const result = await fetchNextAction();
+      actionState.value = result.state;
+      action.value = result.action ?? result.fallback;
+    } catch {
+      actionError.value = true;
+    } finally {
+      actionLoading.value = false;
+    }
+  }
 });
 </script>
 
 <style scoped>
 .home-page {
   padding-bottom: 48px;
+}
+
+.learning-action {
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--seal);
+  background: var(--card);
+}
+
+.learning-action__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.learning-action__body h2,
+.learning-action__body p {
+  margin: 0;
+}
+
+.learning-action__body h2 {
+  margin-top: 4px;
+  color: var(--seal);
+}
+
+.learning-action__body p:not(.learning-action__eyebrow):not(.learning-action__degraded) {
+  margin-top: 8px;
+  color: var(--ink-2);
+}
+
+.learning-action__eyebrow,
+.learning-action__degraded {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.learning-action__degraded {
+  margin-top: 8px !important;
+}
+
+.learning-action__link {
+  flex: 0 0 auto;
+  color: var(--seal);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .learning-action__body {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .home-sidebar {
