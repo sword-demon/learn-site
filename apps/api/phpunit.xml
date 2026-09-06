@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
          displayDetailsOnTestsThatTriggerWarnings="true">
@@ -82,6 +82,14 @@
             <file>tests/ZPayPaymentAdapterTest.php</file>
             <file>tests/PaymentNotifyControllerTest.php</file>
             <file>tests/OpsInboxServiceTest.php</file>
+            <file>tests/DistributionConfigValidatorTest.php</file>
+            <file>tests/DistributionConfigServiceTest.php</file>
+            <file>tests/DistributionMigrationTest.php</file>
+            <file>tests/ShareShortCodeTest.php</file>
+            <file>tests/ShareEntryServiceTest.php</file>
+            <file>tests/ShareLandingControllerTest.php</file>
+            <file>tests/ReferralBindingServiceTest.php</file>
+            <file>tests/HelperMaskingTest.php</file>
         </testsuite>
     </testsuites>
     <source>

@@ -15,6 +15,8 @@ Route::group($learnerV1, function () {
     Route::post('/auth/refresh', [\App\controller\learner\AuthController::class, 'refresh']);
     Route::get('/auth/captcha', [\App\controller\learner\AuthController::class, 'captcha']);
     Route::get('/home', [\App\controller\learner\HomeController::class, 'home']);
+    // 016-course-distribution — public share landing
+    Route::get('/r/{code}', [\App\controller\public\ShareLandingController::class, 'show']);
 })->middleware([\App\middleware\RateLimit::class]);
 
 Route::group($learnerV1, function () {
@@ -91,6 +93,11 @@ Route::group($learnerV1, function () {
 
     Route::get('/checkins', [\App\controller\learner\CheckinController::class, 'index']);
     Route::get('/checkins/{id}', [\App\controller\learner\CheckinController::class, 'show']);
+
+    // 016-course-distribution — learner-owned share entries
+    Route::get('/me/share-entries', [\App\controller\learner\ShareEntryController::class, 'index']);
+    Route::post('/me/share-entries', [\App\controller\learner\ShareEntryController::class, 'store']);
+    Route::delete('/me/share-entries/{id}', [\App\controller\learner\ShareEntryController::class, 'revoke']);
 
     // 009-learner-coupons — learner claim center, my coupons, checkout options
     Route::get('/coupons/claimable', [\App\controller\learner\CouponController::class, 'claimable']);

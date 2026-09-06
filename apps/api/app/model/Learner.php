@@ -7,6 +7,7 @@ use support\think\Model;
 
 /**
  * @property int $account_id
+ * @property int|null $referrer_learner_id
  * @property string|null $nickname
  * @property string|null $avatar_url
  * @property int $show_on_course

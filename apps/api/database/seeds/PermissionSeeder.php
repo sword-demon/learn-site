@@ -52,6 +52,9 @@ final class PermissionSeeder extends AbstractSeed
         ['code' => 'course_feedback.manage', 'module' => 'catalog', 'description' => 'View and process course feedback'],
         ['code' => 'dashboard.view', 'module' => 'site', 'description' => 'Read admin dashboard'],
         ['code' => 'ops_inbox.view', 'module' => 'site', 'description' => 'View operations exception inbox'],
+        ['code' => 'distribution.config', 'module' => 'distribution', 'description' => 'Manage distribution config & course overrides'],
+        ['code' => 'distribution.reconcile', 'module' => 'distribution', 'description' => 'Reconcile commissions and void'],
+        ['code' => 'distribution.audit', 'module' => 'distribution', 'description' => 'Read distribution audit log'],
     ];
 
     public function run(): void
