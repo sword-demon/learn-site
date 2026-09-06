@@ -239,3 +239,18 @@ plan quality-gate commit 时三问：(1) 命令依赖的 binary 在目标 image 
 
 **Takeaway:**
 软删表需要 active 唯一时，先验证目标数据库的 `NULL` 语义，再用生成列或等价的非空唯一键，并留下重复写入测试。
+
+---
+
+### H12: unplugin-vue-components ElementPlusResolver + element-plus@2.14.5 CSS path 的死结
+
+**In the code:**
+`apps/web/src/main.ts` 移除 `import ElementPlus from 'element-plus'` 与 `app.use(ElementPlus)`。`apps/web/vite.config.ts` 改用自定义 `elementPlusLocalResolver()`：每命中一个 `ElXxx`，生成 `import { ElXxx } from 'element-plus/es'` 加两个 sideEffects（base css + 组件 css.mjs）；`ElIcon` 单独走 `element-plus/es/components/icon/index.mjs`，`ElIconXxx` 走 `@element-plus/icons-vue`。新增 `tests/css-stub.ts` 空模块，配合 Vite 插件 `element-plus-css-stub`（`resolveId` 把 `element-plus/theme-chalk/*.css` 重写到 stub）与 `test.server.deps.inline: [/element-plus/]`，让 vite-node 在 node 环境也走 vite 解析链。
+
+**The principle:**
+**库 API 优先核对锁定版本、已安装源码、类型定义和现有测试**——本项目锁的是 element-plus@2.14.5 + unplugin-vue-components 0.27.5。前者的 CSS 路径是 `style/css.mjs`（不是官方 resolver 生成的 `style/css`）；后者的子路径导出没有 `./utils`。盲目套官方 resolver + importStyle:'css' 走不通；写自定义 resolver 前必须 grep `node_modules/element-plus/es/components/<name>/style/` 实际产物。
+
+**Takeaway:**
+- 库版本换了之后，resolver 默认 CSS 路径必须现地 grep 确认；不要相信 docstring。
+- vitest 在 `environment: 'node'` 下不会加载 `.css`；CSS sideEffects 需要：`vite plugin 的 resolveId 拦截 import specifier` + `test.server.deps.inline: [/^<pkg>$/]`。
+- `import Xxx from '<lib>'` + `app.use(Xxx)` 是 entry gzip 的最大单点来源——只要 `<lib>` 用了 install() 全量注册，删了 app.use 没用，必须连 import 一起砍。
