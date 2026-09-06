@@ -44,6 +44,36 @@ final class ProgressService
     {
     }
 
+    public function recalculateCourseEnrollments(int $courseId): void
+    {
+        $ids = $this->effectiveLessonIds($courseId);
+        $total = count($ids);
+        $now = (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai')))->format('Y-m-d H:i:s');
+        Db::transaction(function () use ($courseId, $ids, $total, $now) {
+            Db::name('course_enrollments')->where('course_id', $courseId)->chunk(100, function ($rows) use ($ids, $total, $now) {
+                foreach ($rows as $row) {
+                    $locked = Db::name('course_enrollments')->where('id', (int) $row['id'])->lock(true)->find();
+                    if (!$locked) { continue; }
+                    $done = $ids === [] ? 0 : (int) Db::name('lesson_progresses')->where('learner_id', (int) $locked['learner_id'])->where('completed', 1)->whereIn('lesson_id', $ids)->count();
+                    Db::name('course_enrollments')->where('id', (int) $locked['id'])->update([
+                        'progress_percent' => $total > 0 ? (int) floor(min(100, $done * 100 / $total)) : 0,
+                        'completed_at' => $locked['completed_at'] ?: ($total > 0 && $done >= $total ? $now : null),
+                        'updated_at' => $now,
+                    ]);
+                }
+            });
+        });
+    }
+
+    /** @return list<int> */
+    private function effectiveLessonIds(int $courseId): array
+    {
+        $lessons = Db::name('lessons')->alias('l')->join('chapters c', 'c.id = l.chapter_id')
+            ->leftJoin('assets a', 'a.id = l.asset_id')->where('c.course_id', $courseId)
+            ->field('l.*,c.status AS chapter_status,a.status AS asset_status')->select()->toArray();
+        return array_values(array_map(static fn(array $l): int => (int) $l['id'], array_filter($lessons, CoursePublishChecklistService::isEffectiveLesson(...))));
+    }
+
     /**
      * Return the learner's durable course records together with the newest
      * entitlement state. Revoked free access remains visible so the learner
@@ -279,24 +309,10 @@ final class ProgressService
     {
         $now = date('Y-m-d H:i:s');
 
-        // Total enabled lessons under this course.
-        $total = (int) Db::name('lessons')
-            ->where('chapter_id', 'in', function ($q) use ($courseId) {
-                $q->name('chapters')->where('course_id', $courseId)->field('id');
-            })
-            ->where('status', 'enabled')
-            ->count();
-
-        // Completed lesson_progresses by this learner for those lessons.
-        $done = (int) Db::name('lesson_progresses')
-            ->where('learner_id', $learnerId)
-            ->where('completed', 1)
-            ->where('lesson_id', 'in', function ($q) use ($courseId) {
-                $q->name('lessons')->where('chapter_id', 'in', function ($qq) use ($courseId) {
-                    $qq->name('chapters')->where('course_id', $courseId)->field('id');
-                })->field('id');
-            })
-            ->count();
+        $ids = $this->effectiveLessonIds($courseId);
+        $total = count($ids);
+        $done = $ids === [] ? 0 : (int) Db::name('lesson_progresses')
+            ->where('learner_id', $learnerId)->where('completed', 1)->whereIn('lesson_id', $ids)->count();
 
         $percent = $total > 0 ? (int) floor(min(100, ($done * 100) / $total)) : 0;
         $completedAt = ($total > 0 && $done >= $total) ? $now : null;

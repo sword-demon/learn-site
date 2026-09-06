@@ -10,11 +10,13 @@ const catalogApi = vi.hoisted(() => ({
   deleteCourse: vi.fn(),
   listCourses: vi.fn(),
   publishCourse: vi.fn(),
+  fetchPublishChecklist: vi.fn(),
   unpublishCourse: vi.fn(),
 }));
 const routerApi = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock('@/api/catalog', () => catalogApi);
+vi.mock('@/api/http', () => ({ hasPermission: () => true }));
 vi.mock('vue-router', () => ({ useRouter: () => routerApi }));
 
 import CourseListView from '@/views/catalog/CourseListView.vue';
@@ -40,6 +42,22 @@ const course: CourseDTO = {
 };
 
 describe('CourseListView deletion', () => {
+  it('opens a checklist without immediately publishing', async () => {
+    catalogApi.listCourses.mockResolvedValue({ items: [course], total: 1, page: 1, limit: 20 });
+    catalogApi.fetchPublishChecklist.mockRejectedValue(new Error('test'));
+    const wrapper = mount(CourseListView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '发布')
+      ?.trigger('click');
+    await flushPromises();
+    expect(catalogApi.fetchPublishChecklist).toHaveBeenCalledWith(12);
+    expect(catalogApi.publishCourse).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();

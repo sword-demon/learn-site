@@ -35,6 +35,7 @@ final class AuthorizeLeakTest extends TestCase
     public static function permissionCases(): iterable
     {
         yield 'course list' => ['/api/admin/v1/courses', 'GET', 'course.view'];
+        yield 'publish checklist' => ['/api/admin/v1/courses/42/publish-checklist', 'GET', 'course.view'];
         yield 'course create' => ['/api/admin/v1/courses', 'POST', 'course.manage'];
         yield 'course update' => ['/api/admin/v1/courses/42', 'PATCH', 'course.manage'];
         yield 'course publish' => ['/api/admin/v1/courses/42/publish', 'POST', 'course.publish'];

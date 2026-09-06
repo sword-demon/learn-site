@@ -66,6 +66,7 @@
             <file>tests/CourseStudentTest.php</file>
             <file>tests/NotificationContractTest.php</file>
             <file>tests/CoursePublishNotifyTest.php</file>
+            <file>tests/CoursePublishChecklistServiceTest.php</file>
             <file>tests/ActivationCodeTest.php</file>
             <file>tests/CourseFeedbackTest.php</file>
             <file>tests/TokenIndexKickTest.php</file>
@@ -80,6 +81,7 @@
             <file>tests/OrderServiceWhitelistTest.php</file>
             <file>tests/ZPayPaymentAdapterTest.php</file>
             <file>tests/PaymentNotifyControllerTest.php</file>
+            <file>tests/OpsInboxServiceTest.php</file>
         </testsuite>
     </testsuites>
     <source>

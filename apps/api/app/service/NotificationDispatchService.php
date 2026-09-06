@@ -246,7 +246,7 @@ final class NotificationDispatchService
     }
 
     /** @return array{count:int,max_id:int|null} */
-    private function activeLearnerSnapshot(): array
+    public function activeLearnerSnapshot(): array
     {
         $row = Db::name('accounts')
             ->alias('a')

@@ -10,4 +10,5 @@ final class QueueNames
     public const NOTIFICATION_PUSH = 'notification.push';
     public const PAYMENT_NOTIFY = 'payment.notify';
     public const SCHEDULED_TASK = 'scheduled.task';
+    public const OPS_INBOX_SWEEP = 'ops-inbox-sweep';
 }

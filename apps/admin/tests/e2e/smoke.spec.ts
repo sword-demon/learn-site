@@ -28,6 +28,8 @@ async function login(page: Page, account: string, password: string): Promise<voi
 
 test.describe.serial('管理端核心旅程', () => {
   test('超级管理员通过验证码登录并发布完整草稿课程', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
     await login(page, OWNER_ACCOUNT, OWNER_PASSWORD);
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByText('学习平台 · 管理端')).toBeVisible();
@@ -38,9 +40,73 @@ test.describe.serial('管理端核心旅程', () => {
     const courseRow = page.getByRole('row').filter({ hasText: DRAFT_COURSE });
     await expect(courseRow).toContainText('草稿');
     await courseRow.getByRole('button', { name: '发布', exact: true }).click();
-    await page.getByRole('button', { name: '确定', exact: true }).click();
+    await expect(page.getByRole('dialog')).toContainText('在册学员');
+    await expect(page.getByRole('dialog')).toContainText('已有访问权');
+    await expect(courseRow).toContainText('草稿');
+    await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click();
+    await expect(courseRow).toContainText('草稿');
+    await courseRow.getByRole('button', { name: '发布', exact: true }).click();
+    await expect(page.getByRole('dialog')).toContainText('在册学员');
+    await page.screenshot({ path: '/tmp/course-publish-desktop.png', animations: 'disabled' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    const dialogBox = await page.getByRole('dialog').boundingBox();
+    expect(dialogBox!.width).toBeLessThanOrEqual(390);
+    await page.screenshot({ path: '/tmp/course-publish-mobile.png', animations: 'disabled' });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole('button', { name: '确认发布', exact: true }).click();
 
     await expect(courseRow).toContainText('已发布');
+    expect(errors).toEqual([]);
+  });
+
+  test('发布接口重算过期清单并要求确认警告', async ({ page }) => {
+    await login(page, OWNER_ACCOUNT, OWNER_PASSWORD);
+    const token = await page.evaluate(
+      () => JSON.parse(localStorage.getItem('learn-site.admin.auth')!).access as string,
+    );
+    const headers = { Authorization: `Bearer ${token}` };
+    const url = '/api/admin/v1/courses/1';
+    expect((await page.request.post(`${url}/unpublish`, { headers })).status()).toBe(200);
+    const a = (await (await page.request.get(`${url}/publish-checklist`, { headers })).json()).data;
+    const b = (await (await page.request.get(`${url}/publish-checklist`, { headers })).json()).data;
+    expect(a.content_fingerprint).toBe(b.content_fingerprint);
+    expect(a.hard_error_count).toBe(0);
+    expect(
+      (await page.request.patch(url, { headers, data: { intro_rich_text: '' } })).status(),
+    ).toBe(200);
+    const blocked = await page.request.post(`${url}/publish`, { headers });
+    expect(blocked.status()).toBe(422);
+    expect((await blocked.json()).error.checklist.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'INTRO_REQUIRED', severity: 'hard' }),
+      ]),
+    );
+    expect(
+      (
+        await page.request.patch(url, { headers, data: { intro_rich_text: '<p>Restored</p>' } })
+      ).status(),
+    ).toBe(200);
+    const tree = (await (await page.request.get(url, { headers })).json()).data;
+    const lesson = await page.request.post(`${url}/lessons`, {
+      headers,
+      data: {
+        chapter_id: tree.chapters[0].id,
+        title: 'Incomplete',
+        content_type: 'markdown',
+        body_markdown: '',
+        status: 'enabled',
+      },
+    });
+    expect(lesson.status()).toBe(200);
+    const warning = await page.request.post(`${url}/publish`, { headers });
+    expect(warning.status()).toBe(422);
+    expect((await warning.json()).error.message).toBe('WARNINGS_NOT_ACKNOWLEDGED');
+    expect(
+      (
+        await page.request.post(`${url}/publish`, { headers, data: { acknowledge_warnings: true } })
+      ).status(),
+    ).toBe(200);
+    expect((await page.request.post(`${url}/publish`, { headers })).status()).toBe(200);
   });
 
   test('受限员工只看到已授权菜单和本部门课程', async ({ page }) => {

@@ -149,6 +149,18 @@ final class ProgressServiceTest extends TestCase
         self::assertSame(33, (int) $enrollment['progress_percent']);
     }
 
+    public function testRecalculate_usesEffectiveLessonsAndStickyCompletedAt(): void
+    {
+        $this->service->reportProgress($this->learnerId, $this->videoLessonId, 'video', 100, 95, false);
+        Db::name('course_enrollments')->where('learner_id', $this->learnerId)->where('course_id', $this->courseId)->update(['completed_at' => '2026-01-01 00:00:00']);
+        Db::name('lessons')->where('id', $this->videoLessonId)->update(['status' => 'disabled']);
+        $this->service->recalculateCourseEnrollments($this->courseId);
+        $row = Db::name('course_enrollments')->where('learner_id', $this->learnerId)->where('course_id', $this->courseId)->find();
+        self::assertSame(0, (int) $row['progress_percent']);
+        self::assertSame('2026-01-01 00:00:00', $row['completed_at']);
+        self::assertSame(1, (int) Db::name('lesson_progresses')->where('learner_id', $this->learnerId)->where('lesson_id', $this->videoLessonId)->value('completed'));
+    }
+
     public function testInactiveEntitlementCannotWriteProgress(): void
     {
         Db::name('course_entitlements')
@@ -262,6 +274,12 @@ final class ProgressServiceTest extends TestCase
 
     private function insertLesson(int $chapterId, string $title, string $type, int $duration, string $now): int
     {
+        $assetId = $type === 'markdown' ? null : (int) Db::name('assets')->insertGetId([
+            'kind' => $type, 'storage_path' => 'uploads/2026/09/1234567890abcdef.' . ($type === 'pdf' ? 'pdf' : 'mp4'),
+            'mime_type' => $type === 'pdf' ? 'application/pdf' : 'video/mp4', 'status' => 'ready',
+            'created_by_staff_id' => Db::name('courses')->where('id', $this->courseId)->value('created_by_staff_id'),
+            'created_at' => $now, 'updated_at' => $now,
+        ]);
         return (int) Db::name('lessons')->insertGetId([
             'chapter_id' => $chapterId,
             'title' => $title,
@@ -269,7 +287,7 @@ final class ProgressServiceTest extends TestCase
             'status' => 'enabled',
             'content_type' => $type,
             'body_markdown' => $type === 'markdown' ? '# Test' : null,
-            'asset_id' => null,
+            'asset_id' => $assetId,
             'is_preview' => 0,
             'duration_seconds' => $duration,
             'created_at' => $now,

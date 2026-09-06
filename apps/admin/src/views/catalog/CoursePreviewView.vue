@@ -12,7 +12,14 @@
         >
           下架
         </el-button>
-        <el-button v-else type="success" :loading="working" @click="onPublish"> 发布 </el-button>
+        <el-button
+          v-else-if="hasPermission('course.publish')"
+          type="success"
+          :loading="working"
+          @click="onPublish"
+        >
+          发布
+        </el-button>
       </div>
     </header>
 
@@ -71,6 +78,12 @@
     </article>
 
     <el-empty v-else description="课程不存在" />
+    <CoursePublishChecklistDialog
+      v-if="tree.id"
+      v-model="publishing"
+      :course-id="tree.id"
+      @published="reload"
+    />
   </section>
 </template>
 
@@ -84,7 +97,10 @@ import type {
   LessonContentType,
   PriceMode,
 } from '@learn-site/contracts';
-import { getCourseTree, publishCourse, unpublishCourse } from '@/api/catalog';
+import { getCourseTree, unpublishCourse } from '@/api/catalog';
+import { hasPermission } from '@/api/http';
+import CoursePublishChecklistDialog from './CoursePublishChecklistDialog.vue';
+const publishing = ref(false);
 
 const route = useRoute();
 const router = useRouter();
@@ -175,21 +191,7 @@ async function reload(): Promise<void> {
 }
 
 async function onPublish(): Promise<void> {
-  try {
-    await ElMessageBox.confirm('确定发布该课程吗？', '发布', { type: 'info' });
-  } catch {
-    return;
-  }
-  working.value = true;
-  try {
-    await publishCourse(Number(route.params.id));
-    ElMessage.success('已发布');
-    await reload();
-  } catch (err: unknown) {
-    ElMessage.error(readError(err, '发布失败'));
-  } finally {
-    working.value = false;
-  }
+  publishing.value = true;
 }
 
 async function onUnpublish(): Promise<void> {

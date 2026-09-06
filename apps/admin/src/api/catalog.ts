@@ -25,6 +25,8 @@ import type {
 } from '@learn-site/contracts';
 import {
   ApiOk,
+  PublishChecklistDTO,
+  PublishCourseInput,
   CategoryDTO as CategorySchema,
   CourseDTO as CourseSchema,
   CourseTreeDTO as CourseTreeSchema,
@@ -61,6 +63,12 @@ const CategoryFlatEnvelope = ApiOk(PaginatedCategoriesSchema);
 
 const CourseIndexEnvelope = ApiOk(PaginatedCoursesSchema);
 const CourseTreeEnvelope = ApiOk(CourseTreeSchema);
+const PublishChecklistEnvelope = ApiOk(PublishChecklistDTO);
+
+export async function fetchPublishChecklist(id: number): Promise<PublishChecklistDTO> {
+  const response = await http.get<unknown>(`/courses/${id}/publish-checklist`);
+  return PublishChecklistEnvelope.parse(response.data).data;
+}
 const CourseEnvelope = ApiOk(CourseSchema);
 const CourseDeleteEnvelope = ApiOk(CourseDeletionResultSchema);
 const ChapterIndexEnvelope = ApiOk(z.object({ items: z.array(ChapterSchema) }));
@@ -166,8 +174,14 @@ export async function updateCourse(id: number, input: UpdateCourseInput): Promis
   return CourseEnvelope.parse(response.data).data;
 }
 
-export async function publishCourse(id: number): Promise<CourseDTO> {
-  const response = await http.post<unknown>(`/courses/${id}/publish`);
+export async function publishCourse(
+  id: number,
+  input: z.input<typeof PublishCourseInput> = {},
+): Promise<CourseDTO> {
+  const response = await http.post<unknown>(
+    `/courses/${id}/publish`,
+    PublishCourseInput.parse(input),
+  );
   return CourseEnvelope.parse(response.data).data;
 }
 

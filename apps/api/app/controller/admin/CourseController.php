@@ -58,12 +58,23 @@ final class CourseController
         ));
     }
 
-    public function publish(Request $request, string $id): \support\Response
+    public function publishChecklist(Request $request, string $id): \support\Response
     {
-        return $this->wrap(fn() => $this->service->publishCourse(
+        return $this->wrap(fn() => $this->service->publishChecklist(
             $this->id($id),
             (int) ($request->account_id ?? 0),
         ));
+    }
+
+    public function publish(Request $request, string $id): \support\Response
+    {
+        return $this->wrap(function () use ($request, $id) {
+            $input = self::readJson($request);
+            if (array_key_exists('acknowledge_warnings', $input) && !is_bool($input['acknowledge_warnings'])) {
+                throw new BusinessException('VALIDATION_FAILED', 'ACKNOWLEDGE_WARNINGS_INVALID');
+            }
+            return $this->service->publishCourse($this->id($id), (int) ($request->account_id ?? 0), $input['acknowledge_warnings'] ?? false);
+        });
     }
 
     public function unpublish(Request $request, string $id): \support\Response
@@ -157,11 +168,13 @@ final class CourseController
         try {
             return ApiResponse::ok($fn());
         } catch (BusinessException $e) {
-            return ApiResponse::fail(
+            $response = ApiResponse::fail(
                 $this->mapApiCode($e->apiCode),
                 $e->getMessage(),
                 request()->request_id ?? null,
+                $e->details,
             );
+            return isset($e->details['checklist']) ? $response->withStatus(422) : $response;
         } catch (\Throwable $e) {
             Logger::error('course.controller.failed', [
                 'err' => $e->getMessage(),

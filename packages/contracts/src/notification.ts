@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const LearnerNotificationKind = z.enum([
   'question_update',
   'progress_reset',
+  'progress_catalog_changed',
   'entitlement_revoked',
   'announcement',
   'internal_message',

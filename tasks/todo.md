@@ -1,3 +1,24 @@
+# 课程发布核验清单 (015)
+
+日期: 2026-09-06
+范围: 发布前确定性课程清单、硬错误闸门、影响栏 (地图 / 访问权 / 进度 / 课程发布消息)。规格: `specs/015-course-publish-checklist/`。
+
+## 计划
+
+- [x] `$speckit-specify`: 写 `spec.md` 与质量清单
+- [x] `$speckit-plan`: research / data-model / contracts / quickstart / plan.md
+- [x] `$speckit-tasks`: `tasks.md` T001–T073 (analyze 补丁后仍 73 项, US2 插入过期预览/人数不可用测试并前移 snapshot)
+执行进度与验证结果以 [015 tasks.md](../specs/015-course-publish-checklist/tasks.md) 为唯一来源。
+
+## 审查
+
+规格质量清单 16 项全部通过. 无 `[NEEDS CLARIFICATION]`. 紧急发布定义为「硬错误为零时可确认警告后发布」, 不设忽略硬错误通道.
+计划闸门 ALL PASS. 无新表、无新依赖. 预览 GET + 发布 POST 共用 `CoursePublishChecklistService`.
+analyze 补丁: 在册人数走实时 snapshot (T022, 确认发布之前); 过期预览测试 T031; 优惠窗/空章节硬错误并入 T016; 同文件去掉 `[P]`.
+MVP = US1 (T001–T026).
+
+---
+
 # API 十万级规模扩展 (008)
 
 日期: 2026-09-01

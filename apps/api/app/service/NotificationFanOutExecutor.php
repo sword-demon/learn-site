@@ -128,6 +128,7 @@ final class NotificationFanOutExecutor
                 'fan_out_finished_at' => $finished,
                 'fan_out_error' => null,
             ]);
+            (new OpsInboxService())->markRetrySucceeded($dispatchId);
         } catch (\Throwable $e) {
             Logger::error('notification.fan_out.failed', [
                 'dispatch_id' => $dispatchId,
@@ -138,6 +139,14 @@ final class NotificationFanOutExecutor
                 'fan_out_error' => mb_substr($e->getMessage(), 0, 500),
                 'fan_out_finished_at' => date('Y-m-d H:i:s'),
             ]);
+            try {
+                (new OpsInboxService())->maybeAutoRetry($dispatchId);
+            } catch (\Throwable $retryError) {
+                Logger::warning('ops_inbox.auto_retry_failed', [
+                    'dispatch_id' => $dispatchId,
+                    'err' => $retryError->getMessage(),
+                ]);
+            }
             throw $e;
         }
     }

@@ -9,6 +9,7 @@ use App\queue\redis\NotificationFanOutConsumer;
 use App\queue\redis\PaymentNotifyConsumer;
 use App\queue\redis\PushNotificationConsumer;
 use App\queue\redis\ScheduledTaskConsumer;
+use App\queue\redis\OpsInboxSweepConsumer;
 use App\service\OrderService;
 use App\support\Logger;
 
@@ -54,6 +55,7 @@ final class JobDispatcher
             QueueNames::NOTIFICATION_PUSH => (new PushNotificationConsumer())->consume($data),
             QueueNames::PAYMENT_NOTIFY => (new PaymentNotifyConsumer($this->orders))->consume($data),
             QueueNames::SCHEDULED_TASK => (new ScheduledTaskConsumer())->consume($data),
+            QueueNames::OPS_INBOX_SWEEP => (new OpsInboxSweepConsumer())->consume($data),
             default => throw new \InvalidArgumentException('Unknown queue: ' . $queue),
         };
     }

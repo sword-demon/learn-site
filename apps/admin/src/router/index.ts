@@ -307,6 +307,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '审计日志', permission: 'audit.view' },
       },
       {
+        path: 'ops-inbox',
+        name: 'ops-inbox',
+        component: () => import('@/views/ops-inbox/OpsInboxView.vue'),
+        meta: { title: '运营收件箱', permission: 'ops_inbox.view' },
+      },
+      {
         path: 'forbidden',
         name: 'forbidden',
         component: ForbiddenView,

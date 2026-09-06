@@ -46,6 +46,7 @@ final class ContainerTest extends TestCase
         $controller = $container->make(AuthController::class);
 
         self::assertInstanceOf(AuthController::class, $controller);
+        self::assertInstanceOf(\App\controller\admin\CourseController::class, $container->make(\App\controller\admin\CourseController::class));
     }
 
     public function testConfiguredContainerAutowiresAndSharesMiddlewareDependencies(): void

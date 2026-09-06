@@ -63,7 +63,12 @@
             >意见反馈</el-button
           >
           <el-button link type="primary" @click="goPreview(row.id)"> 预览 </el-button>
-          <el-button v-if="row.status !== 'published'" link type="success" @click="onPublish(row)">
+          <el-button
+            v-if="row.status !== 'published' && hasPermission('course.publish')"
+            link
+            type="success"
+            @click="onPublish(row)"
+          >
             发布
           </el-button>
           <el-button v-else link type="warning" @click="onUnpublish(row)"> 下架 </el-button>
@@ -80,6 +85,13 @@
       :total="total"
       @change="reload"
     />
+    <CoursePublishChecklistDialog
+      v-if="publishId !== null"
+      :model-value="true"
+      :course-id="publishId"
+      @update:model-value="publishId = null"
+      @published="reload"
+    />
   </section>
 </template>
 
@@ -88,9 +100,11 @@ import { onMounted, reactive, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { CourseDTO, CourseStatus } from '@learn-site/contracts';
-import { listCourses, publishCourse, unpublishCourse, deleteCourse } from '@/api/catalog';
+import { listCourses, unpublishCourse, deleteCourse } from '@/api/catalog';
+import CoursePublishChecklistDialog from './CoursePublishChecklistDialog.vue';
 import AdminListPager from '@/components/AdminListPager.vue';
 import { hasPermission } from '@/api/http';
+const publishId = ref<number | null>(null);
 
 const router = useRouter();
 const canManageActivationCodes = computed(() => hasPermission('activation_code.manage'));
@@ -187,18 +201,7 @@ function goFeedback(id: number): void {
 }
 
 async function onPublish(row: CourseDTO): Promise<void> {
-  try {
-    await ElMessageBox.confirm(`确定发布「${row.title}」吗？`, '发布', { type: 'info' });
-  } catch {
-    return;
-  }
-  try {
-    await publishCourse(row.id);
-    ElMessage.success('已发布');
-    await reload();
-  } catch (err: unknown) {
-    ElMessage.error(readError(err, '发布失败'));
-  }
+  publishId.value = row.id;
 }
 
 async function onUnpublish(row: CourseDTO): Promise<void> {

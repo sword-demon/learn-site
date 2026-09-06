@@ -177,6 +177,7 @@ Route::group($adminV1, function () {
     Route::get('/courses/{id}', [\App\controller\admin\CourseController::class, 'show']);
     Route::patch('/courses/{id}', [\App\controller\admin\CourseController::class, 'update']);
     Route::post('/courses/{id}/publish', [\App\controller\admin\CourseController::class, 'publish']);
+    Route::get('/courses/{id}/publish-checklist', [\App\controller\admin\CourseController::class, 'publishChecklist']);
     Route::post('/courses/{id}/unpublish', [\App\controller\admin\CourseController::class, 'unpublish']);
     Route::delete('/courses/{id}', [\App\controller\admin\CourseController::class, 'destroy']);
 
@@ -239,6 +240,9 @@ Route::group($adminV1, function () {
     // changes flow through PaymentAdapter::onNotify() exclusively.
     Route::get('/orders',      [\App\controller\admin\OrderController::class, 'index']);
     Route::get('/orders/{id}', [\App\controller\admin\OrderController::class, 'show']);
+    Route::get('/ops-inbox', [\App\controller\admin\OpsInboxController::class, 'index']);
+    Route::post('/ops-inbox/{id}/transition', [\App\controller\admin\OpsInboxController::class, 'transition']);
+    Route::post('/ops-inbox/queue-failed/{source_key}/retry', [\App\controller\admin\OpsInboxController::class, 'retry']);
 
     // Phase 18 / US8 — site-wide learner accounts + per-course student list (T091).
     Route::get('/learners', [\App\controller\admin\LearnerController::class, 'index']);

@@ -43,6 +43,14 @@ use support\think\Db;
  */
 final class CourseService
 {
+    public function __construct(private readonly CoursePublishChecklistService $checklist = new CoursePublishChecklistService()) {}
+
+    /** @return array<string, mixed> */
+    public function publishChecklist(int $id, int $actorStaffAccountId): array
+    {
+        return $this->checklist->build($id, $actorStaffAccountId);
+    }
+
     /**
      * @param array<string, mixed> $input
      * @return array<string, mixed>
@@ -150,7 +158,7 @@ final class CourseService
     }
 
     /** @return array<string, mixed> */
-    public function publishCourse(int $id, ?int $actorStaffAccountId = null): array
+    public function publishCourse(int $id, ?int $actorStaffAccountId = null, bool $acknowledgeWarnings = false): array
     {
         $course = Course::find($id);
         if (!$course) {
@@ -170,19 +178,63 @@ final class CourseService
             // Idempotent re-publish: no new dispatch, no duplicate inbox rows.
             return $this->getCourseTree($id);
         }
-        $this->assertPublishable($course);
-
-        Db::transaction(function () use ($course) {
-            Course::where('id', $course->id)->update([
+        $result = Db::transaction(function () use ($id, $actorStaffAccountId, $acknowledgeWarnings) {
+            $locked = Db::name('courses')->where('id', $id)->lock(true)->find();
+            if (($locked['status'] ?? null) === 'published') { return null; }
+            $dto = $this->checklist->build($id, $actorStaffAccountId ?? 0);
+            $reason = $dto['impact']['notification']['recipient_unavailable'] ? 'NOTIFICATION_IMPACT_UNAVAILABLE'
+                : ($dto['hard_error_count'] > 0 ? 'PUBLISH_CHECK_FAILED'
+                    : ($dto['warning_count'] > 0 && !$acknowledgeWarnings ? 'WARNINGS_NOT_ACKNOWLEDGED' : null));
+            $this->writeAudit($id, $actorStaffAccountId ?? 0, $dto, $acknowledgeWarnings, $reason !== null);
+            if ($reason !== null) { return new BusinessException('VALIDATION_FAILED', $reason, ['checklist' => $dto]); }
+            Course::where('id', $id)->update([
                 'status'     => 'published',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
+            if ($dto['impact']['progress']['enrollment_count'] > 0) {
+                (new ProgressService(new EntitlementService()))->recalculateCourseEnrollments($id);
+            }
+            return $dto;
         });
+        if ($result instanceof BusinessException) { throw $result; }
+        if ($result === null) { return $this->getCourseTree($id); }
+        if ($result['impact']['progress']['will_recalculate']) {
+            $this->notifyProgressCatalogChanged($id, $result['content_fingerprint']);
+        }
         Logger::info('course.published', ['course_id' => (int) $course->id]);
         if ($actorStaffAccountId !== null) {
             $this->notifyCoursePublished((int) $course->id, $actorStaffAccountId);
         }
         return $this->getCourseTree((int) $course->id);
+    }
+
+    /** @param array<string, mixed> $dto */
+    private function writeAudit(int $id, int $actor, array $dto, bool $acknowledged, bool $rejected): void
+    {
+        Db::name('audit_log')->insert([
+            'actor_id' => $actor > 0 ? $actor : null,
+            'action' => $rejected ? 'course.publish.rejected' : 'course.publish',
+            'target_type' => 'course', 'target_id' => $id,
+            'payload_json' => json_encode([
+                'content_fingerprint' => $dto['content_fingerprint'], 'hard_error_count' => $dto['hard_error_count'],
+                'warning_count' => $dto['warning_count'], 'finding_codes' => array_column($dto['findings'], 'code'),
+                'will_dispatch' => $dto['impact']['notification']['will_dispatch'],
+                'recipient_count' => $dto['impact']['notification']['recipient_count'], 'acknowledge_warnings' => $acknowledged,
+            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+            'created_at' => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai')))->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function notifyProgressCatalogChanged(int $id, string $fingerprint): void
+    {
+        $messages = new MessageService();
+        Db::name('course_enrollments')->where('course_id', $id)->chunk(100, function ($rows) use ($messages, $id, $fingerprint) {
+            foreach ($rows as $row) {
+                $messages->emit(MessageService::KIND_PROGRESS_CATALOG_CHANGED, (int) $row['learner_id'],
+                    '课程目录已更新', '进度已按有效课节重算，已完成课节保留。', [], 'course', $id,
+                    'progress_catalog_changed:' . $id . ':' . $fingerprint);
+            }
+        });
     }
 
     /**
@@ -566,54 +618,6 @@ final class CourseService
         }
     }
 
-    private function assertPublishable(Course $course): void
-    {
-        $category = Db::name('categories')->where('id', (int) $course->category_id)->find();
-        if (!$category || ($category['status'] ?? null) !== 'enabled') {
-            throw new BusinessException('VALIDATION_FAILED', 'CATEGORY_DISABLED');
-        }
-        $intro = HtmlSanitizer::sanitize((string) ($course->intro_rich_text ?? ''));
-        if ($intro['html'] === '') {
-            throw new BusinessException('VALIDATION_FAILED', 'INTRO_REQUIRED');
-        }
-        // Sale window, if sale_price>0, must contain "now".
-        if ((float) $course->sale_price > 0.0) {
-            $start = strtotime((string) $course->sale_start_at);
-            $end   = strtotime((string) $course->sale_end_at);
-            $now   = time();
-            if (!$start || !$end || $end <= $start || $now < $start || $now >= $end) {
-                throw new BusinessException('VALIDATION_FAILED', 'SALE_WINDOW_EXPIRED');
-            }
-        }
-        $chapters = Db::name('chapters')->where('course_id', (int) $course->id)
-            ->where('status', 'enabled')->select()->toArray();
-        if (!$chapters) {
-            throw new BusinessException('VALIDATION_FAILED', 'NO_PUBLISHABLE_CHAPTER');
-        }
-        foreach ($chapters as $ch) {
-            $lessons = Db::name('lessons')->where('chapter_id', (int) $ch['id'])
-                ->where('status', 'enabled')->select()->toArray();
-            foreach ($lessons as $ls) {
-                if ($this->lessonHasPayload($ls)) {
-                    return; // one good lesson is enough
-                }
-            }
-        }
-        throw new BusinessException('VALIDATION_FAILED', 'NO_PUBLISHABLE_LESSON');
-    }
-
-    /** @param array<string, mixed> $lesson */
-    private function lessonHasPayload(array $lesson): bool
-    {
-        $type = (string) ($lesson['content_type'] ?? '');
-        if ($type === 'markdown') {
-            return trim((string) ($lesson['body_markdown'] ?? '')) !== '';
-        }
-        if ($type === 'pdf' || $type === 'video') {
-            return (int) ($lesson['asset_id'] ?? 0) > 0;
-        }
-        return false;
-    }
 
     /**
      * @param array<string, mixed> $input

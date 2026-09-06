@@ -10,7 +10,12 @@
       <div class="actions">
         <el-button :disabled="isNew" @click="goPreview"> 预览 </el-button>
         <el-button type="primary" :loading="saving" @click="saveDraft"> 保存草稿 </el-button>
-        <el-button type="success" :loading="publishing" :disabled="isNew" @click="onPublish">
+        <el-button
+          v-if="hasPermission('course.publish')"
+          type="success"
+          :disabled="isNew"
+          @click="onPublish"
+        >
           发布
         </el-button>
       </div>
@@ -307,12 +312,15 @@
         </el-button>
       </template>
     </el-dialog>
+    <CoursePublishChecklistDialog v-model="publishing" :course-id="courseId" @published="reload" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import CoursePublishChecklistDialog from './CoursePublishChecklistDialog.vue';
+import { hasPermission } from '@/api/http';
 import { ElMessage, ElMessageBox, type UploadRequestOptions } from 'element-plus';
 import type {
   CourseDTO,
@@ -339,7 +347,6 @@ import {
   createLesson,
   updateLesson,
   deleteLesson,
-  publishCourse,
   uploadCourseCover,
   uploadAsset,
   type CategoryNode,
@@ -575,21 +582,7 @@ async function onPublish(): Promise<void> {
     ElMessage.warning('请先保存为草稿');
     return;
   }
-  try {
-    await ElMessageBox.confirm('确定发布该课程吗？', '发布', { type: 'info' });
-  } catch {
-    return;
-  }
   publishing.value = true;
-  try {
-    await publishCourse(courseId.value);
-    ElMessage.success('已发布');
-    await reload();
-  } catch (err: unknown) {
-    ElMessage.error(readError(err, '发布失败'));
-  } finally {
-    publishing.value = false;
-  }
 }
 
 function goPreview(): void {

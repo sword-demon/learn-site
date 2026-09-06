@@ -29,3 +29,5 @@ export * from "./activationCode.js";
 export * from "./courseFeedback.js";
 export * from "./paymentConfig.js";
 export * from "./paymentWhitelist.js";
+export * from "./opsInbox.js";
+export * from "./coursePublishChecklist.js";

@@ -20,4 +20,12 @@ Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Webman 后端开发
 
-`/webman-development` 技能针对基于 Workerman 的常驻内存多进程 Webman 框架。**仅当检测到 webman 框架时调用**(`composer.json` / `composer.lock` 出现 `workerman/webman-framework`,或代码命中 `start.php` / `app/` / `config/process.php` / `config/route.php` 等 webman 约定路径),再通过 Skill 工具加载 `.claude/skills/webman-development/SKILL.md`。当前项目 `apps/api` 是 ThinkPHP,不要触发;若未来某子包引入 webman,新工作开始前先跑 `composer show | grep webman` 确认,再决定是否加载。
+`apps/api` 使用 Webman 框架与 `webman/think-orm`,不是 ThinkPHP 框架。按 `composer.json` / `composer.lock` 中的 `workerman/webman-framework` 核实框架;目录名不能单独作为依据。相关开发、诊断和验证使用 `/webman-development`,加载当前平台的技能副本。
+
+### 执行与完成
+
+- 普通测试、格式或工具失败时,先自主诊断、修复并重试;只暂停依赖失败结果的步骤。缺少必要权限、关键输入或无法自行解决的外部条件时,说明具体阻塞并请求协助。
+- 自检、确认事实及等待工具结果不等于请求用户批准。明确审批仍须遵守;同一对象、操作、环境和范围未变且未撤回的已有批准可复用。
+- 复用用户已选的工作流与已批准计划。Spec Kit 任务以 `specs/<feature>/tasks.md` 为唯一进度来源,`tasks/todo.md` 只引用它;子技能结束后继续原任务,以原目标及验收项判断完成。
+- PHP、Composer 和后端验证通过项目 Makefile / Docker Compose 执行,不要求宿主机安装 PHP。执行前核实连接的是本地开发或测试环境;此约定不授权生产或未知数据环境操作。
+- 源码更新后重建对应镜像:运行服务使用 `make rebuild-api` / `make rebuild-admin` / `make rebuild-web`;后端测试先执行 `docker compose -f compose.yaml -f compose.test.yaml --profile test build api-test`,再运行 `make test-api`。已对相同源码构建的镜像无需重复构建。

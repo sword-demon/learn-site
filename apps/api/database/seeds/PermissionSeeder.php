@@ -51,6 +51,7 @@ final class PermissionSeeder extends AbstractSeed
         ['code' => 'activation_code.manage', 'module' => 'catalog', 'description' => 'Create, list and void course activation codes'],
         ['code' => 'course_feedback.manage', 'module' => 'catalog', 'description' => 'View and process course feedback'],
         ['code' => 'dashboard.view', 'module' => 'site', 'description' => 'Read admin dashboard'],
+        ['code' => 'ops_inbox.view', 'module' => 'site', 'description' => 'View operations exception inbox'],
     ];
 
     public function run(): void

@@ -321,6 +321,7 @@ function kindLabel(kind: LearnerNotificationDTO['kind']): string {
   return {
     question_update: '问答',
     progress_reset: '进度',
+    progress_catalog_changed: '目录更新',
     entitlement_revoked: '授权',
     announcement: '公告',
     internal_message: '站内信',
@@ -338,6 +339,7 @@ function kindTagType(
   > = {
     question_update: 'warning',
     progress_reset: 'success',
+    progress_catalog_changed: 'info',
     entitlement_revoked: 'danger',
     announcement: 'primary',
     internal_message: 'info',

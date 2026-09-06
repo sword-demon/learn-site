@@ -31,6 +31,7 @@ final class Authorize implements MiddlewareInterface
         '/api/admin/v1/banners' => 'banner.manage',
         '/api/admin/v1/coupons' => 'coupon.manage',
         '/api/admin/v1/coupon-redemptions' => 'coupon.manage',
+        '/api/admin/v1/ops-inbox' => 'ops_inbox.view',
     ];
 
     public static function permissionFor(string $path, string $method): ?string
@@ -95,6 +96,9 @@ final class Authorize implements MiddlewareInterface
         }
         if ($path === '/api/admin/v1/banner-images' && $method === 'POST') {
             return 'banner.manage';
+        }
+        if ($method === 'GET' && preg_match('#^/api/admin/v1/courses/\d+/publish-checklist$#', $path)) {
+            return 'course.view';
         }
         if (preg_match('#^/api/admin/v1/courses(?:/\d+)?$#', $path)) {
             return $method === 'GET' ? 'course.view' : 'course.manage';

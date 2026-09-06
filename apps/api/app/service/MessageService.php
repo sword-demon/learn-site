@@ -13,6 +13,7 @@ final class MessageService
 {
     public const KIND_QUESTION_UPDATE = 'question_update';
     public const KIND_PROGRESS_RESET = 'progress_reset';
+    public const KIND_PROGRESS_CATALOG_CHANGED = 'progress_catalog_changed';
     public const KIND_ENTITLEMENT_REVOKED = 'entitlement_revoked';
     public const KIND_ANNOUNCEMENT = 'announcement';
     public const KIND_INTERNAL_MESSAGE = 'internal_message';

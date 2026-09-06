@@ -28,6 +28,7 @@ use App\support\storage\AssetStorage;
 use App\support\storage\LocalAssetStorage;
 
 return [
+    \App\service\CoursePublishChecklistService::class => static fn() => new \App\service\CoursePublishChecklistService(),
     ImageStorage::class => new LocalImageStorage(),
     BannerImageController::class => static fn(): BannerImageController => new BannerImageController(
         new LocalImageStorage(prefix: 'banners'),

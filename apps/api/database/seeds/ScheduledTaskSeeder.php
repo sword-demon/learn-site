@@ -41,6 +41,13 @@ final class ScheduledTaskSeeder extends AbstractSeed
                 'schedule_expression' => '0 */5 * * * *',
                 'params_json' => json_encode(['batch_size' => 200], JSON_UNESCAPED_UNICODE),
             ],
+            [
+                'handler_code' => 'ops_inbox.sweep',
+                'name' => '运营收件箱搁置到期扫描',
+                'description' => '每分钟将已到期的搁置事项重新打开',
+                'schedule_expression' => '0 * * * * *',
+                'params_json' => json_encode([], JSON_UNESCAPED_UNICODE),
+            ],
         ];
 
         foreach ($tasks as $task) {

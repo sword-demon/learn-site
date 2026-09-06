@@ -90,6 +90,7 @@ import {
   Reading,
   ShoppingCart,
   User,
+  Bell,
 } from '@element-plus/icons-vue';
 import { http, clearTokens, permissionCodes, staffAccount } from '@/api/http';
 import { visibleEntries, type AdminMenuEntry } from '@/layouts/AdminMenu';
@@ -111,6 +112,7 @@ const menuIcons: Record<string, Component> = {
   '/reviews': ChatLineSquare,
   '/maps': MapLocation,
   '/orders': ShoppingCart,
+  '/ops-inbox': Bell,
   '/learners': User,
   '/site/profile': OfficeBuilding,
   '/site/payment-config': ShoppingCart,
