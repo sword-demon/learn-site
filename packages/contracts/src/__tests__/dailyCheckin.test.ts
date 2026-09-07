@@ -24,7 +24,7 @@ describe('dailyCheckin contracts', () => {
         id: 1,
         checkin_date: '2026-08-30',
         plan_html: '<p>计划</p>',
-        checked_in_at: '2026-08-30T09:00:00+08:00',
+        checked_in_at: '2026-08-30 09:00:00',
       },
     })
     expect(dto.checked_in).toBe(true)
@@ -38,7 +38,7 @@ describe('dailyCheckin contracts', () => {
           id: 1,
           checkin_date: '2026-08-30',
           plan_html: '<p>计划</p>',
-          checked_in_at: '2026-08-30T09:00:00+08:00',
+          checked_in_at: '2026-08-30 09:00:00',
         },
       ],
       total: 1,
@@ -77,18 +77,18 @@ describe('dailyCheckin contracts', () => {
       id: 2,
       checkin_date: '2026-08-29',
       plan_html: '<p>昨日</p>',
-      checked_in_at: '2026-08-29T08:00:00+08:00',
+      checked_in_at: '2026-08-29 08:00:00',
     })
     expect(row.checkin_date).toBe('2026-08-29')
   })
 
-  it('rejects database datetime strings that are not ISO 8601', () => {
+  it('rejects ISO-8601 offsets on learner check-in timestamps', () => {
     expect(
       LearnerCheckinDTO.safeParse({
         id: 2,
         checkin_date: '2026-08-29',
         plan_html: '<p>昨日</p>',
-        checked_in_at: '2026-08-29 08:00:00',
+        checked_in_at: '2026-08-29T08:00:00+08:00',
       }).success,
     ).toBe(false)
   })

@@ -52,4 +52,21 @@ final class UnreadCounterTest extends TestCase
         $counter = new UnreadCounterService();
         self::assertSame(1, $counter->get($this->learnerId));
     }
+
+    public function testGetHealsInflatedRedisCounterFromDb(): void
+    {
+        $counter = new UnreadCounterService();
+        $redis = RedisStub::$instance;
+        self::assertNotNull($redis);
+        $redis->set('unread:' . $this->learnerId, '165');
+
+        self::assertSame(0, $counter->get($this->learnerId));
+        self::assertSame('0', $redis->get('unread:' . $this->learnerId));
+
+        $messages = new MessageService(push: null);
+        $messages->emit(MessageService::KIND_ANNOUNCEMENT, $this->learnerId, '公告', '正文');
+        $redis->set('unread:' . $this->learnerId, '165');
+        self::assertSame(1, $counter->get($this->learnerId));
+        self::assertSame('1', $redis->get('unread:' . $this->learnerId));
+    }
 }

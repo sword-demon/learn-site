@@ -147,7 +147,7 @@ final class DailyCheckinTest extends TestCase
         self::assertTrue($after['checked_in']);
         self::assertNotNull($after['record']);
         self::assertMatchesRegularExpression(
-            '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+08:00$/',
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
             (string) $after['record']['checked_in_at'],
         );
     }
@@ -265,9 +265,10 @@ final class DailyCheckinTest extends TestCase
         $response = (new CheckinController(new CheckinService()))->store($request);
         self::assertSame(201, $response->getStatusCode());
         $payload = json_decode((string) $response->rawBody(), true, flags: JSON_THROW_ON_ERROR);
-        self::assertSame('2026-', substr((string) $payload['data']['checked_in_at'], 0, 5));
-        self::assertStringContainsString('T', (string) $payload['data']['checked_in_at']);
-        self::assertStringEndsWith('+08:00', (string) $payload['data']['checked_in_at']);
+        self::assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
+            (string) $payload['data']['checked_in_at'],
+        );
     }
 
     public function testEmptyPlanEndpointReturns422(): void

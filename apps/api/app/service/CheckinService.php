@@ -266,7 +266,7 @@ final class CheckinService
             'id' => (int) $row['id'],
             'checkin_date' => (string) $row['checkin_date'],
             'plan_html' => (string) $row['plan_html'],
-            'checked_in_at' => $this->toIso8601((string) $row['checked_in_at']),
+            'checked_in_at' => $this->toDatetime((string) $row['checked_in_at']),
         ];
     }
 
@@ -341,6 +341,12 @@ final class CheckinService
     private function nowDatetime(): string
     {
         return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format('Y-m-d H:i:s');
+    }
+
+    private function toDatetime(string $datetime): string
+    {
+        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))
+            ->format('Y-m-d H:i:s');
     }
 
     private function toIso8601(string $datetime): string

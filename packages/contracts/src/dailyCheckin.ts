@@ -1,10 +1,13 @@
 import { z } from 'zod'
 
+/** Asia/Shanghai wall clock, no offset. Example: 2026-08-31 00:31:46 */
+const shanghaiDatetime = z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+
 export const LearnerCheckinDTO = z.object({
   id: z.number().int().positive(),
   checkin_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   plan_html: z.string(),
-  checked_in_at: z.string().datetime({ offset: true }),
+  checked_in_at: shanghaiDatetime,
 })
 export type LearnerCheckinDTO = z.infer<typeof LearnerCheckinDTO>
 

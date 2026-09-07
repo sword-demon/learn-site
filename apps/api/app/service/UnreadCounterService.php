@@ -20,16 +20,7 @@ final class UnreadCounterService
         if ($learnerId <= 0) {
             return 0;
         }
-        $redis = $this->redis();
-        if ($redis === null) {
-            return $this->countFromDb($learnerId);
-        }
-        $key = self::KEY_PREFIX . $learnerId;
-        $value = $redis->get($key);
-        if ($value === false || $value === null) {
-            return $this->rebuildFromDb($learnerId);
-        }
-        return max(0, (int) $value);
+        return $this->rebuildFromDb($learnerId);
     }
 
     public function increment(int $learnerId): int
@@ -37,13 +28,7 @@ final class UnreadCounterService
         if ($learnerId <= 0) {
             return 0;
         }
-        $redis = $this->redis();
-        if ($redis === null) {
-            return $this->countFromDb($learnerId);
-        }
-        $key = self::KEY_PREFIX . $learnerId;
-        $next = (int) $redis->incr($key);
-        return max(0, $next);
+        return $this->rebuildFromDb($learnerId);
     }
 
     public function decrement(int $learnerId): int
@@ -51,20 +36,7 @@ final class UnreadCounterService
         if ($learnerId <= 0) {
             return 0;
         }
-        $redis = $this->redis();
-        if ($redis === null) {
-            return $this->countFromDb($learnerId);
-        }
-        $key = self::KEY_PREFIX . $learnerId;
-        if ($redis->exists($key) === 0) {
-            return $this->rebuildFromDb($learnerId);
-        }
-        $next = (int) $redis->decr($key);
-        if ($next < 0) {
-            $redis->set($key, '0');
-            return 0;
-        }
-        return $next;
+        return $this->rebuildFromDb($learnerId);
     }
 
     public function reset(int $learnerId): void
