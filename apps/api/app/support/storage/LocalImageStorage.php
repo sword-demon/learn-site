@@ -9,7 +9,7 @@ use Webman\Http\UploadFile;
 
 final class LocalImageStorage implements ImageStorage
 {
-    private const PREFIXES = ['covers', 'banners'];
+    private const PREFIXES = ['covers', 'banners', 'avatars'];
 
     private readonly string $root;
     private readonly string $prefix;

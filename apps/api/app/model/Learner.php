@@ -11,6 +11,8 @@ use support\think\Model;
  * @property string|null $nickname
  * @property string|null $avatar_url
  * @property int $show_on_course
+ * @property string $created_at
+ * @property string $updated_at
  * @method static Learner|null find(mixed $data = null)
  * @method static Learner create(array|object $data, array $allowField = [], bool $replace = false, string $suffix = '')
  * @method static \think\db\Query where(mixed $field, mixed $op = null, mixed $condition = null)

@@ -135,6 +135,36 @@ export async function updateLearnerProfile(
   }
 }
 
+export async function uploadLearnerAvatar(file: File): Promise<LearnerProfileDTO> {
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const { data } = await http.post('/me/avatar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const parsed = ApiResponse(LearnerProfileDTO).parse(data);
+    if (!parsed.ok) {
+      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+    }
+    return parsed.data;
+  } catch (err) {
+    throwApi(err);
+  }
+}
+
+export async function deleteLearnerAvatar(): Promise<LearnerProfileDTO> {
+  try {
+    const { data } = await http.delete('/me/avatar');
+    const parsed = ApiResponse(LearnerProfileDTO).parse(data);
+    if (!parsed.ok) {
+      throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+    }
+    return parsed.data;
+  } catch (err) {
+    throwApi(err);
+  }
+}
+
 export async function fetchCategoryCourses(
   categoryId: number,
   page = 1,

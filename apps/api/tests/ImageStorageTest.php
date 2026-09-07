@@ -72,6 +72,30 @@ final class ImageStorageTest extends TestCase
         self::assertNull($storage->resolve(
             'banners/2026/08/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png',
         ));
+        self::assertNull($storage->resolve(
+            'avatars/2026/09/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png',
+        ));
+    }
+
+    public function testAvatarPrefixStoresAndResolvesInItsOwnKeyspace(): void
+    {
+        $source = $this->root . '/source-avatar.png';
+        file_put_contents($source, "\x89PNG\r\n\x1a\nfixture");
+        $storage = new LocalImageStorage($this->root . '/stored', 'avatars');
+        $file = new UploadFile($source, 'avatar.png', 'image/png', UPLOAD_ERR_OK);
+
+        $result = $storage->store($file, 'image/png', 'png');
+
+        self::assertMatchesRegularExpression('#^avatars/\d{4}/\d{2}/[a-f0-9]{32}\.png$#', $result['key']);
+        self::assertSame('/api/media/' . $result['key'], $result['url']);
+        self::assertFileExists($storage->resolve($result['key'])['path']);
+        self::assertSame('image/png', $storage->resolve($result['key'])['mime_type']);
+    }
+
+    public function testUnknownPrefixIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new LocalImageStorage($this->root . '/stored', 'unknown');
     }
 
     private function removeTree(string $path): void

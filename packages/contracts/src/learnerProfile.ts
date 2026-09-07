@@ -1,10 +1,15 @@
 import { z } from 'zod'
 
+const learnerAvatarKeyPattern = /^avatars\/\d{4}\/\d{2}\/[a-f0-9]{32}\.(jpg|jpeg|png|webp)$/
+
+export const LearnerAvatarKey = z.string().regex(learnerAvatarKeyPattern)
+export const LearnerAvatarUrl = z.string().regex(/^\/api\/media\/avatars\//).max(255)
+
 export const LearnerProfileDTO = z.object({
   account_id: z.number().int().positive(),
   phone: z.string().regex(/^1[3-9]\d{9}$/),
   nickname: z.string().min(1).max(32).nullable(),
-  avatar_url: z.string().nullable(),
+  avatar_url: LearnerAvatarUrl.nullable(),
   show_on_course: z.boolean(),
   status: z.enum(['active', 'disabled']),
   created_at: z.string(),

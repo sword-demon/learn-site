@@ -18,6 +18,7 @@ use App\service\BannerService;
 use App\service\CheckinService;
 use App\service\PaymentConfigService;
 use App\controller\admin\BannerImageController;
+use App\controller\learner\LearnerAvatarController;
 use App\controller\media\CourseCoverMediaController;
 use App\support\payment\FakePaymentAdapter;
 use App\support\payment\PaymentAdapter;
@@ -33,9 +34,13 @@ return [
     BannerImageController::class => static fn(): BannerImageController => new BannerImageController(
         new LocalImageStorage(prefix: 'banners'),
     ),
+    LearnerAvatarController::class => static fn(): LearnerAvatarController => new LearnerAvatarController(
+        new LocalImageStorage(prefix: 'avatars'),
+    ),
     CourseCoverMediaController::class => static fn(): CourseCoverMediaController => new CourseCoverMediaController(
         new LocalImageStorage(),
         new LocalImageStorage(prefix: 'banners'),
+        new LocalImageStorage(prefix: 'avatars'),
     ),
     AssetStorage::class => new LocalAssetStorage(),
     // Production defaults to Z-Pay. Tests and explicit fake mode keep the

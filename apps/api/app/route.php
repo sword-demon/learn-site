@@ -51,6 +51,8 @@ Route::group($learnerV1, function () {
     Route::post('/auth/logout', [\App\controller\learner\AuthController::class, 'logout']);
     Route::get('/me', [\App\controller\learner\LearnerController::class, 'me']);
     Route::patch('/me', [\App\controller\learner\LearnerController::class, 'updateMe']);
+    Route::post('/me/avatar', [\App\controller\learner\LearnerAvatarController::class, 'upload']);
+    Route::delete('/me/avatar', [\App\controller\learner\LearnerAvatarController::class, 'destroy']);
     Route::get('/me/next-action', [\App\controller\learner\LearningActionController::class, 'index']);
 
     // Phase 5 / US1 — lesson delivery (auth required)

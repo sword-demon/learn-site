@@ -32,6 +32,19 @@ class CourseCoverController
 
     protected function uploadImage(Request $request): \support\Response
     {
+        $stored = $this->storeUploadedImage($request);
+        if ($stored instanceof \support\Response) {
+            return $stored;
+        }
+
+        return ApiResponse::ok($stored, $request->request_id ?? null);
+    }
+
+    /**
+     * @return array{key: string, url: string, mime_type: string, size_bytes: int}|\support\Response
+     */
+    protected function storeUploadedImage(Request $request): array|\support\Response
+    {
         $file = $request->file('file');
         if (!$file instanceof UploadFile || !$file->isValid()) {
             return ApiResponse::fail(
@@ -70,7 +83,7 @@ class CourseCoverController
         }
 
         try {
-            return ApiResponse::ok($this->storage->store($file, $mime, $extension), $request->request_id ?? null);
+            return $this->storage->store($file, $mime, $extension);
         } catch (Throwable) {
             return ApiResponse::fail(
                 ApiResponse::INTERNAL,

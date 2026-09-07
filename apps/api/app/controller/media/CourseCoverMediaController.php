@@ -12,6 +12,7 @@ final class CourseCoverMediaController
     public function __construct(
         private readonly ImageStorage $storage,
         private readonly ?ImageStorage $bannerStorage = null,
+        private readonly ?ImageStorage $avatarStorage = null,
     ) {
     }
 
@@ -20,6 +21,9 @@ final class CourseCoverMediaController
         $resolved = $this->storage->resolve($key);
         if ($resolved === null && str_starts_with($key, 'banners/')) {
             $resolved = $this->bannerStorage?->resolve($key);
+        }
+        if ($resolved === null && str_starts_with($key, 'avatars/')) {
+            $resolved = $this->avatarStorage?->resolve($key);
         }
         if ($resolved === null) {
             return ApiResponse::fail(ApiResponse::NOT_FOUND, 'COVER_NOT_FOUND');
