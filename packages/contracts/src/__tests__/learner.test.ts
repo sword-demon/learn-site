@@ -12,6 +12,7 @@ describe('learner account summary contract', () => {
       status: 'active',
       must_change_password: false,
       last_login_at: null,
+      session_count: 2,
       created_at: '2026-08-28 10:00:00',
       course_count: 3,
       completed_course_count: 1,
@@ -23,5 +24,6 @@ describe('learner account summary contract', () => {
     expect(parsed.completed_course_count).toBe(1)
     expect(parsed.successful_order_count).toBe(2)
     expect(parsed.total_paid_amount).toBe(198)
+    expect(parsed.session_count).toBe(2)
   })
 })

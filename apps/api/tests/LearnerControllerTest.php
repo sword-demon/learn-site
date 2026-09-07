@@ -65,12 +65,41 @@ final class LearnerControllerTest extends TestCase
             'status' => 'active',
             'must_change_password' => false,
             'last_login_at' => null,
+            'session_count' => 0,
             'created_at' => '2026-08-27 10:00:00',
             'course_count' => 1,
             'completed_course_count' => 1,
             'successful_order_count' => 1,
             'total_paid_amount' => 89,
         ], $payload['data']['items'][0] ?? null);
+    }
+
+    public function testIndexCountsUnrevokedLoginFamiliesAsSessionCount(): void
+    {
+        $redis = new InMemoryRedis();
+        RedisStub::install($redis);
+        try {
+            $tokens = new TokenService();
+            $tokens->issue((string) $this->learnerId, TokenService::KIND_LEARNER);
+            $tokens->issue((string) $this->learnerId, TokenService::KIND_LEARNER);
+
+            $request = new Request(
+                "GET /api/admin/v1/learners?page=1&limit=20 HTTP/1.1\r\nHost: test\r\n\r\n",
+            );
+            /** @phpstan-ignore-next-line */
+            $request->account_id = $this->actorId;
+            $response = (new LearnerController(
+                $tokens,
+                new DataScopeService(),
+                new LearnerDetailService(new DataScopeService()),
+            ))->index($request);
+            $payload = json_decode((string) $response->rawBody(), true);
+
+            self::assertSame(200, $response->getStatusCode());
+            self::assertSame(2, $payload['data']['items'][0]['session_count'] ?? null);
+        } finally {
+            RedisStub::$instance = null;
+        }
     }
 
     public function testLearningProgressReturnsLearnerCourseSummary(): void

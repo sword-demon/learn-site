@@ -153,6 +153,41 @@ final class TokenService
         return ['account_id' => $accountId, 'kind' => $kind, 'family_id' => $familyId];
     }
 
+    /**
+     * Count unrevoked login families for the given accounts.
+     *
+     * A family still in the account set but already stamped `:revoked`
+     * (refresh reuse) does not count. Redis unavailable fails closed to 0.
+     *
+     * @param list<string> $accountIds
+     * @return array<string, int>
+     */
+    public function countActiveFamilies(array $accountIds): array
+    {
+        $counts = [];
+        foreach ($accountIds as $accountId) {
+            $counts[$accountId] = 0;
+        }
+        $redis = $this->redis();
+        if ($redis === null) {
+            return $counts;
+        }
+        foreach ($accountIds as $accountId) {
+            if ($accountId === '') {
+                continue;
+            }
+            $n = 0;
+            foreach ($this->setMembers($redis, $this->accountFamiliesKey($accountId)) as $familyId) {
+                if ($redis->exists(self::FAMILY_PREFIX . $familyId . ':revoked')) {
+                    continue;
+                }
+                $n++;
+            }
+            $counts[$accountId] = $n;
+        }
+        return $counts;
+    }
+
     /** Kick all families of an account (kick-all). */
     public function kickAll(string $accountId): int
     {

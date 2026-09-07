@@ -18,6 +18,7 @@ const account = {
   status: 'active' as const,
   must_change_password: false,
   last_login_at: null,
+  session_count: 0,
   created_at: '2026-08-27 10:00:00',
   course_count: 3,
   completed_course_count: 1,

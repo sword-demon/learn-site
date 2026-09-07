@@ -225,6 +225,21 @@ final class AuthTokenTest extends TestCase
         $this->assertNull($replayNew, 'rotation after family revocation must fail');
     }
 
+    public function testCountActiveFamiliesIgnoresRevokedAndOtherAccounts(): void
+    {
+        $this->tokens->issue('77', TokenService::KIND_LEARNER);
+        $this->tokens->issue('77', TokenService::KIND_LEARNER);
+        $kept = $this->tokens->issue('77', TokenService::KIND_LEARNER);
+        $this->tokens->issue('88', TokenService::KIND_LEARNER);
+        $this->tokens->kickFamily('77', (string) $kept['family_id']);
+
+        $counts = $this->tokens->countActiveFamilies(['77', '88', '99']);
+
+        $this->assertSame(2, $counts['77']);
+        $this->assertSame(1, $counts['88']);
+        $this->assertSame(0, $counts['99']);
+    }
+
     public function testKickAllRevokesEveryFamily(): void
     {
         $a = $this->tokens->issue('77', TokenService::KIND_LEARNER);

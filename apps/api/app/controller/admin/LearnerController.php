@@ -87,6 +87,10 @@ final class LearnerController
             ));
             $learningByLearner = [];
             $ordersByLearner = [];
+            $sessionCounts = $this->tokens->countActiveFamilies(array_map(
+                static fn(int $id): string => (string) $id,
+                $learnerIds,
+            ));
             if ($learnerIds !== []) {
                 $learningRows = Db::name('course_enrollments')
                     ->where('learner_id', 'in', $learnerIds)
@@ -108,7 +112,7 @@ final class LearnerController
                     $ordersByLearner[(int) $summary['learner_id']] = $summary;
                 }
             }
-            $items = array_map(static function ($r) use ($learningByLearner, $ordersByLearner) {
+            $items = array_map(static function ($r) use ($learningByLearner, $ordersByLearner, $sessionCounts) {
                 $learnerId = (int) $r['id'];
                 $learning = $learningByLearner[$learnerId] ?? [];
                 $orders = $ordersByLearner[$learnerId] ?? [];
@@ -121,6 +125,7 @@ final class LearnerController
                     'status' => (string) $r['status'],
                     'must_change_password' => (int) $r['must_change_password'] === 1,
                     'last_login_at' => $r['last_login_at'] ? (string) $r['last_login_at'] : null,
+                    'session_count' => (int) ($sessionCounts[(string) $learnerId] ?? 0),
                     'created_at' => (string) $r['created_at'],
                     'course_count' => (int) ($learning['course_count'] ?? 0),
                     'completed_course_count' => (int) ($learning['completed_course_count'] ?? 0),

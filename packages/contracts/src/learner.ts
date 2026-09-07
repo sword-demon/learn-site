@@ -9,6 +9,7 @@ export const LearnerAccountDTO = z.object({
   status: z.enum(['active', 'disabled']),
   must_change_password: z.boolean(),
   last_login_at: z.string().nullable(),
+  session_count: z.number().int().nonnegative(),
   created_at: z.string(),
   course_count: z.number().int().nonnegative(),
   completed_course_count: z.number().int().nonnegative(),

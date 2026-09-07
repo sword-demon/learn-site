@@ -261,6 +261,43 @@ final class CouponTest extends TestCase
         self::assertSame(1, $second['skipped']);
     }
 
+    public function testAdminGrantBatchInsertsOnceAndSkipsUnknownIds(): void
+    {
+        $campaignId = $this->seedCampaign(['claim_mode' => 'admin_only']);
+        $a = $this->seedLearner();
+        $b = $this->seedLearner();
+
+        $result = $this->service->grantToLearners(
+            $campaignId,
+            ['learner_ids' => [$a, $b, $a, 9_999_999]],
+            $this->staffId,
+        );
+
+        self::assertSame(2, $result['granted']);
+        self::assertSame(1, $result['skipped']);
+        self::assertCount(2, $result['items']);
+        self::assertSame(2, (int) Db::name('learner_coupons')->where('campaign_id', $campaignId)->count());
+        self::assertSame(2, (int) Db::name('coupon_campaigns')->where('id', $campaignId)->value('claimed_count'));
+    }
+
+    public function testAdminGrantFillsRemainingQuotaWithoutRollingBackTheBatch(): void
+    {
+        $campaignId = $this->seedCampaign(['total_quota' => 2, 'claim_mode' => 'admin_only']);
+        $a = $this->seedLearner();
+        $b = $this->seedLearner();
+        $c = $this->seedLearner();
+
+        $result = $this->service->grantToLearners(
+            $campaignId,
+            ['learner_ids' => [$a, $b, $c]],
+            $this->staffId,
+        );
+
+        self::assertSame(2, $result['granted']);
+        self::assertSame(1, $result['skipped']);
+        self::assertSame(2, (int) Db::name('learner_coupons')->where('campaign_id', $campaignId)->count());
+    }
+
     // ---------- order-time lock / redeem / release ----------
 
     public function testLockForOrderTransitionsToLockedAndStampsDiscount(): void {

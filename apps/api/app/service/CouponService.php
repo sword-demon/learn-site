@@ -315,6 +315,7 @@ final class CouponService
         $granted = 0;
         $skipped = 0;
         $inserted = [];
+        $campaignRow = null;
 
         Db::transaction(function () use (
             $campaignId,
@@ -323,6 +324,7 @@ final class CouponService
             &$granted,
             &$skipped,
             &$inserted,
+            &$campaignRow,
         ) {
             $row = $this->loadCampaignRowForUpdate($campaignId);
             if ($row === null) {
@@ -331,25 +333,64 @@ final class CouponService
             if ((string) $row['status'] !== self::STATUS_ACTIVE) {
                 throw new BusinessException('CONFLICT', 'COUPON_NOT_GRANTABLE');
             }
-            $expiresAt = $this->resolveExpiresAt($row);
+            $campaignRow = $row;
             $perLearnerLimit = (int) $row['per_learner_claim_limit'];
             $totalQuota = $row['total_quota'] !== null ? (int) $row['total_quota'] : null;
             $currentClaimed = (int) $row['claimed_count'];
 
-            foreach ($learnerIds as $learnerId) {
-                $existing = (int) Db::name('learner_coupons')
+            $existingIds = array_values(array_filter(
+                array_map('intval', Db::name('accounts')
+                    ->where('kind', 'learner')
+                    ->whereIn('id', $learnerIds)
+                    ->column('id')),
+                static fn (int $id): bool => $id > 0,
+            ));
+            $existingSet = array_fill_keys($existingIds, true);
+
+            $ownedByLearner = [];
+            if ($existingIds !== []) {
+                $ownedRows = Db::name('learner_coupons')
                     ->where('campaign_id', (int) $row['id'])
-                    ->where('learner_id', $learnerId)
-                    ->count();
-                if ($existing >= $perLearnerLimit) {
+                    ->whereIn('learner_id', $existingIds)
+                    ->field('learner_id, COUNT(*) AS owned')
+                    ->group('learner_id')
+                    ->select()
+                    ->toArray();
+                foreach ($ownedRows as $owned) {
+                    $ownedByLearner[(int) $owned['learner_id']] = (int) $owned['owned'];
+                }
+            }
+
+            $toGrant = [];
+            foreach ($learnerIds as $learnerId) {
+                if (!isset($existingSet[$learnerId])) {
                     $skipped++;
                     continue;
                 }
-                if ($totalQuota !== null && $currentClaimed >= $totalQuota) {
-                    throw new BusinessException('VALIDATION_FAILED', 'COUPON_QUOTA_EXCEEDED');
+                if (($ownedByLearner[$learnerId] ?? 0) >= $perLearnerLimit) {
+                    $skipped++;
+                    continue;
                 }
-                $now = $this->nowDatetime();
-                $newId = (int) Db::name('learner_coupons')->insertGetId([
+                $toGrant[] = $learnerId;
+            }
+
+            $remainingQuota = $totalQuota === null ? count($toGrant) : max(0, $totalQuota - $currentClaimed);
+            if ($remainingQuota === 0 && $toGrant !== []) {
+                throw new BusinessException('VALIDATION_FAILED', 'COUPON_QUOTA_EXCEEDED');
+            }
+            if (count($toGrant) > $remainingQuota) {
+                $skipped += count($toGrant) - $remainingQuota;
+                $toGrant = array_slice($toGrant, 0, $remainingQuota);
+            }
+            if ($toGrant === []) {
+                return;
+            }
+
+            $now = $this->nowDatetime();
+            $expiresAt = $this->resolveExpiresAt($row);
+            $insertRows = [];
+            foreach ($toGrant as $learnerId) {
+                $insertRows[] = [
                     'campaign_id' => (int) $row['id'],
                     'learner_id' => $learnerId,
                     'status' => self::INSTANCE_UNUSED,
@@ -361,16 +402,24 @@ final class CouponService
                     'locked_at' => null,
                     'used_at' => null,
                     'created_at' => $now,
+                ];
+            }
+            $beforeMax = (int) Db::name('learner_coupons')->max('id');
+            Db::name('learner_coupons')->insertAll($insertRows);
+            $granted = count($toGrant);
+            Db::name('coupon_campaigns')
+                ->where('id', (int) $row['id'])
+                ->update([
+                    'claimed_count' => Db::raw('claimed_count + ' . $granted),
+                    'updated_at' => $now,
                 ]);
-                Db::name('coupon_campaigns')
-                    ->where('id', (int) $row['id'])
-                    ->update([
-                        'claimed_count' => Db::raw('claimed_count + 1'),
-                        'updated_at' => $now,
-                    ]);
-                $currentClaimed++;
-                $granted++;
-                $inserted[] = $newId;
+            $created = Db::name('learner_coupons')
+                ->where('campaign_id', (int) $row['id'])
+                ->where('id', '>', $beforeMax)
+                ->select()
+                ->toArray();
+            foreach ($created as $createdRow) {
+                $inserted[] = (int) $createdRow['id'];
             }
         });
 
@@ -383,11 +432,12 @@ final class CouponService
 
         $items = [];
         if ($inserted !== []) {
+            $campaign = is_array($campaignRow) ? $campaignRow : $this->loadCampaignRow($campaignId);
             $rows = Db::name('learner_coupons')
                 ->whereIn('id', $inserted)
                 ->select()->toArray();
             foreach ($rows as $r) {
-                $items[] = $this->shapeLearnerCoupon($r, $this->loadCampaignRow((int) $r['campaign_id']));
+                $items[] = $this->shapeLearnerCoupon($r, $campaign);
             }
         }
 
