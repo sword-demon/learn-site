@@ -18,9 +18,13 @@ const catalogApi = vi.hoisted(() => ({
   listCategoriesFlat: vi.fn(),
   listCourses: vi.fn(),
 }));
+const learnersApi = vi.hoisted(() => ({
+  listLearners: vi.fn(),
+}));
 
 vi.mock('@/api/coupons', () => couponsApi);
 vi.mock('@/api/catalog', () => catalogApi);
+vi.mock('@/api/learners', () => learnersApi);
 
 import CouponListView from '@/views/coupons/CouponListView.vue';
 
@@ -94,6 +98,45 @@ beforeEach(() => {
     limit: 100,
   });
   catalogApi.listCourses.mockResolvedValue({ items: [course], total: 1, page: 1, limit: 20 });
+  learnersApi.listLearners.mockResolvedValue({
+    items: [
+      {
+        account_id: 101,
+        login: '13912345678',
+        display_name: '小王',
+        department_id: null,
+        department_name: '',
+        status: 'active',
+        must_change_password: false,
+        last_login_at: null,
+        session_count: 0,
+        created_at: '2026-08-28 10:00:00',
+        course_count: 0,
+        completed_course_count: 0,
+        successful_order_count: 0,
+        total_paid_amount: 0,
+      },
+      {
+        account_id: 102,
+        login: '13900001111',
+        display_name: '小李',
+        department_id: null,
+        department_name: '',
+        status: 'active',
+        must_change_password: false,
+        last_login_at: null,
+        session_count: 1,
+        created_at: '2026-08-28 10:00:00',
+        course_count: 0,
+        completed_course_count: 0,
+        successful_order_count: 0,
+        total_paid_amount: 0,
+      },
+    ],
+    total: 2,
+    page: 1,
+    limit: 20,
+  });
   couponsApi.listRedemptions.mockResolvedValue({
     items: [
       {
@@ -293,6 +336,48 @@ describe('CouponListView', () => {
         use_ends_at: null,
       }),
     );
+    wrapper.unmount();
+  });
+
+  it('opens a paginated learner picker instead of a raw ID textarea', async () => {
+    const wrapper = mount(CouponListView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('[data-action="open-grant"]').trigger('click');
+    await flushPromises();
+
+    expect(learnersApi.listLearners).toHaveBeenCalledWith({
+      page: 1,
+      limit: 20,
+    });
+    expect(wrapper.get('[data-testid="grant-learner-table"]').text()).toContain('小王');
+    expect(wrapper.find('textarea[data-field="learner_ids"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('grants the currently selected learners from the picker', async () => {
+    const wrapper = mount(CouponListView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('[data-action="open-grant"]').trigger('click');
+    await flushPromises();
+
+    const grantTable = wrapper
+      .findAllComponents({ name: 'ElTable' })
+      .find((table) => table.attributes('data-testid') === 'grant-learner-table');
+    expect(grantTable).toBeDefined();
+    grantTable!.vm.$emit('select', [], {
+      account_id: 101,
+      login: '13912345678',
+      display_name: '小王',
+    });
+    await flushPromises();
+    await wrapper.get('[data-action="submit-grant"]').trigger('click');
+    await flushPromises();
+
+    expect(couponsApi.grantCoupon).toHaveBeenCalledWith(1, { learner_ids: [101] });
     wrapper.unmount();
   });
 });
