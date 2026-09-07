@@ -47,4 +47,23 @@ describe('Element Plus theme foundation', () => {
     expect(nightTheme).toContain('--el-fill-color-light: var(--card-2)');
     expect(nightTheme).toContain('--el-mask-color: rgba(0, 0, 0, 0.62)');
   });
+
+  it('loads overlay CSS so dialogs can cover the page instead of flowing after the footer', () => {
+    const main = readProjectFile('src/main.ts');
+    expect(main).toContain("element-plus/theme-chalk/el-dialog.css");
+    expect(main).toContain("element-plus/theme-chalk/el-overlay.css");
+  });
+
+  it('installs the zh-CN locale at the web entry', () => {
+    const main = readProjectFile('src/main.ts');
+    expect(main).toContain('installElementPlusLocale');
+  });
+
+  it('stubs theme-chalk CSS only while VITEST is set', () => {
+    const source = readProjectFile('vite.config.ts');
+    const start = source.indexOf("name: 'element-plus-css-stub'");
+    expect(start).toBeGreaterThan(-1);
+    const stub = source.slice(start, source.indexOf('vue(),', start));
+    expect(stub).toMatch(/process\.env\.VITEST/);
+  });
 });

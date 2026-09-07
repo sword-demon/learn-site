@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { ElMessageBox } from 'element-plus';
 import {
   kickLearner,
   listLearners,
@@ -29,6 +30,10 @@ const filters = ref({
 const total = computed(() => list.value?.total ?? 0);
 function statusLabel(status: LearnerAccountDTO['status']): string {
   return status === 'active' ? '正常' : '已停用';
+}
+
+function hasActiveSession(account: LearnerAccountDTO): boolean {
+  return account.session_count > 0;
 }
 
 async function reload(): Promise<void> {
@@ -61,7 +66,20 @@ function goRecords(account: LearnerAccountDTO): void {
 
 async function doKick(account: LearnerAccountDTO): Promise<void> {
   if (submittingId.value !== null) return;
-  if (!confirm(`强制下线 ${account.login} 的所有会话？此操作不可撤销。`)) return;
+  if (!hasActiveSession(account)) return;
+  try {
+    await ElMessageBox.confirm(
+      `强制下线 ${account.login} 的所有会话？此操作不可撤销。`,
+      '强制下线',
+      {
+        type: 'warning',
+        confirmButtonText: '强制下线',
+        cancelButtonText: '取消',
+      },
+    );
+  } catch {
+    return;
+  }
   submittingId.value = account.account_id;
   try {
     await kickLearner(account.account_id);
@@ -150,6 +168,14 @@ onMounted(() => {
           <span :data-status="row.status">{{ statusLabel(row.status) }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="会话" width="120">
+        <template #default="{ row }">
+          <el-tag v-if="hasActiveSession(row)" type="success" effect="light">
+            在线 · {{ row.session_count }}
+          </el-tag>
+          <el-tag v-else type="info" effect="plain">离线</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="学习摘要" min-width="170">
         <template #default="{ row }">
           {{ row.course_count }} 门 / 完成 {{ row.completed_course_count }} 门
@@ -178,7 +204,8 @@ onMounted(() => {
             </el-button>
             <el-button
               class="btn warn"
-              :disabled="submittingId === row.account_id"
+              :disabled="submittingId === row.account_id || !hasActiveSession(row)"
+              :title="hasActiveSession(row) ? '吊销该学员全部登录会话' : '当前没有可下线的会话'"
               @click="doKick(row)"
             >
               强制下线

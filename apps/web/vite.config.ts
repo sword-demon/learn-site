@@ -4,6 +4,7 @@ import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import type { ComponentResolver } from 'unplugin-vue-components';
 import path from 'node:path';
+import process from 'node:process';
 
 /**
  * 轻量级 PascalCase → kebab-case 转换，用于 element-plus 组件目录名。
@@ -106,11 +107,14 @@ const resolvers: ComponentResolver[] = [
 export default defineConfig({
   plugins: [
     // element-plus/theme-chalk/*.css 在测试环境（node）下没有 CSS 加载器。
-    // production build 由 Vite/esbuild 正常处理。拦截 import specifier 把它替换成空模块。
+    // 只在 vitest 里把 specifier 换成空模块；生产构建必须走真实 CSS，
+    // 否则 el-overlay 没有 position:fixed，弹窗会掉到页脚后面。
     {
       name: 'element-plus-css-stub',
       enforce: 'pre',
+      apply: () => Boolean(process.env.VITEST),
       resolveId(source) {
+        if (!process.env.VITEST) return null;
         if (/^element-plus\/theme-chalk\/.*\.css$/.test(source)) {
           return { id: path.resolve(__dirname, 'tests/css-stub.ts') };
         }

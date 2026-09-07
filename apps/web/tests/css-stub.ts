@@ -4,6 +4,6 @@
 //   import 'element-plus/theme-chalk/<component>.css'
 // via sideEffects for each El* component discovered in templates.
 // Production build handles these via Vite/esbuild CSS loader.
-// Tests run in node — no CSS loader — so resolve.alias rewrites
-// `element-plus/theme-chalk/*.css` to this empty module.
+// Tests run in node — no CSS loader — so the vitest-only plugin
+// in vite.config.ts rewrites `element-plus/theme-chalk/*.css` here.
 export {};

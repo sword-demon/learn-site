@@ -2,6 +2,7 @@
 
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ElMessageBox } from 'element-plus';
 import { installElementPlus } from '@/plugins/element-plus';
 
 const learnersApi = vi.hoisted(() => ({
@@ -39,6 +40,7 @@ describe('LearnerListView', () => {
           status: 'active',
           must_change_password: false,
           last_login_at: null,
+          session_count: 0,
           created_at: '2026-08-28 10:00:00',
           course_count: 3,
           completed_course_count: 1,
@@ -65,6 +67,7 @@ describe('LearnerListView', () => {
     expect(wrapper.text()).toContain('2 单 / ¥198.00');
     expect(wrapper.text()).toContain('正常');
     expect(wrapper.text()).not.toContain('active');
+    expect(wrapper.text()).toContain('离线');
   });
 
   it('navigates to learner progress and learning record pages', async () => {
@@ -121,5 +124,105 @@ describe('LearnerListView', () => {
     expect(wrapper.find('.el-table__empty-block').exists()).toBe(true);
     expect(wrapper.text()).toContain('没有匹配的学员');
     expect(wrapper.find('p.empty').exists()).toBe(false);
+  });
+
+  it('asks Element Plus to confirm before kicking a learner offline', async () => {
+    learnersApi.listLearners.mockResolvedValueOnce({
+      items: [
+        {
+          account_id: 7,
+          login: '13912345678',
+          display_name: '小王',
+          department_id: null,
+          department_name: '',
+          status: 'active',
+          must_change_password: false,
+          last_login_at: null,
+          session_count: 2,
+          created_at: '2026-08-28 10:00:00',
+          course_count: 3,
+          completed_course_count: 1,
+          successful_order_count: 2,
+          total_paid_amount: 198,
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    learnersApi.kickLearner.mockResolvedValue({ revoked: 2 });
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(undefined as never);
+    const wrapper = mountLearners();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('在线 · 2');
+
+    const kickButton = wrapper
+      .findAll('.actions .el-button')
+      .find((button) => button.text().includes('强制下线'));
+    await kickButton!.trigger('click');
+    await flushPromises();
+
+    expect(ElMessageBox.confirm).toHaveBeenCalledWith(
+      '强制下线 13912345678 的所有会话？此操作不可撤销。',
+      '强制下线',
+      expect.objectContaining({ type: 'warning' }),
+    );
+    expect(learnersApi.kickLearner).toHaveBeenCalledWith(7);
+    expect(learnersApi.listLearners).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not kick when the confirm dialog is cancelled', async () => {
+    learnersApi.listLearners.mockResolvedValueOnce({
+      items: [
+        {
+          account_id: 7,
+          login: '13912345678',
+          display_name: '小王',
+          department_id: null,
+          department_name: '',
+          status: 'active',
+          must_change_password: false,
+          last_login_at: null,
+          session_count: 1,
+          created_at: '2026-08-28 10:00:00',
+          course_count: 3,
+          completed_course_count: 1,
+          successful_order_count: 2,
+          total_paid_amount: 198,
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel' as never);
+    const wrapper = mountLearners();
+    await flushPromises();
+
+    const kickButton = wrapper
+      .findAll('.actions .el-button')
+      .find((button) => button.text().includes('强制下线'));
+    await kickButton!.trigger('click');
+    await flushPromises();
+
+    expect(learnersApi.kickLearner).not.toHaveBeenCalled();
+    expect(learnersApi.listLearners).toHaveBeenCalledOnce();
+  });
+
+  it('disables force-offline when the learner has no active sessions', async () => {
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue(undefined as never);
+    const wrapper = mountLearners();
+    await flushPromises();
+
+    const kickButton = wrapper
+      .findAll('.actions .el-button')
+      .find((button) => button.text().includes('强制下线'));
+    expect(kickButton?.attributes('disabled')).toBeDefined();
+    await kickButton!.trigger('click');
+    await flushPromises();
+
+    expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+    expect(learnersApi.kickLearner).not.toHaveBeenCalled();
   });
 });
