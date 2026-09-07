@@ -27,6 +27,8 @@ export type CouponSource = z.infer<typeof CouponSource>;
 
 const MoneyAmount = z.number().finite().nonnegative();
 const Iso8601 = z.string().min(1);
+/** Asia/Shanghai wall clock, no offset. Example: 2026-09-07 13:03:06 */
+const shanghaiDatetime = z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
 
 // -----------------------------------------------------------------------------
 // Coupon public (learner claim center)
@@ -163,6 +165,29 @@ export const AdminCouponRedemptionListDTO = z.object({
   limit: z.number().int().positive().max(200),
 });
 export type AdminCouponRedemptionListDTO = z.infer<typeof AdminCouponRedemptionListDTO>;
+
+export const AdminCouponInstanceDTO = z.object({
+  id: z.number().int().positive(),
+  campaign_id: z.number().int().positive(),
+  learner_id: z.number().int().positive(),
+  learner_masked_phone: z.string().min(1).max(32),
+  learner_display_name: z.string().max(32).nullable(),
+  status: CouponInstanceStatus,
+  source: CouponSource,
+  granted_by: z.number().int().positive().nullable(),
+  expires_at: shanghaiDatetime,
+  used_at: shanghaiDatetime.nullable(),
+  created_at: shanghaiDatetime,
+});
+export type AdminCouponInstanceDTO = z.infer<typeof AdminCouponInstanceDTO>;
+
+export const AdminCouponInstanceListDTO = z.object({
+  items: z.array(AdminCouponInstanceDTO),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive().max(200),
+});
+export type AdminCouponInstanceListDTO = z.infer<typeof AdminCouponInstanceListDTO>;
 
 // -----------------------------------------------------------------------------
 // Inputs

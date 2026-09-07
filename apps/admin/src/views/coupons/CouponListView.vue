@@ -5,6 +5,7 @@ import {
   CreateCouponInput,
   GrantCouponInput,
   type AdminCouponCampaignDTO,
+  type AdminCouponInstanceDTO,
   type CategoryDTO,
   type CourseDTO,
   type LearnerAccountDTO,
@@ -15,9 +16,11 @@ import {
   createCoupon,
   disableCoupon,
   grantCoupon,
+  listCouponInstances,
   listCoupons,
   listRedemptions,
   patchCoupon,
+  type CouponInstanceListParams,
   type CouponListParams,
 } from '@/api/coupons';
 import { listCategoriesFlat, listCourses } from '@/api/catalog';
@@ -91,6 +94,17 @@ const redemptionDialogVisible = ref(false);
 const redemptions: Ref<RedemptionRow[]> = ref<RedemptionRow[]>([]);
 const redemptionTotal = ref(0);
 const redemptionLoading = ref(false);
+const instanceDialogVisible = ref(false);
+const instances = ref<AdminCouponInstanceDTO[]>([]);
+const instanceTotal = ref(0);
+const instanceLoading = ref(false);
+const instanceFilters = reactive({
+  source: '' as '' | 'claim' | 'grant',
+  status: '' as '' | 'unused' | 'locked' | 'used' | 'expired' | 'voided',
+  search: '',
+  page: 1,
+  limit: 20,
+});
 const GRANT_BATCH_LIMIT = 500;
 const grantTableRef = ref<TableInstance>();
 const grantLearners = ref<LearnerAccountDTO[]>([]);
@@ -530,6 +544,59 @@ async function submitDialog(): Promise<void> {
   }
 }
 
+function instanceSourceLabel(source: AdminCouponInstanceDTO['source']): string {
+  return source === 'grant' ? '定向发放' : '自行领取';
+}
+
+function instanceStatusLabel(status: AdminCouponInstanceDTO['status']): string {
+  const map: Record<AdminCouponInstanceDTO['status'], string> = {
+    unused: '未使用',
+    locked: '已锁定',
+    used: '已使用',
+    expired: '已过期',
+    voided: '已作废',
+  };
+  return map[status];
+}
+
+async function loadInstances(): Promise<void> {
+  const coupon = currentCoupon.value;
+  if (!coupon) return;
+  instanceLoading.value = true;
+  try {
+    const params: CouponInstanceListParams = {
+      page: instanceFilters.page,
+      limit: instanceFilters.limit,
+      source: instanceFilters.source,
+      status: instanceFilters.status,
+    };
+    const search = instanceFilters.search.trim();
+    if (search !== '') params.search = search;
+    const res = await listCouponInstances(coupon.id, params);
+    instances.value = res.items;
+    instanceTotal.value = res.total;
+  } catch (err) {
+    ElMessage.error(readCouponError(err, '加载失败'));
+  } finally {
+    instanceLoading.value = false;
+  }
+}
+
+function searchInstances(): void {
+  instanceFilters.page = 1;
+  void loadInstances();
+}
+
+function openInstances(row: AdminCouponCampaignDTO): void {
+  currentCoupon.value = row;
+  instanceFilters.source = '';
+  instanceFilters.status = '';
+  instanceFilters.search = '';
+  instanceFilters.page = 1;
+  instanceDialogVisible.value = true;
+  void loadInstances();
+}
+
 async function openRedemptions(row: AdminCouponCampaignDTO): Promise<void> {
   currentCoupon.value = row;
   redemptionDialogVisible.value = true;
@@ -624,10 +691,13 @@ onMounted(load);
         </template>
       </el-table-column>
       <el-table-column label="已使用" min-width="80" prop="used_count" />
-      <el-table-column label="操作" min-width="280" fixed="right">
+      <el-table-column label="操作" min-width="360" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" data-action="edit" @click="openEdit(row)">
             编辑
+          </el-button>
+          <el-button link type="primary" data-action="open-instances" @click="openInstances(row)">
+            领取记录
           </el-button>
           <el-button
             link
@@ -913,6 +983,92 @@ onMounted(load);
           发放
         </el-button>
       </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="instanceDialogVisible"
+      :title="`领取记录 - ${currentCoupon?.name ?? ''}`"
+      width="860px"
+      data-dialog="instances"
+    >
+      <p class="coupons__grant-hint">含自行领取与定向发放。可按来源、状态和账号筛选。</p>
+      <el-form class="coupons__grant-search" inline @submit.prevent="searchInstances">
+        <el-form-item>
+          <el-select
+            v-model="instanceFilters.source"
+            clearable
+            placeholder="来源"
+            style="width: 140px"
+            data-field="instance-source"
+          >
+            <el-option label="全部来源" value="" />
+            <el-option label="自行领取" value="claim" />
+            <el-option label="定向发放" value="grant" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-select
+            v-model="instanceFilters.status"
+            clearable
+            placeholder="状态"
+            style="width: 140px"
+            data-field="instance-status"
+          >
+            <el-option label="全部状态" value="" />
+            <el-option label="未使用" value="unused" />
+            <el-option label="已锁定" value="locked" />
+            <el-option label="已使用" value="used" />
+            <el-option label="已过期" value="expired" />
+            <el-option label="已作废" value="voided" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-input
+            v-model="instanceFilters.search"
+            clearable
+            placeholder="搜索账号或姓名"
+            data-field="instance-search"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" native-type="submit" data-action="search-instances"
+            >查询</el-button
+          >
+        </el-form-item>
+      </el-form>
+      <el-table
+        v-loading="instanceLoading"
+        :data="instances"
+        stripe
+        data-testid="coupon-instance-table"
+      >
+        <el-table-column prop="learner_masked_phone" label="学员账号" min-width="130" />
+        <el-table-column label="姓名" min-width="110">
+          <template #default="{ row }">{{ row.learner_display_name || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="来源" width="110">
+          <template #default="{ row }">{{ instanceSourceLabel(row.source) }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">{{ instanceStatusLabel(row.status) }}</template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="领取/发放时间" min-width="170" />
+        <el-table-column prop="expires_at" label="到期时间" min-width="170" />
+        <el-table-column label="使用时间" min-width="170">
+          <template #default="{ row }">{{ row.used_at || '—' }}</template>
+        </el-table-column>
+        <template #empty>
+          <el-empty description="尚无领取或发放记录" :image-size="72" />
+        </template>
+      </el-table>
+      <AdminListPager
+        v-model:page="instanceFilters.page"
+        v-model:page-size="instanceFilters.limit"
+        :total="instanceTotal"
+        :page-sizes="[10, 20, 50]"
+        :hide-when-empty="false"
+        @change="loadInstances"
+      />
     </el-dialog>
 
     <el-dialog

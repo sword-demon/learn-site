@@ -12,6 +12,7 @@ const couponsApi = vi.hoisted(() => ({
   grantCoupon: vi.fn(),
   patchCoupon: vi.fn(),
   listRedemptions: vi.fn(),
+  listCouponInstances: vi.fn(),
 }));
 
 const catalogApi = vi.hoisted(() => ({
@@ -134,6 +135,26 @@ beforeEach(() => {
       },
     ],
     total: 2,
+    page: 1,
+    limit: 20,
+  });
+  couponsApi.listCouponInstances.mockResolvedValue({
+    items: [
+      {
+        id: 9,
+        campaign_id: 1,
+        learner_id: 101,
+        learner_masked_phone: '139****5678',
+        learner_display_name: '小王',
+        status: 'unused',
+        source: 'grant',
+        granted_by: 1,
+        expires_at: '2026-09-30 23:59:59',
+        used_at: null,
+        created_at: '2026-09-07 10:00:00',
+      },
+    ],
+    total: 1,
     page: 1,
     limit: 20,
   });
@@ -378,6 +399,31 @@ describe('CouponListView', () => {
     await flushPromises();
 
     expect(couponsApi.grantCoupon).toHaveBeenCalledWith(1, { learner_ids: [101] });
+    wrapper.unmount();
+  });
+
+  it('loads claim and grant instances in the holder dialog', async () => {
+    const wrapper = mount(CouponListView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('[data-action="open-instances"]').trigger('click');
+    await flushPromises();
+
+    expect(couponsApi.listCouponInstances).toHaveBeenCalledWith(1, {
+      page: 1,
+      limit: 20,
+      source: '',
+      status: '',
+    });
+    expect(wrapper.get('[data-dialog="instances"]').text()).toContain('定向发放');
+    expect(wrapper.get('[data-testid="coupon-instance-table"]').text()).toContain('小王');
+    expect(wrapper.get('[data-testid="coupon-instance-table"]').text()).toContain(
+      '2026-09-07 10:00:00',
+    );
+    expect(wrapper.get('[data-testid="coupon-instance-table"]').text()).toContain(
+      '2026-09-30 23:59:59',
+    );
     wrapper.unmount();
   });
 });

@@ -79,6 +79,17 @@ final class CouponController
         );
     }
 
+    public function instances(Request $request, string $id): \support\Response
+    {
+        return $this->wrap(fn (): array => $this->coupons->listInstances($this->parseId($id), [
+            'page' => (int) $request->get('page', 1),
+            'limit' => (int) $request->get('limit', 20),
+            'source' => $request->get('source'),
+            'status' => $request->get('status'),
+            'search' => $request->get('search'),
+        ]), $request);
+    }
+
     public function redemptions(Request $request): \support\Response
     {
         return $this->wrap(fn (): array => $this->coupons->listRedemptions([

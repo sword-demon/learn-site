@@ -355,6 +355,97 @@ final class CouponTest extends TestCase
         self::assertSame(1, $usedCount);
     }
 
+    public function testAdminListRedemptionsReadsLearnerLoginNotPhoneColumn(): void
+    {
+        $campaignId = $this->seedCampaign();
+        $learnerId = $this->seedLearner();
+        $coupon = $this->service->claimByLearner($campaignId, $learnerId);
+        $orderId = (int) Db::name('orders')->insertGetId([
+            'learner_id' => $learnerId,
+            'course_id' => $this->courseId,
+            'list_price_snapshot' => 100.0,
+            'sale_price_snapshot' => 0.0,
+            'coupon_discount_snapshot' => 0,
+            'paid_amount' => 100.0,
+            'currency' => 'CNY',
+            'status' => 'pending',
+            'provider' => 'fake',
+            'provider_ref' => null,
+            'succeeded_at' => null,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        $this->service->lockForOrder($learnerId, $this->courseId, $coupon['id'], $orderId);
+        $this->service->redeemOnSuccess($orderId);
+
+        $empty = $this->service->listRedemptions([
+            'campaign_id' => $this->seedCampaign(),
+            'page' => 1,
+            'limit' => 50,
+        ]);
+        self::assertSame(0, $empty['total']);
+        self::assertSame([], $empty['items']);
+
+        $list = $this->service->listRedemptions([
+            'campaign_id' => $campaignId,
+            'page' => 1,
+            'limit' => 50,
+        ]);
+        self::assertSame(1, $list['total']);
+        self::assertSame($campaignId, $list['items'][0]['campaign_id'] ?? null);
+        self::assertSame($learnerId, $list['items'][0]['learner_id'] ?? null);
+        self::assertSame($orderId, $list['items'][0]['order_id'] ?? null);
+        self::assertNotSame('', $list['items'][0]['learner_masked_phone'] ?? '');
+        self::assertStringContainsString('*', (string) ($list['items'][0]['learner_masked_phone'] ?? ''));
+    }
+
+    public function testAdminListInstancesIncludesClaimAndGrant(): void
+    {
+        $campaignId = $this->seedCampaign();
+        $claimedLearner = $this->seedLearner();
+        $grantedLearner = $this->seedLearner();
+        $this->service->claimByLearner($campaignId, $claimedLearner);
+        $this->service->grantToLearners(
+            $campaignId,
+            ['learner_ids' => [$grantedLearner]],
+            $this->staffId,
+        );
+
+        $all = $this->service->listInstances($campaignId, ['page' => 1, 'limit' => 20]);
+        self::assertSame(2, $all['total']);
+        $sources = array_column($all['items'], 'source');
+        sort($sources);
+        self::assertSame(['claim', 'grant'], $sources);
+
+        $grants = $this->service->listInstances($campaignId, [
+            'page' => 1,
+            'limit' => 20,
+            'source' => 'grant',
+        ]);
+        self::assertSame(1, $grants['total']);
+        self::assertSame('grant', $grants['items'][0]['source'] ?? null);
+        self::assertSame($grantedLearner, $grants['items'][0]['learner_id'] ?? null);
+        self::assertSame($this->staffId, $grants['items'][0]['granted_by'] ?? null);
+        self::assertSame('unused', $grants['items'][0]['status'] ?? null);
+        self::assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
+            (string) ($grants['items'][0]['created_at'] ?? ''),
+        );
+        self::assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/',
+            (string) ($grants['items'][0]['expires_at'] ?? ''),
+        );
+        self::assertArrayHasKey('used_at', $grants['items'][0]);
+        self::assertNull($grants['items'][0]['used_at']);
+    }
+
+    public function testAdminListInstancesRejectsUnknownCampaign(): void
+    {
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('COUPON_NOT_FOUND');
+        $this->service->listInstances(9_999_999, ['page' => 1, 'limit' => 20]);
+    }
+
     public function testReleaseOnTerminalReturnsToUnused(): void {
         $campaignId = $this->seedCampaign();
         $learnerId = $this->seedLearner();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AdminCouponInstanceDTO,
   CheckoutCouponOptionDTO,
   COUPON_ERROR_CODES,
   CouponErrorCode,
@@ -70,6 +71,31 @@ describe("coupon contracts", () => {
 
   it("GrantCouponInput rejects empty learner_ids", () => {
     expect(() => GrantCouponInput.parse({ learner_ids: [] })).toThrow();
+  });
+
+  it("parses an admin coupon instance with claim or grant source", () => {
+    const parsed = AdminCouponInstanceDTO.parse({
+      id: 9,
+      campaign_id: 1,
+      learner_id: 101,
+      learner_masked_phone: "139****5678",
+      learner_display_name: "小王",
+      status: "unused",
+      source: "grant",
+      granted_by: 3,
+      expires_at: "2026-09-30 23:59:59",
+      used_at: null,
+      created_at: "2026-09-07 10:00:00",
+    });
+    expect(parsed.source).toBe("grant");
+    expect(parsed.used_at).toBeNull();
+    expect(parsed.created_at).toBe("2026-09-07 10:00:00");
+    expect(
+      AdminCouponInstanceDTO.safeParse({
+        ...parsed,
+        created_at: "2026-09-07T10:00:00+08:00",
+      }).success,
+    ).toBe(false);
   });
 
   it("LearnerCouponDTO rejects unknown status", () => {

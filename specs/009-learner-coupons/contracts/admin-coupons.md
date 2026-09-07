@@ -97,6 +97,18 @@
 
 **成功 `200`**: `{ granted: number, skipped: number, items: LearnerCouponDTO[] }`
 
+---
+
+## 领取 / 发放记录
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/coupons/{id}/instances` | 该活动下学员持有的券实例分页 |
+
+**查询参数**: `source?` (`claim` \| `grant`), `status?`, `search?` (账号或姓名), `page`, `limit`
+
+**成功 `200`**: 列表项含 `learner_masked_phone`, `learner_display_name`, `source`, `status`, `granted_by`, `created_at`, `used_at`
+
 **错误**:
 
 - `VALIDATION_FAILED` — `COUPON_QUOTA_EXCEEDED`、`COUPON_CLAIM_LIMIT_EXCEEDED`

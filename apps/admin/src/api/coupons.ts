@@ -1,6 +1,7 @@
 import {
   AdminCouponCampaignDTO,
   AdminCouponCampaignListDTO,
+  AdminCouponInstanceListDTO,
   AdminCouponRedemptionListDTO,
   ApiResponse,
   CreateCouponInput,
@@ -10,11 +11,12 @@ import {
   PatchCouponInput,
   type AdminCouponCampaignDTO as AdminCoupon,
   type AdminCouponCampaignListDTO as AdminCouponList,
+  type AdminCouponInstanceListDTO as AdminCouponInstanceList,
   type AdminCouponRedemptionListDTO as AdminCouponRedemptionList,
 } from '@learn-site/contracts';
 import { http } from '@/api/http';
 
-export type { AdminCoupon, AdminCouponList, AdminCouponRedemptionList };
+export type { AdminCoupon, AdminCouponList, AdminCouponInstanceList, AdminCouponRedemptionList };
 
 export interface CouponListParams {
   page?: number;
@@ -85,6 +87,33 @@ export interface RedemptionListParams {
   learner_id?: number | null;
   from?: string | null;
   to?: string | null;
+}
+
+export interface CouponInstanceListParams {
+  page?: number;
+  limit?: number;
+  source?: 'claim' | 'grant' | '';
+  status?: 'unused' | 'locked' | 'used' | 'expired' | 'voided' | '';
+  search?: string;
+}
+
+export async function listCouponInstances(
+  campaignId: number,
+  params: CouponInstanceListParams = {},
+): Promise<AdminCouponInstanceList> {
+  const query: Record<string, number | string> = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 20,
+  };
+  if (params.source) query.source = params.source;
+  if (params.status) query.status = params.status;
+  if (params.search) query.search = params.search;
+  const { data } = await http.get(`/coupons/${campaignId}/instances`, { params: query });
+  const parsed = ApiResponse(AdminCouponInstanceListDTO).parse(data);
+  if (!parsed.ok) {
+    throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
+  }
+  return parsed.data;
 }
 
 export async function listRedemptions(

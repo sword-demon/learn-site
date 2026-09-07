@@ -319,6 +319,7 @@ Route::group($adminV1, function () {
     Route::patch('/coupons/{id}', [\App\controller\admin\CouponController::class, 'update']);
     Route::post('/coupons/{id}/disable', [\App\controller\admin\CouponController::class, 'disable']);
     Route::post('/coupons/{id}/grants', [\App\controller\admin\CouponController::class, 'grants']);
+    Route::get('/coupons/{id}/instances', [\App\controller\admin\CouponController::class, 'instances']);
     Route::get('/coupon-redemptions', [\App\controller\admin\CouponController::class, 'redemptions']);
 
     // Z-Pay Payment Configuration (site.manage)

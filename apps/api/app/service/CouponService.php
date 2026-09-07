@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\service;
 
 use App\support\Logger;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 /**
@@ -25,7 +26,6 @@ use support\think\Db;
  */
 final class CouponService
 {
-    private const TIMEZONE = 'Asia/Shanghai';
     private const DEFAULT_CLAIM_LIMIT = 1;
     private const DEFAULT_USE_LIMIT = 1;
     private const MAX_NAME_LENGTH = 120;
@@ -81,7 +81,7 @@ final class CouponService
         $payload = $this->validateCampaignInput($input, true);
 
         $id = Db::transaction(function () use ($payload, $staffId) {
-            $now = $this->nowDatetime();
+            $now = ShanghaiTime::nowDatetime();
             $campaignId = (int) Db::name('coupon_campaigns')->insertGetId([
                 'name' => $payload['name'],
                 'scope_type' => $payload['scope_type'],
@@ -132,11 +132,11 @@ final class CouponService
             $input['expected_updated_at'] ?? null,
         );
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $started = isset($row['claim_starts_at'])
-            && $this->sqlDatetimeTimestamp((string) $row['claim_starts_at']) <= $this->nowTimestamp();
+            && ShanghaiTime::timestamp((string) $row['claim_starts_at']) <= ShanghaiTime::nowTimestamp();
         $ended = isset($row['claim_ends_at'])
-            && $this->sqlDatetimeTimestamp((string) $row['claim_ends_at']) <= $this->nowTimestamp();
+            && ShanghaiTime::timestamp((string) $row['claim_ends_at']) <= ShanghaiTime::nowTimestamp();
 
         $updates = [];
         if (array_key_exists('name', $input)) {
@@ -145,7 +145,7 @@ final class CouponService
         }
         if (array_key_exists('claim_ends_at', $input)) {
             $claimEndsAt = $this->validateIso8601ToSql($input['claim_ends_at'], 'claim_ends_at');
-            if ($this->sqlDatetimeTimestamp($claimEndsAt) <= $this->sqlDatetimeTimestamp((string) $row['claim_starts_at'])) {
+            if (ShanghaiTime::timestamp($claimEndsAt) <= ShanghaiTime::timestamp((string) $row['claim_starts_at'])) {
                 throw new BusinessException('VALIDATION_FAILED', 'COUPON_DATE_INVALID');
             }
             $updates['claim_ends_at'] = $claimEndsAt;
@@ -156,7 +156,7 @@ final class CouponService
                 : $this->validateIso8601ToSql($input['use_ends_at'], 'use_ends_at');
             if ($useEndsAt !== null) {
                 $base = $updates['claim_ends_at'] ?? (string) $row['claim_ends_at'];
-                if ($this->sqlDatetimeTimestamp($useEndsAt) < $this->sqlDatetimeTimestamp($base)) {
+                if (ShanghaiTime::timestamp($useEndsAt) < ShanghaiTime::timestamp($base)) {
                     throw new BusinessException('VALIDATION_FAILED', 'COUPON_DATE_INVALID');
                 }
             }
@@ -194,7 +194,7 @@ final class CouponService
             throw new BusinessException('VALIDATION_FAILED', 'COUPON_RULE_INVALID');
         }
 
-        $updates['updated_at'] = $this->nextUpdatedAt((string) $row['updated_at']);
+        $updates['updated_at'] = ShanghaiTime::nextAfter((string) $row['updated_at']);
         $updated = Db::name('coupon_campaigns')
             ->where('id', $campaignId)
             ->where('updated_at', $expectedUpdatedAt)
@@ -223,7 +223,7 @@ final class CouponService
             return $this->shapeAdminCampaign($row);
         }
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         Db::transaction(function () use ($campaignId, $now) {
             Db::name('coupon_campaigns')
                 ->where('id', $campaignId)
@@ -278,7 +278,7 @@ final class CouponService
             if ($status === self::STATUS_DISABLED) {
                 $query->where('status', self::STATUS_DISABLED);
             } elseif (in_array($status, ['active', 'scheduled', 'ended'], true)) {
-                $now = $this->nowDatetime();
+                $now = ShanghaiTime::nowDatetime();
                 if ($status === 'scheduled') {
                     $query->where('status', self::STATUS_ACTIVE)
                         ->where('claim_starts_at', '>', $now);
@@ -386,7 +386,7 @@ final class CouponService
                 return;
             }
 
-            $now = $this->nowDatetime();
+            $now = ShanghaiTime::nowDatetime();
             $expiresAt = $this->resolveExpiresAt($row);
             $insertRows = [];
             foreach ($toGrant as $learnerId) {
@@ -455,7 +455,7 @@ final class CouponService
     public function listClaimable(int $learnerId): array
     {
         $this->assertLearner($learnerId);
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $rows = Db::name('coupon_campaigns')
             ->where('status', self::STATUS_ACTIVE)
             ->where('claim_mode', self::CLAIM_PUBLIC)
@@ -491,7 +491,7 @@ final class CouponService
     public function claimByLearner(int $campaignId, int $learnerId): array
     {
         $this->assertLearner($learnerId);
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $newId = Db::transaction(function () use ($campaignId, $learnerId, $now) {
             $row = Db::name('coupon_campaigns')
                 ->where('id', $campaignId)
@@ -506,9 +506,9 @@ final class CouponService
             if ((string) $row['claim_mode'] !== self::CLAIM_PUBLIC) {
                 throw new BusinessException('VALIDATION_FAILED', 'COUPON_NOT_CLAIMABLE');
             }
-            $startsAt = $this->sqlDatetimeTimestamp((string) $row['claim_starts_at']);
-            $endsAt = $this->sqlDatetimeTimestamp((string) $row['claim_ends_at']);
-            $nowTs = $this->nowTimestamp();
+            $startsAt = ShanghaiTime::timestamp((string) $row['claim_starts_at']);
+            $endsAt = ShanghaiTime::timestamp((string) $row['claim_ends_at']);
+            $nowTs = ShanghaiTime::nowTimestamp();
             if ($nowTs < $startsAt) {
                 throw new BusinessException('VALIDATION_FAILED', 'COUPON_NOT_CLAIMABLE');
             }
@@ -604,7 +604,7 @@ final class CouponService
         $saleOpen = $this->isCourseSaleOpen($course);
         $basePrice = $saleOpen ? (float) $course['sale_price'] : $listPrice;
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $rows = Db::name('learner_coupons')
             ->alias('lc')
             ->join('coupon_campaigns c', 'c.id = lc.campaign_id')
@@ -672,7 +672,7 @@ final class CouponService
             return ['coupon_discount' => 0.0, 'campaign_id' => 0];
         }
         $this->assertLearner($learnerId);
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $result = Db::transaction(function () use ($learnerId, $courseId, $couponId, $orderId, $now) {
             $coupon = Db::name('learner_coupons')
                 ->alias('lc')
@@ -709,7 +709,7 @@ final class CouponService
                 throw new BusinessException('VALIDATION_FAILED', 'COUPON_NOT_CLAIMABLE');
             }
             if ((string) $coupon['instance_status'] === self::INSTANCE_UNUSED
-                && $this->sqlDatetimeTimestamp((string) $coupon['expires_at']) <= $this->nowTimestamp()) {
+                && ShanghaiTime::timestamp((string) $coupon['expires_at']) <= ShanghaiTime::nowTimestamp()) {
                 Db::name('learner_coupons')
                     ->where('id', $couponId)
                     ->update(['status' => self::INSTANCE_EXPIRED]);
@@ -774,7 +774,7 @@ final class CouponService
         if ((string) $row['status'] !== self::INSTANCE_LOCKED) {
             return;
         }
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         Db::name('learner_coupons')
             ->where('id', (int) $row['id'])
             ->update([
@@ -799,8 +799,8 @@ final class CouponService
         if (!$row || (string) $row['status'] !== self::INSTANCE_LOCKED) {
             return;
         }
-        $expiresAt = $this->sqlDatetimeTimestamp((string) $row['expires_at']);
-        $nowTs = $this->nowTimestamp();
+        $expiresAt = ShanghaiTime::timestamp((string) $row['expires_at']);
+        $nowTs = ShanghaiTime::nowTimestamp();
         $newStatus = $expiresAt > $nowTs ? self::INSTANCE_UNUSED : self::INSTANCE_EXPIRED;
         Db::name('learner_coupons')
             ->where('id', (int) $row['id'])
@@ -809,6 +809,84 @@ final class CouponService
                 'locked_order_id' => null,
                 'locked_at' => null,
             ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // 领取 / 发放实例（管理端）
+    // -------------------------------------------------------------------------
+
+    /**
+     * 管理端按活动查看领取 / 发放实例。
+     *
+     * @param array<string, mixed> $filters
+     * @return array{items: list<array<string,mixed>>, total: int, page: int, limit: int}
+     */
+    public function listInstances(int $campaignId, array $filters): array
+    {
+        if ($this->loadCampaignRow($campaignId) === null) {
+            throw new BusinessException('NOT_FOUND', 'COUPON_NOT_FOUND');
+        }
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $limit = min(self::MAX_PAGE_LIMIT, max(1, (int) ($filters['limit'] ?? 20)));
+        $query = Db::name('learner_coupons')
+            ->alias('lc')
+            ->join('accounts a', 'a.id = lc.learner_id')
+            ->leftJoin('learners l', 'l.account_id = lc.learner_id')
+            ->where('lc.campaign_id', $campaignId)
+            ->field([
+                'lc.id',
+                'lc.campaign_id',
+                'lc.learner_id',
+                'a.login as learner_login',
+                'l.nickname as learner_display_name',
+                'lc.status',
+                'lc.source',
+                'lc.granted_by',
+                'lc.expires_at',
+                'lc.used_at',
+                'lc.created_at',
+            ]);
+        $source = (string) ($filters['source'] ?? '');
+        if ($source === self::SOURCE_CLAIM || $source === self::SOURCE_GRANT) {
+            $query->where('lc.source', $source);
+        }
+        $status = (string) ($filters['status'] ?? '');
+        if (in_array($status, [
+            self::INSTANCE_UNUSED,
+            self::INSTANCE_LOCKED,
+            self::INSTANCE_USED,
+            self::INSTANCE_EXPIRED,
+            self::INSTANCE_VOIDED,
+        ], true)) {
+            $query->where('lc.status', $status);
+        }
+        $search = trim((string) ($filters['search'] ?? ''));
+        if ($search !== '') {
+            $query->where(function ($where) use ($search): void {
+                $where->where('a.login', 'like', '%' . $search . '%')
+                    ->whereOr('l.nickname', 'like', '%' . $search . '%');
+            });
+        }
+        $total = (int) (clone $query)->count();
+        $rows = $query->order('lc.id', 'desc')->page($page, $limit)->select()->toArray();
+        $items = array_map(fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'campaign_id' => (int) $row['campaign_id'],
+            'learner_id' => (int) $row['learner_id'],
+            'learner_masked_phone' => $this->maskPhone((string) ($row['learner_login'] ?? '')),
+            'learner_display_name' => $row['learner_display_name'] !== null && $row['learner_display_name'] !== ''
+                ? (string) $row['learner_display_name']
+                : null,
+            'status' => (string) $row['status'],
+            'source' => (string) $row['source'],
+            'granted_by' => $row['granted_by'] !== null ? (int) $row['granted_by'] : null,
+            'expires_at' => ShanghaiTime::toDatetime((string) $row['expires_at']),
+            'used_at' => $row['used_at'] !== null && $row['used_at'] !== ''
+                ? ShanghaiTime::toDatetime((string) $row['used_at'])
+                : null,
+            'created_at' => ShanghaiTime::toDatetime((string) $row['created_at']),
+        ], $rows);
+        return ['items' => $items, 'total' => $total, 'page' => $page, 'limit' => $limit];
     }
 
     // -------------------------------------------------------------------------
@@ -838,7 +916,7 @@ final class CouponService
                 'c.id as campaign_id',
                 'c.name as campaign_name',
                 'a.id as learner_id',
-                'a.phone as learner_phone',
+                'a.login as learner_phone',
                 'co.id as course_id',
                 'co.title as course_title',
                 'o.id as order_id',
@@ -869,7 +947,7 @@ final class CouponService
             'course_title' => (string) $r['course_title'],
             'order_id' => (int) $r['order_id'],
             'discount_amount' => (float) $r['discount_amount'],
-            'used_at' => $this->toIso8601((string) $r['used_at']),
+            'used_at' => ShanghaiTime::toIso8601((string) $r['used_at']),
         ], $rows);
         return ['items' => $items, 'total' => $total, 'page' => $page, 'limit' => $limit];
     }
@@ -1007,14 +1085,14 @@ final class CouponService
         $claimMode = $this->validateClaimMode($input['claim_mode'] ?? null);
         $claimStartsAt = $this->validateIso8601ToSql($input['claim_starts_at'] ?? null, 'claim_starts_at');
         $claimEndsAt = $this->validateIso8601ToSql($input['claim_ends_at'] ?? null, 'claim_ends_at');
-        if ($this->sqlDatetimeTimestamp($claimEndsAt) <= $this->sqlDatetimeTimestamp($claimStartsAt)) {
+        if (ShanghaiTime::timestamp($claimEndsAt) <= ShanghaiTime::timestamp($claimStartsAt)) {
             throw new BusinessException('VALIDATION_FAILED', 'COUPON_DATE_INVALID');
         }
         $useEndsAtRaw = $input['use_ends_at'] ?? null;
         $useEndsAt = $useEndsAtRaw === null
             ? null
             : $this->validateIso8601ToSql($useEndsAtRaw, 'use_ends_at');
-        if ($useEndsAt !== null && $this->sqlDatetimeTimestamp($useEndsAt) < $this->sqlDatetimeTimestamp($claimEndsAt)) {
+        if ($useEndsAt !== null && ShanghaiTime::timestamp($useEndsAt) < ShanghaiTime::timestamp($claimEndsAt)) {
             throw new BusinessException('VALIDATION_FAILED', 'COUPON_DATE_INVALID');
         }
         $totalQuota = $this->validateTotalQuota($input['total_quota'] ?? null);
@@ -1143,10 +1221,8 @@ final class CouponService
             throw new BusinessException('VALIDATION_FAILED', 'COUPON_DATE_INVALID');
         }
         try {
-            return (new \DateTimeImmutable($value))
-                ->setTimezone(new \DateTimeZone(self::TIMEZONE))
-                ->format('Y-m-d H:i:s');
-        } catch (\Exception) {
+            return ShanghaiTime::fromIso8601($value);
+        } catch (\InvalidArgumentException) {
             throw new BusinessException('VALIDATION_FAILED', 'COUPON_DATE_INVALID');
         }
     }
@@ -1242,19 +1318,6 @@ final class CouponService
             : (string) $row['claim_ends_at'];
     }
 
-    /** 生成严格递增的 updated_at，避免乐观锁同秒冲突。 */
-    private function nextUpdatedAt(string $current): string
-    {
-        $tz = new \DateTimeZone(self::TIMEZONE);
-        $now = new \DateTimeImmutable('now', $tz);
-        $cur = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $current, $tz);
-        $candidate = $now;
-        if ($cur instanceof \DateTimeImmutable) {
-            $candidate = max($candidate, $cur->modify('+1 second'));
-        }
-        return $candidate->format('Y-m-d H:i:s');
-    }
-
     /** 校验后台操作人已登录。 */
     private function assertActor(int $staffId): void
     {
@@ -1283,26 +1346,8 @@ final class CouponService
             'target_type' => 'coupon_campaigns',
             'target_id' => $targetId,
             'payload_json' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'created_at' => $this->nowDatetime(),
+            'created_at' => ShanghaiTime::nowDatetime(),
         ]);
-    }
-
-    /** 当前时刻（Asia/Shanghai，SQL datetime）。 */
-    private function nowDatetime(): string
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format('Y-m-d H:i:s');
-    }
-
-    /** Asia/Shanghai 当前 Unix 时间戳。 */
-    private function nowTimestamp(): int
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->getTimestamp();
-    }
-
-    /** 将库内 SQL datetime（Asia/Shanghai 墙钟）解析为 Unix 时间戳。 */
-    private function sqlDatetimeTimestamp(string $datetime): int
-    {
-        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))->getTimestamp();
     }
 
     /**
@@ -1315,14 +1360,8 @@ final class CouponService
         return (float) ($course['sale_price'] ?? 0) > 0
             && !empty($course['sale_start_at'])
             && !empty($course['sale_end_at'])
-            && $this->nowTimestamp() >= $this->sqlDatetimeTimestamp((string) $course['sale_start_at'])
-            && $this->nowTimestamp() < $this->sqlDatetimeTimestamp((string) $course['sale_end_at']);
-    }
-
-    /** SQL datetime → ISO8601（Asia/Shanghai）。 */
-    private function toIso8601(string $datetime): string
-    {
-        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))->format(DATE_ATOM);
+            && ShanghaiTime::nowTimestamp() >= ShanghaiTime::timestamp((string) $course['sale_start_at'])
+            && ShanghaiTime::nowTimestamp() < ShanghaiTime::timestamp((string) $course['sale_end_at']);
     }
 
     /** 手机号脱敏：保留前 3 后 4 位。 */
@@ -1367,10 +1406,10 @@ final class CouponService
             'min_amount' => (float) $row['min_amount'],
             'discount_amount' => (float) $row['discount_amount'],
             'claim_mode' => (string) $row['claim_mode'],
-            'claim_starts_at' => $this->toIso8601((string) $row['claim_starts_at']),
-            'claim_ends_at' => $this->toIso8601((string) $row['claim_ends_at']),
+            'claim_starts_at' => ShanghaiTime::toIso8601((string) $row['claim_starts_at']),
+            'claim_ends_at' => ShanghaiTime::toIso8601((string) $row['claim_ends_at']),
             'use_ends_at' => $row['use_ends_at'] !== null
-                ? $this->toIso8601((string) $row['use_ends_at'])
+                ? ShanghaiTime::toIso8601((string) $row['use_ends_at'])
                 : null,
             'total_quota' => $row['total_quota'] !== null ? (int) $row['total_quota'] : null,
             'claimed_count' => (int) $row['claimed_count'],
@@ -1379,8 +1418,8 @@ final class CouponService
             'per_learner_use_limit' => (int) $row['per_learner_use_limit'],
             'status' => (string) $row['status'],
             'created_by' => (int) $row['created_by'],
-            'created_at' => $this->toIso8601((string) $row['created_at']),
-            'updated_at' => $this->toIso8601((string) $row['updated_at']),
+            'created_at' => ShanghaiTime::toIso8601((string) $row['created_at']),
+            'updated_at' => ShanghaiTime::toIso8601((string) $row['updated_at']),
         ];
     }
 
@@ -1399,9 +1438,9 @@ final class CouponService
             'scope_summary' => $scopeSummary,
             'min_amount' => (float) $row['min_amount'],
             'discount_amount' => (float) $row['discount_amount'],
-            'claim_starts_at' => $this->toIso8601((string) $row['claim_starts_at']),
-            'claim_ends_at' => $this->toIso8601((string) $row['claim_ends_at']),
-            'use_ends_at' => $this->toIso8601(
+            'claim_starts_at' => ShanghaiTime::toIso8601((string) $row['claim_starts_at']),
+            'claim_ends_at' => ShanghaiTime::toIso8601((string) $row['claim_ends_at']),
+            'use_ends_at' => ShanghaiTime::toIso8601(
                 $row['use_ends_at'] !== null
                     ? (string) $row['use_ends_at']
                     : (string) $row['claim_ends_at'],
@@ -1430,8 +1469,8 @@ final class CouponService
             'discount_amount' => $campaign !== null ? (float) $campaign['discount_amount'] : 0.0,
             'status' => (string) $row['status'],
             'source' => (string) $row['source'],
-            'expires_at' => $this->toIso8601((string) $row['expires_at']),
-            'created_at' => $this->toIso8601((string) $row['created_at']),
+            'expires_at' => ShanghaiTime::toIso8601((string) $row['expires_at']),
+            'created_at' => ShanghaiTime::toIso8601((string) $row['created_at']),
         ];
     }
 
