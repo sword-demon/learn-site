@@ -77,7 +77,7 @@ function showHeadline(index: number): boolean {
   min-height: 320px;
   overflow: hidden;
   border: 1px solid var(--line-2);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--card-2);
 }
 

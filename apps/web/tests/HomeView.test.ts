@@ -14,7 +14,11 @@ vi.mock('@/api/learner', () => learnerApi);
 
 import HomeView from '@/views/home/HomeView.vue';
 
-const category = { id: 3, name: '前端开发', children: [] };
+const category = {
+  id: 3,
+  name: '前端开发',
+  children: [{ id: 4, name: '组件设计', children: [] }],
+};
 const course = {
   id: 9,
   category_id: 3,
@@ -53,29 +57,52 @@ describe('HomeView', () => {
     });
   });
 
-  it('uses el-tree and reloads courses when a category node is selected', async () => {
+  it('selects categories from compact navigation and supports nested selection', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: '/', component: HomeView }],
     });
     await router.push('/');
     await router.isReady();
-
     const wrapper = mount(HomeView, { global: { plugins: [createPinia(), router] } });
     await flushPromises();
 
-    expect(wrapper.get('[data-action="all-categories"]').text()).toContain('全部分类');
-    const tree = wrapper.findComponent({ name: 'ElTree' });
-    expect(tree.exists()).toBe(true);
-    expect(tree.props('data')).toEqual([category]);
-
-    await wrapper.get('.el-tree-node__content').trigger('click');
+    expect(wrapper.get('[data-action="all-categories"]').attributes('aria-pressed')).toBe('true');
+    await wrapper.get('[data-category-id="3"]').trigger('click');
     await flushPromises();
-
     expect(router.currentRoute.value.query).toEqual({ cat: '3' });
     expect(learnerApi.fetchCategoryCourses).toHaveBeenCalledWith(3, 1, 100);
-    expect(learnerApi.fetchCategoryCourses).toHaveBeenCalledTimes(1);
-    expect(wrapper.text()).toContain('前端开发');
+
+    const tree = wrapper.getComponent({ name: 'ElTreeSelect' });
+    tree.vm.$emit('update:modelValue', 4);
+    await flushPromises();
+    expect(learnerApi.fetchCategoryCourses).toHaveBeenLastCalledWith(4, 1, 100);
+    expect(wrapper.get('.category-detail').text()).toContain('前端开发 / 组件设计');
+
+    await wrapper.get('[data-action="all-categories"]').trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.query.cat).toBeUndefined();
+  });
+
+  it('ignores a stale category response after returning to all courses', async () => {
+    let resolveCategory!: (value: unknown) => void;
+    learnerApi.fetchCategoryCourses.mockReturnValue(new Promise((resolve) => { resolveCategory = resolve; }));
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: HomeView }],
+    });
+    await router.push('/');
+    await router.isReady();
+    const wrapper = mount(HomeView, { global: { plugins: [createPinia(), router] } });
+    await flushPromises();
+    await wrapper.get('[data-category-id="3"]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-action="all-categories"]').trigger('click');
+    await flushPromises();
+    resolveCategory({ list: { items: [{ ...course, title: '过期的分类响应' }] } });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Vue 组件设计');
+    expect(wrapper.text()).not.toContain('过期的分类响应');
   });
 
   it('mounts the home banner carousel from the home payload', async () => {

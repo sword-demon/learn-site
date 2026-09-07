@@ -1,115 +1,46 @@
 <template>
-  <div class="campus auth-page" :data-mode="mode">
-    <header class="masthead auth-page__masthead">
-      <div class="masthead-inner auth-page__masthead-inner">
-        <router-link to="/" class="brand">
-          <div class="seal-mark" aria-hidden="true">
-            <span>拾</span><span>阶</span><span>学</span><span>社</span>
-          </div>
-          <div class="brand-txt">
-            <h1>拾阶学社</h1>
-          </div>
-        </router-link>
-        <div class="masthead-tools">
-          <el-button
-            circle
-            class="btn-night"
-            :icon="isNight ? Sunny : Moon"
-            :title="isNight ? '切换日间模式' : '夜读模式'"
-            :aria-label="isNight ? '切换日间模式' : '切换夜读模式'"
-            :aria-pressed="isNight"
-            @click="toggleNight"
-          />
-        </div>
+  <div class="auth-page" :data-mode="mode">
+    <header class="auth-header">
+      <router-link to="/" class="auth-brand">拾阶学社</router-link>
+      <div><router-link to="/">返回首页</router-link>
+        <el-button text circle :icon="isNight ? Sunny : Moon" :title="isNight ? '切换日间模式' : '切换夜读模式'"
+          :aria-label="isNight ? '切换日间模式' : '切换夜读模式'" @click="toggleNight" />
       </div>
     </header>
-
-    <main class="auth-page__main">
-      <section class="auth-card-stitch">
-        <aside class="auth-card-stitch__aside" aria-hidden="true">
-          <h1>拾阶而上</h1>
-          <p>逐级攀登，知识生辉</p>
-        </aside>
-
-        <div class="auth-card-stitch__body">
-          <el-tabs v-model="mode" class="auth-tabs" data-testid="mode-tabs" @tab-click="onTabClick">
-            <el-tab-pane label="登录" name="login" />
-            <el-tab-pane label="注册" name="register" />
-          </el-tabs>
-
-          <p class="badge">{{ copy.badge }}</p>
-          <h2 class="display auth-card-stitch__title">{{ copy.title }}</h2>
-          <p class="lede">{{ copy.lede }}</p>
-
-          <el-form class="auth-card-stitch__form" :model="form" @submit.prevent="onSubmit">
-            <label class="field auth-field-underline">
-              手机号码
-              <el-input
-                v-model="form.phone"
-                maxlength="11"
-                autocomplete="username"
-                placeholder="请输入手机号"
-                data-testid="phone-input"
-              />
-            </label>
-            <label class="field auth-field-underline">
-              密码
-              <el-input
-                v-model="form.password"
-                type="password"
-                :autocomplete="copy.autocomplete"
-                show-password
-                placeholder="请输入密码"
-                data-testid="password-input"
-              />
-            </label>
-            <label class="field auth-field-underline">
-              图形验证码
-              <div class="captcha-row">
-                <el-input
-                  v-model="form.captcha_answer"
-                  maxlength="8"
-                  autocomplete="off"
-                  placeholder="验证码"
-                  data-testid="captcha-input"
-                />
-                <el-button
-                  class="captcha-btn"
-                  :loading="loadingCaptcha"
-                  aria-label="刷新图形验证码"
-                  @click="() => loadCaptcha()"
-                >
-                  <img v-if="captcha.image" :src="captcha.image" alt="点击刷新验证码" />
-                  <span v-else>加载验证码</span>
-                </el-button>
-              </div>
-            </label>
-            <el-alert
-              v-if="errorLabel"
-              :title="errorLabel"
-              type="error"
-              :closable="false"
-              show-icon
-            />
-            <el-button
-              type="primary"
-              native-type="submit"
-              class="auth-card-stitch__submit"
-              :loading="busy"
-              data-testid="submit-button"
-            >
-              {{ copy.submit }}
-            </el-button>
-          </el-form>
-
-          <p class="switch">
-            {{ copy.switchPrompt }}
-            <a href="#" class="switch-link" data-testid="switch-mode" @click.prevent="switchMode">{{
-              copy.switchLabel
-            }}</a>
-          </p>
-          <p class="form-note">{{ copy.note }}</p>
-        </div>
+    <main class="auth-main">
+      <section class="auth-form-section">
+        <p class="auth-brand-label">拾阶学社</p>
+        <h1>{{ copy.title }}</h1>
+        <el-tabs v-model="mode" class="auth-tabs" data-testid="mode-tabs" @tab-click="onTabClick">
+          <el-tab-pane label="登录" name="login" />
+          <el-tab-pane label="注册" name="register" />
+        </el-tabs>
+        <el-form :model="form" class="auth-form" label-position="top" @submit.prevent="onSubmit">
+          <el-form-item label="手机号码">
+            <el-input v-model="form.phone" inputmode="tel" maxlength="11" autocomplete="username"
+              placeholder="请输入 11 位手机号" size="large" data-testid="phone-input" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="form.password" type="password" :autocomplete="copy.autocomplete"
+              show-password placeholder="8 - 72 位密码" size="large" data-testid="password-input" />
+          </el-form-item>
+          <el-form-item label="图形验证码">
+            <div class="auth-captcha">
+              <el-input v-model="form.captcha_answer" maxlength="8" autocomplete="off" placeholder="请输入验证码"
+                size="large" data-testid="captcha-input" />
+              <el-button class="captcha-button" :loading="loadingCaptcha" aria-label="刷新图形验证码"
+                title="刷新图形验证码" @click="() => loadCaptcha()">
+                <img v-if="captcha.image" :src="captcha.image" alt="点击刷新验证码" />
+                <span v-else>重新加载</span>
+              </el-button>
+            </div>
+          </el-form-item>
+          <el-alert v-if="errorLabel" :title="errorLabel" type="error" :closable="false" show-icon />
+          <el-button type="primary" native-type="submit" size="large" class="auth-submit"
+            :disabled="busy || loadingCaptcha" :loading="busy" data-testid="submit-button">{{ copy.submit }}</el-button>
+        </el-form>
+        <p class="auth-switch">{{ copy.switchPrompt }} <button type="button" data-testid="switch-mode" @click="switchMode">{{ copy.switchLabel }}</button></p>
+        <nav class="auth-legal" aria-label="服务条款"><router-link to="/terms">用户协议</router-link><router-link to="/help">帮助中心</router-link></nav>
       </section>
     </main>
   </div>
@@ -139,8 +70,6 @@ interface Copy {
   switchLabel: string;
   note: string;
   asideIndex: string;
-  asideHeadline: string;
-  asideBody: string;
   errorFallback: string;
   errorCodes: Record<string, string>;
 }
@@ -171,16 +100,14 @@ const copy = computed<Copy>(() =>
   mode.value === 'login'
     ? {
         badge: '学员登录',
-        title: '用手机号进入课室',
+        title: '欢迎回来',
         lede: '登录需要手机号、密码和一次图形验证码。',
         submit: '登录',
         autocomplete: 'current-password',
-        switchPrompt: '还没有学号？',
-        switchLabel: '注册',
+        switchPrompt: '还没有账户？',
+        switchLabel: '现在注册',
         note: '学员账户与后台账户相互独立，请使用学员手机号登录。',
-        asideIndex: 'READ / 01',
-        asideHeadline: '拾阶而上',
-        asideBody: '拾级而上 · 日进一阶',
+        asideIndex: 'READ · 01',
         errorFallback: '暂时无法登录',
         errorCodes: {
           CAPTCHA_INVALID: '验证码错误或已过期，请换一张再试',
@@ -191,16 +118,14 @@ const copy = computed<Copy>(() =>
       }
     : {
         badge: '学员注册',
-        title: '领一张课室学号',
+        title: '创建学员账户',
         lede: '只用大陆手机号注册，后台账号不能登录这里。',
         submit: '注册并进入',
         autocomplete: 'new-password',
-        switchPrompt: '已经有学号？',
-        switchLabel: '登录',
+        switchPrompt: '已有账户？',
+        switchLabel: '直接登录',
         note: '注册成功后会自动登录，并保留你的学习进度与收藏。',
-        asideIndex: 'READ / 02',
-        asideHeadline: '拾阶而上',
-        asideBody: '拾级而上 · 日进一阶',
+        asideIndex: 'READ · 02',
         errorFallback: '暂时无法注册',
         errorCodes: {
           CAPTCHA_INVALID: '验证码错误或已过期，请换一张再试',
@@ -238,6 +163,7 @@ async function loadCaptcha(options?: { preserveError?: boolean }): Promise<void>
 }
 
 async function onSubmit(): Promise<void> {
+  if (busy.value) return;
   busy.value = true;
   error.value = '';
   try {
@@ -278,114 +204,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.auth-page__masthead {
-  border-bottom: 1px solid var(--line-2);
-}
-
-.auth-page__masthead-inner {
-  min-height: 64px;
-  padding: 0 24px;
-}
-
-.auth-page__main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100dvh - 64px);
-  padding: 40px 24px 64px;
-}
-
-.auth-card-stitch {
-  display: flex;
-  width: min(800px, 100%);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow: var(--shadow);
-}
-
-.auth-card-stitch__aside {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 30%;
-  min-width: 200px;
-  padding: 40px 24px;
-  background: var(--seal);
-  color: #fff;
-  text-align: center;
-}
-
-.auth-card-stitch__aside h1 {
-  margin: 0;
-  font-family: var(--serif);
-  font-size: 32px;
-  line-height: 1.3;
-  letter-spacing: 0.2em;
-  writing-mode: vertical-rl;
-}
-
-.auth-card-stitch__aside p {
-  margin: 16px 0 0;
-  font-size: 12px;
-  color: var(--seal-soft);
-  writing-mode: vertical-rl;
-  letter-spacing: 0.12em;
-}
-
-.auth-card-stitch__body {
-  flex: 1;
-  padding: 32px;
-}
-
-.auth-card-stitch__title {
-  margin: 12px 0 8px;
-  font-size: 28px;
-}
-
-.auth-card-stitch__form {
-  display: grid;
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.auth-field-underline :deep(.el-input__wrapper) {
-  border-radius: 0;
-  box-shadow: 0 1px 0 0 var(--line) inset;
-  background: transparent;
-}
-
-.auth-field-underline :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 2px 0 0 var(--seal) inset;
-}
-
-.auth-card-stitch__submit {
-  width: 100%;
-  min-height: 44px;
-  margin-left: 0;
-}
-
-@media (max-width: 720px) {
-  .auth-card-stitch {
-    flex-direction: column;
-  }
-
-  .auth-card-stitch__aside {
-    width: 100%;
-    min-width: 0;
-    min-height: 140px;
-    padding: 24px;
-  }
-
-  .auth-card-stitch__aside h1,
-  .auth-card-stitch__aside p {
-    writing-mode: horizontal-tb;
-  }
-
-  .auth-card-stitch__body {
-    padding: 24px 20px;
-  }
-}
+.auth-page { min-height: 100dvh; background: var(--card); }
+.auth-header { height: 72px; padding: 0 40px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.auth-brand { font-size: 24px; font-weight: 800; color: var(--ink); }
+.auth-header > div { display: flex; align-items: center; gap: 24px; }
+.auth-header > div > a { font-size: 13px; color: var(--ink-2); }
+.auth-main { display: flex; justify-content: center; padding: 64px 24px 48px; }
+.auth-form-section { width: 400px; max-width: 100%; }
+.auth-brand-label { color: var(--seal); font-size: 14px; margin: 0 0 10px; }
+.auth-form-section h1 { margin: 0 0 28px; font-size: 30px; line-height: 1.4; font-weight: 700; }
+.auth-tabs { margin-bottom: 16px; }
+.auth-tabs :deep(.el-tabs__item) { font-size: 15px; }
+.auth-form { display: grid; gap: 22px; }
+.auth-form :deep(.el-form-item) { margin: 0; }
+.auth-form :deep(.el-form-item__label) { font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+.auth-form :deep(.el-input__wrapper) { min-height: 46px; border: 0; border-radius: 6px; background: var(--card); box-shadow: 0 0 0 1px var(--line-2) inset; }
+.auth-form :deep(.el-input__wrapper.is-focus) { box-shadow: 0 0 0 1px var(--seal) inset, 0 0 0 3px var(--seal-soft); }
+.auth-form :deep(.el-input__inner) { outline: 0; border: 0; background: transparent; }
+.auth-captcha { display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 12px; width: 100%; }
+.captcha-button { height: 46px; margin: 0; padding: 0; overflow: hidden; border-radius: 6px; }
+.captcha-button img { display: block; width: 130px; height: 44px; object-fit: contain; }
+.auth-submit { width: 100%; height: 46px; margin-top: 2px; font-size: 15px; border-radius: 6px; }
+.auth-switch { margin: 24px 0 0; font-size: 14px; color: var(--ink-2); text-align: center; }
+.auth-switch button { border: 0; padding: 0; background: transparent; color: var(--seal); cursor: pointer; }
+.auth-legal { display: flex; gap: 24px; justify-content: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
+.auth-legal a { color: var(--ink-3); font-size: 12px; }
 </style>

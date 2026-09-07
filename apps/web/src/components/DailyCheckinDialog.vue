@@ -70,6 +70,9 @@ async function submit(): Promise<void> {
     title="每日签到"
     width="min(640px, 92vw)"
     append-to-body
+    align-center
+    class="daily-checkin-dialog"
+    modal-class="daily-checkin-modal"
     :close-on-click-modal="false"
     @close="close"
   >

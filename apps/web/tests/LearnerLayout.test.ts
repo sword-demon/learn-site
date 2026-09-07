@@ -104,45 +104,45 @@ describe('LearnerLayout masthead', () => {
     });
   });
 
-  it('keeps brand, nav and tools in one desktop masthead row', async () => {
+  it('keeps brand, nav and tools in one desktop header row', async () => {
     const wrapper = await mountLayout();
-    const bar = wrapper.get('.masthead-bar');
-    const nav = wrapper.get('#learner-navigation');
+    const inner = wrapper.get('.learner-header__inner');
 
-    expect(bar.find('.brand').exists()).toBe(true);
-    expect(bar.find('.masthead-tools').exists()).toBe(true);
-    expect(bar.find('.masthead-brandnav').exists()).toBe(true);
-    expect(bar.find('#learner-navigation').exists()).toBe(true);
-    expect(nav.element.parentElement?.classList.contains('masthead-brandnav')).toBe(true);
+    expect(inner.find('.learner-brand').exists()).toBe(true);
+    expect(inner.find('.learner-nav').exists()).toBe(true);
+    expect(inner.find('.learner-tools').exists()).toBe(true);
+    expect(wrapper.get('.learner-nav').attributes('aria-label')).toBe('主导航');
   });
 
   it('shows compact public links before login', async () => {
     const wrapper = await mountLayout();
-    const hrefs = wrapper.findAll('#learner-navigation a').map((link) => link.attributes('href'));
-    expect(hrefs).toEqual(['/', '/maps']);
+    const hrefs = wrapper.findAll('.learner-nav a').map((link) => link.attributes('href'));
+    expect(hrefs).toEqual(['/', '/maps', '/me/learning']);
     expect(wrapper.text()).toContain('登录 / 注册');
     expect(wrapper.text()).not.toContain('每日签到');
   });
 
-  it('shows logged-in links without wrapping the nickname', async () => {
+  it('shows the nickname and unread count after login', async () => {
     const wrapper = await mountLayout(true);
     useLearnerProfileStore().setProfile(profile);
     useNotificationStore().unreadCount = 3;
     await flushPromises();
 
-    const hrefs = wrapper.findAll('#learner-navigation a').map((link) => link.attributes('href'));
-    expect(hrefs).toEqual([
-      '/',
-      '/maps',
-      '/me/learning',
-      '/me/favorites',
-      '/me/orders',
-      '/me/messages',
-      '/me/checkins',
-    ]);
-    expect(wrapper.get('.chip-user-name').text()).toBe('无解的游戏');
-    expect(wrapper.get('.nav-badge').text()).toBe('3');
-    expect(wrapper.get('#learner-navigation').attributes('aria-label')).toBe('主导航');
+    expect(wrapper.get('.account-trigger').text()).toContain('无解的游戏');
+    expect(wrapper.get('.notification-count').text()).toBe('3');
+    expect(wrapper.find('.account-trigger__photo').exists()).toBe(false);
+  });
+
+  it('shows the stored avatar photo in the account trigger', async () => {
+    const withAvatar = {
+      ...profile,
+      avatar_url: '/api/media/avatars/2026/09/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webp',
+    };
+    const wrapper = await mountLayout(true);
+    useLearnerProfileStore().setProfile(withAvatar);
+    await flushPromises();
+
+    expect(wrapper.get('.account-trigger__photo').attributes('src')).toBe(withAvatar.avatar_url);
   });
 });
 

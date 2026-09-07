@@ -54,7 +54,7 @@ describe('useDailyCheckinPrompt', () => {
         id: 1,
         checkin_date: '2026-08-30',
         plan_html: '<p>已完成</p>',
-        checked_in_at: '2026-08-30T08:00:00+08:00',
+        checked_in_at: '2026-08-30 08:00:00',
       },
     });
     const session = useLoginFamilyStore();

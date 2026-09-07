@@ -60,8 +60,8 @@ onMounted(() => {
 .foot-links a,
 .foot-links span {
   color: var(--ink-2);
-  font-size: 16px;
-  text-decoration: underline;
+  font-size: 14px;
+  text-decoration: none;
   text-underline-offset: 3px;
 }
 

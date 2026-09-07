@@ -2,8 +2,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import type { TabPaneName } from 'element-plus';
-import { Check, Delete, RefreshRight } from '@element-plus/icons-vue';
+import { Bell, Check, Delete, Picture, RefreshRight } from '@element-plus/icons-vue';
 import {
   fetchFavorites,
   fetchLearnerProfile,
@@ -26,6 +25,7 @@ import type {
 } from '@learn-site/contracts';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 import ActivationCodeRedeemForm from '@/components/ActivationCodeRedeemForm.vue';
+import LearnerAvatarUpload from '@/components/LearnerAvatarUpload.vue';
 import { hasRichHtml } from '@/utils/richHtml';
 import { useLearnerProfileStore } from '@/stores/learnerProfile';
 import { useNotificationStore } from '@/stores/notifications';
@@ -42,7 +42,6 @@ type CheckinPrompt = {
   afterSuccess: (hook: () => void) => () => void;
 };
 
-const HUES = ['#34566b', '#4c7a5a', '#a8842c', '#6b4a5e', '#3d6b6b', '#5a6470'] as const;
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] as const;
 
 const route = useRoute();
@@ -62,20 +61,6 @@ const TAB_BY_PATH: Record<string, TabKey> = {
 
 const activeTab = computed<TabKey>(() => TAB_BY_PATH[route.path] ?? 'learning');
 
-function gotoTab(next: TabKey): void {
-  const target = Object.entries(TAB_BY_PATH).find(([, k]) => k === next)?.[0];
-  if (target) void router.replace(target);
-}
-
-// ponytail: el-tabs v-model 需要 writable ref，computed 套一层
-const activeTabProxy = ref<TabKey>(activeTab.value);
-watch(activeTab, (v) => {
-  activeTabProxy.value = v;
-});
-function onTabChange(name: TabPaneName): void {
-  if (typeof name === 'string') gotoTab(name as TabKey);
-}
-
 // Stores
 const profileStore = useLearnerProfileStore();
 const notifStore = useNotificationStore();
@@ -85,8 +70,7 @@ const checkinPrompt = inject<CheckinPrompt | null>('dailyCheckinPrompt', null);
 let openingCheckin = false;
 
 // ── 顶部全局 STREAK ──
-const streakDays = ref(0);
-const streakBest = ref(0);
+const streakError = ref(false);
 type HeatmapCell = {
   key: string;
   date: string;
@@ -106,18 +90,8 @@ async function loadStreak(): Promise<void> {
   try {
     const { items } = await listCheckins(1, 100);
     const dates = new Set(items.map((i: LearnerCheckinDTO) => i.checkin_date));
-    let n = 0;
+    streakError.value = false;
     const today = new Date();
-    for (let i = 0; i < 365; i += 1) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const iso = dateKey(d);
-      if (dates.has(iso)) n += 1;
-      else break;
-    }
-    streakDays.value = n;
-    // ponytail: 后端无 best 字段，用 items.length 占位
-    streakBest.value = items.length;
     const start = new Date(today);
     start.setDate(today.getDate() - 29);
     const leadingEmptyCells = (start.getDay() + 6) % 7;
@@ -145,8 +119,7 @@ async function loadStreak(): Promise<void> {
       };
     });
   } catch {
-    streakDays.value = 0;
-    streakBest.value = 0;
+    streakError.value = true;
     heatmapCells.value = [];
   }
 }
@@ -172,12 +145,29 @@ async function openCheckinDialog(): Promise<void> {
 const learningItems = ref<MyLearningItemDTO[]>([]);
 const learningLoading = ref(true);
 const learningLoadError = ref(false);
+const learningFilter = ref('all');
+const filteredLearning = computed(() => learningItems.value.filter((item) =>
+  learningFilter.value === 'all' || (learningFilter.value === 'completed' ? Boolean(item.completed_at) : !item.completed_at),
+));
+const completedCount = computed(() => learningItems.value.filter((item) => item.completed_at).length);
+const weekCells = computed(() => {
+  if (!heatmapCells.value.length) return [];
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+  return WEEKDAYS.map((label, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    const key = dateKey(date);
+    return { label, date: key, day: date.getDate(), hit: heatmapCells.value.some((cell) => cell.date === key && cell.hit), today: key === dateKey(today) };
+  });
+});
+const tabTitles: Record<TabKey, string> = {
+  learning: '我的学习', favorites: '我的收藏', orders: '我的订单', messages: '消息中心',
+  checkins: '每日签到', account: '账户设置', coupons: '优惠券', redeem: '兑换课程',
+};
 const rejoiningCourseId = ref<number | null>(null);
 const rejoinErrorCourseId = ref<number | null>(null);
-
-function learningCoverStyle(item: MyLearningItemDTO) {
-  return { '--hue': HUES[item.course_id % HUES.length] };
-}
 
 async function rejoin(item: MyLearningItemDTO): Promise<void> {
   if (!item.can_rejoin || rejoiningCourseId.value !== null) return;
@@ -217,10 +207,6 @@ const favorites = ref<{ items: FavoriteCourseDTO[]; total: number } | null>(null
 const favoritesLoading = ref(false);
 const favoritesError = ref<string | null>(null);
 const submittingFavId = ref<number | null>(null);
-
-function favCoverStyle(course: FavoriteCourseDTO) {
-  return { '--hue': HUES[course.course_id % HUES.length] };
-}
 
 function formatPrice(n: number): string {
   return n % 1 === 0 ? String(n) : n.toFixed(2);
@@ -315,6 +301,9 @@ function formatOrderDate(iso: string): string {
 const messages = ref<LearnerNotificationDTO[]>([]);
 const messagesLoading = ref(true);
 const messagesError = ref('');
+const messagesTotal = ref(0);
+const messagesPage = ref(1);
+const messagesLimit = ref(20);
 const readingId = ref<number | null>(null);
 
 function kindLabel(kind: LearnerNotificationDTO['kind']): string {
@@ -364,11 +353,24 @@ async function openMessageResource(message: LearnerNotificationDTO): Promise<voi
 
 async function loadMessages(): Promise<void> {
   try {
-    messages.value = (await listNotifications()).items;
+    const result = await listNotifications(messagesPage.value, messagesLimit.value);
+    messages.value = result.items;
+    messagesTotal.value = result.total;
     messagesError.value = '';
   } catch {
     messagesError.value = '消息加载失败，请稍后重试。';
   }
+}
+
+function onMessagesCurrentChange(next: number): void {
+  messagesPage.value = next;
+  void loadMessages();
+}
+
+function onMessagesSizeChange(next: number): void {
+  messagesLimit.value = next;
+  messagesPage.value = 1;
+  void loadMessages();
 }
 
 async function markRead(id: number): Promise<void> {
@@ -388,6 +390,7 @@ async function markRead(id: number): Promise<void> {
 watch(
   () => notifStore.inboxVersion,
   () => {
+    messagesPage.value = 1;
     void loadMessages();
   },
 );
@@ -443,6 +446,11 @@ async function loadProfile(): Promise<void> {
   }
 }
 
+function onAvatarUpdated(next: LearnerProfileDTO): void {
+  profile.value = next;
+  profileStore.setProfile(next);
+}
+
 async function saveProfile(): Promise<void> {
   profileSaving.value = true;
   profileSaved.value = false;
@@ -466,7 +474,11 @@ let loadedTabs = new Set<TabKey>();
 async function ensureLoaded(tab: TabKey): Promise<void> {
   if (loadedTabs.has(tab)) return;
   loadedTabs.add(tab);
-  if (tab === 'learning') await loadLearning();
+  if (tab === 'learning') {
+    await loadLearning();
+    await loadMessages();
+    messagesLoading.value = false;
+  }
   else if (tab === 'favorites') await loadFavorites();
   else if (tab === 'orders') await loadOrders();
   else if (tab === 'messages') {
@@ -501,24 +513,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="page student-center-page">
-    <!-- 顶部全局 STREAK 横幅：6 tab 共用同一签到面板 -->
-    <section class="streak-banner" data-testid="streak-banner">
-      <div class="streak-numbers">
-        <span class="streak-current">连续签到 {{ streakDays }} 天</span>
-        <span class="streak-best">历史最长 {{ streakBest }} 天</span>
+  <main class="student-center-page" :class="{ 'is-learning': activeTab === 'learning' }">
+    <header class="center-heading" data-testid="streak-banner">
+      <div>
+        <h1>{{ activeTab === 'learning' ? `你好，${profileStore.displayName}` : tabTitles[activeTab] }}</h1>
+        <p v-if="activeTab === 'learning' && !learningLoading && !learningLoadError">
+          {{ learningItems.length - completedCount }} 门学习中 <span>·</span> {{ completedCount }} 门已完成
+        </p>
       </div>
-      <el-button
-        class="streak-cta"
-        type="primary"
-        :icon="Check"
-        data-action="open-checkin"
-        @click="openCheckinDialog"
-      >
-        今日签到
-      </el-button>
-    </section>
-    <section class="streak-heatmap" aria-label="近 30 天签到日历">
+      <div class="checkin-status">
+        <span>{{ checkinPrompt?.checkedInToday.value ? '今日已签到' : '今日未签到' }}</span>
+        <el-button type="primary" :icon="Check" :disabled="checkinPrompt?.checkedInToday.value"
+          data-action="open-checkin" @click="openCheckinDialog">{{ checkinPrompt?.checkedInToday.value ? '已签到' : '今日签到' }}</el-button>
+      </div>
+    </header>
+    <section v-if="activeTab === 'checkins'" class="streak-heatmap" aria-label="近 30 天签到日历">
       <div class="heatmap-heading">
         <h3>近 30 天</h3>
         <span class="heatmap-range">按周查看签到记录</span>
@@ -547,39 +556,13 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <el-tabs
-      v-model="activeTabProxy"
-      class="sc-tabs"
-      data-testid="sc-tabs"
-      @tab-change="onTabChange"
-    >
-      <el-tab-pane label="我的学习" name="learning" />
-      <el-tab-pane label="收藏" name="favorites" />
-      <el-tab-pane label="订单" name="orders" />
-      <el-tab-pane label="消息" name="messages">
-        <template #label>
-          消息
-          <el-badge
-            v-if="unreadCount > 0"
-            :value="unreadCount > 99 ? '99+' : unreadCount"
-            class="sc-tab-badge"
-          />
-        </template>
-      </el-tab-pane>
-      <el-tab-pane label="每日签到" name="checkins" />
-      <el-tab-pane label="优惠券" name="coupons" />
-      <el-tab-pane label="激活码兑换" name="redeem" />
-      <el-tab-pane label="账户" name="account" />
-    </el-tabs>
-
     <!-- 学习 -->
     <section v-if="activeTab === 'learning'" class="sc-section" data-tab="learning">
-      <div class="list-head">
-        <h2>我的学习</h2>
-        <span v-if="!learningLoading && !learningLoadError" class="cnt">
-          {{ learningItems.length }} 门进行中
-        </span>
-      </div>
+      <el-tabs v-model="learningFilter" class="learning-tabs" aria-label="学习状态">
+        <el-tab-pane :label="`全部课程 (${learningItems.length})`" name="all" />
+        <el-tab-pane :label="`学习中 (${learningItems.length - completedCount})`" name="active" />
+        <el-tab-pane :label="`已完成 (${completedCount})`" name="completed" />
+      </el-tabs>
       <el-skeleton v-if="learningLoading" animated :rows="5" />
       <el-alert
         v-else-if="learningLoadError"
@@ -588,27 +571,26 @@ onBeforeUnmount(() => {
         :closable="false"
         show-icon
       />
-      <el-empty v-else-if="learningItems.length === 0" description="还没有开始任何课程">
+      <el-empty v-else-if="filteredLearning.length === 0" :description="learningItems.length === 0 ? '还没有开始任何课程' : '暂无这类课程'">
         <router-link to="/" class="btn btn-primary btn-sm">去首页选课</router-link>
       </el-empty>
       <div v-else class="entry-list">
-        <article v-for="item in learningItems" :key="item.course_id" class="rec">
+        <article v-for="item in filteredLearning" :key="item.course_id" class="rec">
           <router-link
             :to="`/courses/${item.course_id}`"
             class="cover"
-            :style="learningCoverStyle(item)"
           >
             <img
               v-if="item.course.cover_url"
               :src="item.course.cover_url"
               :alt="item.course.title"
             />
-            <b v-else>{{ item.course.title.slice(0, 1) }}</b>
+            <el-icon v-else :size="32"><Picture /></el-icon>
           </router-link>
           <div>
             <h3>
               <router-link :to="`/courses/${item.course_id}`"
-                >《{{ item.course.title }}》</router-link
+                >{{ item.course.title }}</router-link
               >
             </h3>
             <el-progress
@@ -691,14 +673,13 @@ onBeforeUnmount(() => {
           <router-link
             :to="`/courses/${course.course_id}`"
             class="cover"
-            :style="favCoverStyle(course)"
           >
             <img v-if="course.cover_url" :src="course.cover_url" :alt="course.title" />
-            <b v-else>{{ course.title.slice(0, 1) }}</b>
+            <el-icon v-else :size="32"><Picture /></el-icon>
           </router-link>
           <div>
             <h3>
-              <router-link :to="`/courses/${course.course_id}`">《{{ course.title }}》</router-link>
+              <router-link :to="`/courses/${course.course_id}`">{{ course.title }}</router-link>
             </h3>
             <div class="lmeta">
               {{ course.teacher_name }}
@@ -725,7 +706,7 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </div>
-      <el-empty v-else description="收藏夹还是空的，在课程卡片或详情页收藏想稍后学的课" />
+      <el-empty v-else description="还没有收藏课程" />
     </section>
 
     <!-- 订单 -->
@@ -744,7 +725,7 @@ onBeforeUnmount(() => {
       />
       <el-empty
         v-else-if="orders.length === 0"
-        description="还没有订单，购买收费课程后这里会保留价格快照"
+        description="还没有订单"
       />
       <div v-else>
         <article v-for="order in orders" :key="order.order_id" class="panel order-row">
@@ -789,12 +770,9 @@ onBeforeUnmount(() => {
       <div class="list-head">
         <h2>消息中心</h2>
         <span v-if="!messagesLoading && !messagesError" class="cnt">
-          {{ unreadCount }} 条未读 · {{ messages.length }} 条
+          {{ unreadCount }} 条未读 · 共 {{ messagesTotal }} 条
         </span>
       </div>
-      <p class="muted small" style="margin: 0 0 14px">
-        公告与站内信来自系统通知，问答 / 进度 / 授权为课程相关提醒。
-      </p>
       <el-skeleton v-if="messagesLoading" animated :rows="5" />
       <el-alert
         v-else-if="messagesError"
@@ -805,7 +783,7 @@ onBeforeUnmount(() => {
       />
       <el-empty
         v-else-if="messages.length === 0"
-        description="没有消息，公告、站内信与课程相关通知会出现在这里"
+        description="暂无消息"
       />
       <div v-else class="panel">
         <article
@@ -861,16 +839,26 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </div>
+      <footer
+        v-if="!messagesLoading && !messagesError && messagesTotal > 0"
+        class="pager messages-pager"
+      >
+        <el-pagination
+          v-model:current-page="messagesPage"
+          v-model:page-size="messagesLimit"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          :total="messagesTotal"
+          background
+          data-action="messages-pager"
+          @current-change="onMessagesCurrentChange"
+          @size-change="onMessagesSizeChange"
+        />
+      </footer>
     </section>
 
     <!-- 签到 -->
     <section v-else-if="activeTab === 'checkins'" class="sc-section" data-tab="checkins">
-      <header class="page-head">
-        <div>
-          <h1>每日签到</h1>
-          <p>回顾你的学习计划，坚持每日打卡。</p>
-        </div>
-      </header>
       <el-alert
         v-if="checkinErrorMessage"
         type="error"
@@ -897,11 +885,11 @@ onBeforeUnmount(() => {
           <p v-else class="empty-plan">（无计划内容）</p>
         </article>
       </section>
-      <footer v-if="checkinTotal > checkinLimit" class="pager">
+      <footer v-if="checkinItems.length > 0" class="pager">
         <el-pagination
           v-model:current-page="checkinPage"
           v-model:page-size="checkinLimit"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="[5, 10, 20, 50]"
           layout="total, sizes, prev, pager, next"
           :total="checkinTotal"
           @current-change="loadCheckins"
@@ -912,20 +900,11 @@ onBeforeUnmount(() => {
 
     <!-- 激活码兑换 -->
     <section v-else-if="activeTab === 'redeem'" class="sc-section" data-tab="redeem">
-      <header class="account-head">
-        <p class="eyebrow"><span class="eyebrow-rule" />课程获取 · 激活码</p>
-        <h1 class="display">兑换课程</h1>
-      </header>
       <ActivationCodeRedeemForm />
     </section>
 
     <!-- 账户 -->
     <section v-else-if="activeTab === 'account'" class="sc-section" data-tab="account">
-      <header class="account-head">
-        <p class="eyebrow"><span class="eyebrow-rule" />个人书架 · 账户</p>
-        <h1 class="display">账户资料</h1>
-        <p class="lede">管理你的公开称呼和课程页显示偏好。</p>
-      </header>
       <el-skeleton v-if="profileLoading" animated :rows="4" />
       <el-alert
         v-else-if="profileError"
@@ -941,6 +920,13 @@ onBeforeUnmount(() => {
         label-position="top"
         @submit.prevent="saveProfile"
       >
+        <el-form-item label="个人头像">
+          <LearnerAvatarUpload
+            :avatar-url="profile?.avatar_url ?? null"
+            :initial="profileStore.userInitial"
+            @updated="onAvatarUpdated"
+          />
+        </el-form-item>
         <el-form-item label="手机号">
           <el-input :model-value="profile?.phone ?? ''" disabled />
         </el-form-item>
@@ -960,329 +946,89 @@ onBeforeUnmount(() => {
         <el-button type="primary" native-type="submit" :loading="profileSaving">保存资料</el-button>
       </el-form>
     </section>
+    <aside v-if="activeTab === 'learning'" class="learning-rail">
+      <section aria-label="本周签到记录">
+        <h2>本周签到记录</h2>
+        <p v-if="streakError" class="muted">签到记录加载失败</p>
+        <div v-else class="week-checkins">
+          <div v-for="day in weekCells" :key="day.date">
+            <span>{{ day.label.slice(1) }}</span>
+            <time :datetime="day.date" :class="{ hit: day.hit, today: day.today }" :title="`${day.date} ${day.hit ? '已签到' : '未签到'}`">
+              <el-icon v-if="day.hit"><Check /></el-icon><template v-else>{{ day.day }}</template>
+            </time>
+          </div>
+        </div>
+        <router-link to="/me/checkins" class="rail-link">查看签到记录</router-link>
+      </section>
+      <section class="latest-message">
+        <h2><el-icon><Bell /></el-icon>最新通知</h2>
+        <p v-if="messagesError" class="muted">{{ messagesError }}</p>
+        <template v-else-if="messages[0]">
+          <h3>{{ messages[0].title }}</h3>
+          <p>{{ messages[0].body }}</p>
+          <router-link to="/me/messages" class="rail-link">查看消息</router-link>
+        </template>
+        <p v-else class="muted">暂无新消息</p>
+      </section>
+    </aside>
   </main>
 </template>
 
 <style scoped>
-.message-resource-link.el-button {
-  height: auto;
-  margin: 6px 0 0;
-  padding: 0;
-}
-
-.student-center-page {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  grid-template-areas:
-    'streak heatmap'
-    'tabs content';
-  gap: 20px 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 24px 48px;
-  align-items: start;
-}
-
-.streak-banner {
-  grid-area: streak;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 16px;
-  min-height: 170px;
-  padding: 20px 16px;
-  border: 1px solid var(--line, #d9e5df);
-  border-radius: var(--r);
-  background: var(--paper, #fff);
-}
-
-.streak-numbers {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.streak-current {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--pine-deep);
-}
-
-.streak-best {
-  font-size: 0.85rem;
-  color: var(--ink-soft, #6b7b6e);
-}
-
-.streak-cta {
-  flex-shrink: 0;
-  width: 100%;
-}
-
-.streak-heatmap {
-  grid-area: heatmap;
-  min-height: 170px;
-  padding: 20px;
-  border: 1px solid var(--line, #d9e5df);
-  border-radius: var(--r);
-  background: var(--paper, #fff);
-}
-
-.streak-heatmap h3 {
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--muted);
-}
-
-.heatmap-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.heatmap-range {
-  color: var(--ink-soft, #6b7b6e);
-  font-size: 0.75rem;
-}
-
-.heatmap-weekdays,
-.heatmap-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  max-width: 640px;
-  gap: 8px;
-}
-
-.heatmap-weekdays {
-  margin-bottom: 6px;
-}
-
-.heatmap-weekday {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-.heatmap-cell {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  min-height: 48px;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 8px;
-  border: 1px solid var(--line, #d9e5df);
-  aspect-ratio: 1;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--line, #e3e9e4) 32%, var(--paper, #fff));
-  color: var(--ink-soft, #6b7b6e);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.heatmap-cell.empty {
-  visibility: hidden;
-}
-
-.heatmap-cell.hit {
-  border-color: transparent;
-  background: var(--pine-deep, #34566b);
-  color: #fff;
-}
-
-.heatmap-cell.today {
-  box-shadow: inset 0 0 0 2px var(--seal, #9a1f37);
-}
-
-.heatmap-check {
-  position: absolute;
-  right: 7px;
-  bottom: 7px;
-  width: 14px;
-  height: 14px;
-}
-
-.sc-tabs {
-  grid-area: tabs;
-  margin-top: 0;
-}
-
-.sc-tabs :deep(.el-tabs__header) {
-  margin: 0;
-}
-
-.sc-tabs :deep(.el-tabs__nav-wrap::after),
-.sc-tabs :deep(.el-tabs__active-bar) {
-  display: none;
-}
-
-.sc-tabs :deep(.el-tabs__nav) {
-  display: grid;
-  width: 100%;
-  gap: 4px;
-}
-
-.sc-tabs :deep(.el-tabs__item) {
-  justify-content: flex-start;
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 4px;
-  color: var(--ink-2);
-  font-size: 13px;
-}
-
-.sc-tabs :deep(.el-tabs__item.is-active) {
-  color: #fff;
-  background: var(--seal);
-}
-
-.sc-tab-badge {
-  margin-left: 4px;
-}
-
-.sc-section {
-  grid-area: content;
-  min-width: 0;
-  padding: 0;
-}
-
-.sc-section :deep(.list-head) {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.sc-section :deep(.list-head h2) {
-  margin: 0;
-  color: var(--pine-deep);
-  font-size: 1.25rem;
-}
-
-.sc-section :deep(.list-head .cnt) {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.profile-form {
-  display: grid;
-  max-width: 520px;
-  gap: 18px;
-}
-
-.profile-form :deep(.el-form-item) {
-  margin-bottom: 0;
-}
-
-.profile-form :deep(.el-form-item__label) {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.profile-form > .el-button {
-  justify-self: start;
-}
-
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.page-head h1 {
-  margin: 0 0 6px;
-  font-size: 1.6rem;
-  color: var(--pine-deep);
-}
-
-.page-head p {
-  margin: 0;
-  color: var(--ink-soft);
-}
-
-.list {
-  display: grid;
-  gap: 14px;
-}
-
-.card {
-  border: 1px solid var(--line, #d9e5df);
-  border-radius: 12px;
-  background: var(--paper, #fff);
-  padding: 16px;
-}
-
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  color: var(--ink-soft);
-  font-size: 0.9rem;
-}
-
-.empty-plan {
-  margin: 0;
-  color: var(--ink-soft);
-}
-
-.pager {
-  margin-top: 16px;
-}
-
-.account-head {
-  padding: 18px 0 26px;
-  border-bottom: 1px solid var(--line);
-}
-
-.account-head .eyebrow {
-  margin-bottom: 16px;
-}
-
-.account-head .display {
-  margin: 0 0 9px;
-  color: var(--pine-deep);
-}
-
-@media (max-width: 760px) {
-  .student-center-page {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'streak'
-      'heatmap'
-      'tabs'
-      'content';
-    padding-inline: 16px;
-  }
-
-  .streak-banner,
-  .streak-heatmap {
-    min-height: 0;
-  }
-
-  .streak-banner {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .streak-cta {
-    width: auto;
-  }
-
-  .sc-tabs :deep(.el-tabs__nav) {
-    display: flex;
-    overflow-x: auto;
-  }
-
-  .sc-tabs :deep(.el-tabs__item) {
-    flex: 0 0 auto;
-    justify-content: center;
-  }
+.student-center-page { min-width: 0; }
+.student-center-page.is-learning { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 28px; align-items: start; }
+.center-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 32px; grid-column: 1 / -1; }
+.is-learning .center-heading { margin-bottom: 4px; }
+.center-heading h1 { font-size: 28px; font-weight: 700; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
+.center-heading p { margin: 10px 0 0; color: var(--ink-2); }
+.center-heading p span { margin: 0 10px; color: var(--line-2); }
+.checkin-status { display: flex; align-items: center; flex-shrink: 0; gap: 16px; color: var(--ink-2); font-size: 13px; }
+.sc-section { min-width: 0; }
+.sc-section > .list-head { display: flex; justify-content: flex-end; padding-bottom: 16px; margin: 0; border-bottom: 1px solid var(--line); }
+.sc-section > .list-head h2 { display: none; }
+.sc-section .cnt { color: var(--ink-3); font-size: 13px; }
+.learning-tabs :deep(.el-tabs__header) { margin: 0 0 20px; }
+.entry-list { gap: 16px; }
+.rec { grid-template-columns: 148px minmax(0, 1fr) auto; gap: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+.rec > div { min-width: 0; }
+.rec .cover { width: 148px; height: 100px; border-radius: 4px; background: var(--paper-2); color: var(--ink-3); }
+.rec .cover::before, .rec .cover::after { display: none; }
+.rec .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.rec h3 { font-size: 17px; line-height: 1.5; margin-bottom: 12px; }
+.rec .lmeta { margin-top: 8px; font-size: 12px; }
+.learning-rail { padding-left: 4px; }
+.learning-rail section { padding: 12px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.learning-rail h2 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 20px; }
+.week-checkins { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.week-checkins > div { display: flex; align-items: center; flex-direction: column; gap: 8px; font-size: 11px; color: var(--ink-3); }
+.week-checkins time { display: flex; align-items: center; justify-content: center; width: 27px; height: 27px; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); }
+.week-checkins time.hit { color: #fff; background: var(--seal); }
+.week-checkins time.today { outline: 1px solid var(--seal); outline-offset: 2px; }
+.rail-link { display: inline-block; font-size: 12px; margin-top: 18px; }
+.latest-message h3 { font-size: 14px; margin: 0 0 8px; }
+.latest-message p { margin: 0; font-size: 13px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.streak-heatmap { margin-bottom: 32px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.heatmap-heading { display: flex; justify-content: space-between; max-width: 640px; align-items: center; margin-bottom: 16px; }
+.heatmap-heading h3 { font-size: 16px; margin: 0; }
+.heatmap-range { font-size: 12px; color: var(--ink-3); }
+.heatmap-weekdays, .heatmap-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 640px; gap: 8px; }
+.heatmap-weekdays { text-align: center; color: var(--ink-3); margin-bottom: 8px; font-size: 12px; }
+.heatmap-cell { position: relative; padding: 10px; aspect-ratio: 1.2; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-2); color: var(--ink-2); font-size: 14px; }
+.heatmap-cell.empty { visibility: hidden; }
+.heatmap-cell.hit { background: var(--seal-soft); color: var(--seal); border-color: var(--seal-soft); }
+.heatmap-cell.today { outline: 1px solid var(--seal); }
+.heatmap-check { position: absolute; width: 16px; right: 10px; bottom: 10px; }
+.profile-form { display: grid; gap: 20px; max-width: 520px; }
+.profile-form :deep(.el-form-item) { margin-bottom: 0; }
+.profile-form > .el-button { justify-self: start; }
+.list { display: grid; gap: 16px; }
+.card { border: 1px solid var(--line); border-radius: 6px; background: var(--card); padding: 20px; }
+.card-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }
+.pager { display: flex; justify-content: flex-end; margin-top: 24px; }
+.message-resource-link.el-button { height: auto; margin: 6px 0 0; padding: 0; }
+.order-row, .msg-row { background: var(--card); }
+@media (max-width: 1250px) {
+  .student-center-page.is-learning { grid-template-columns: minmax(0, 1fr); }
+  .learning-rail { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; }
 }
 </style>

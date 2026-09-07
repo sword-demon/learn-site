@@ -137,9 +137,7 @@ onMounted(load);
 <template>
   <main class="page coupons-page" data-view="coupons">
     <header class="head">
-      <p class="eyebrow"><span class="eyebrow-rule" />学员中心 · 优惠券</p>
       <h1 class="display">我的优惠券</h1>
-      <p class="lede">公开领取的活动券会出现在领取中心；已持有优惠券按状态展示。</p>
     </header>
 
     <el-tabs v-model="tab" class="coupons-page__tabs" @tab-change="onTabChange">
@@ -259,6 +257,8 @@ onMounted(load);
   margin-bottom: 12px;
 }
 .coupons-page__pager {
+  display: flex;
+  width: 100%;
   justify-content: flex-end;
   margin-top: 16px;
 }
@@ -278,14 +278,12 @@ onMounted(load);
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--card);
-  box-shadow: var(--shadow);
   transition:
     background-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 .coupon-card:hover {
   background: var(--paper-2);
-  box-shadow: var(--shadow-lg);
 }
 .coupon-card__value {
   display: flex;

@@ -75,8 +75,7 @@ describe('LoginRegisterView', () => {
     await flushPromises();
 
     expect((wrapper.element as HTMLElement).dataset.mode).toBe('login');
-    expect(wrapper.text()).toContain('学员登录');
-    expect(wrapper.text()).toContain('用手机号进入课室');
+    expect(wrapper.text()).toContain('欢迎回来');
     expect(wrapper.text()).toContain('登录');
     expect(wrapper.find('[data-testid="submit-button"]').text()).toBe('登录');
   });
@@ -89,8 +88,7 @@ describe('LoginRegisterView', () => {
     await flushPromises();
 
     expect((wrapper.element as HTMLElement).dataset.mode).toBe('register');
-    expect(wrapper.text()).toContain('学员注册');
-    expect(wrapper.text()).toContain('领一张课室学号');
+    expect(wrapper.text()).toContain('创建学员账户');
     expect(wrapper.find('[data-testid="submit-button"]').text()).toBe('注册并进入');
   });
 

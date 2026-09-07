@@ -13,6 +13,8 @@ const learnerApi = vi.hoisted(() => ({
   fetchOrders: vi.fn(),
   fetchLearnerProfile: vi.fn(),
   updateLearnerProfile: vi.fn(),
+  uploadLearnerAvatar: vi.fn(),
+  deleteLearnerAvatar: vi.fn(),
 }));
 const notificationsApi = vi.hoisted(() => ({
   listNotifications: vi.fn(),

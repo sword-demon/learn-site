@@ -44,7 +44,7 @@ describe('DailyCheckinDialog', () => {
       id: 1,
       checkin_date: '2026-08-30',
       plan_html: '<p>计划</p>',
-      checked_in_at: '2026-08-30T09:00:00+08:00',
+      checked_in_at: '2026-08-30 09:00:00',
     });
     const wrapper = mount(DailyCheckinDialog, {
       props: { modelValue: true },

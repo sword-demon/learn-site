@@ -1,54 +1,32 @@
 <template>
-  <article class="entry" @click="goCourse">
-    <div class="cover" :style="coverStyle">
-      <img v-if="course.cover_url" :src="course.cover_url" :alt="course.title" />
-      <b v-else class="cover-glyph">{{ glyph }}</b>
-      <span v-if="!course.cover_url" class="cover-meta">{{ coverMeta }}</span>
-    </div>
-    <div>
-      <h3>《{{ course.title }}》</h3>
-      <p class="digest">{{ course.summary || '讲师还没有写简介。' }}</p>
-      <div class="meta">
-        <b>{{ course.teacher_name }}</b>
-        <span>{{ course.learner_count }} 人在学</span>
-        <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
-        <el-tag v-else-if="onSale" type="danger" size="small"
-          >限时 ¥{{ formatPrice(course.sale_price) }}</el-tag
-        >
-        <el-tag v-if="course.preview_available" type="warning" size="small" effect="plain"
-          >可试看</el-tag
-        >
+  <article class="course-card">
+    <router-link :to="`/courses/${course.id}`" class="course-card__cover" :aria-label="course.title">
+      <img v-if="course.cover_url" :src="course.cover_url" :alt="course.title" loading="lazy" />
+      <el-icon v-else :size="40" aria-label="暂无封面"><Picture /></el-icon>
+      <el-tag v-if="course.preview_available" class="preview-tag" type="info" effect="light" size="small">可试看</el-tag>
+    </router-link>
+    <div class="course-card__body">
+      <h3><router-link :to="`/courses/${course.id}`">{{ course.title }}</router-link></h3>
+      <p v-if="course.summary" class="course-summary">{{ course.summary }}</p>
+      <div class="course-meta"><span><el-icon><User /></el-icon>{{ course.teacher_name || '讲师' }}</span><span>{{ course.learner_count }} 人在学</span></div>
+      <div class="course-card__footer">
+        <div class="course-price">
+          <span v-if="course.price_mode === 'free'" class="course-free">免费</span>
+          <template v-else><strong>¥{{ formatPrice(displayPrice) }}</strong><del v-if="onSale">¥{{ formatPrice(course.list_price) }}</del></template>
+        </div>
+        <el-button v-if="showFavorite" circle text :class="{ 'is-favorited': favorited }"
+          :title="favorited ? '取消收藏' : '收藏'" :aria-label="favorited ? '取消收藏' : '收藏'"
+          :icon="favorited ? StarFilled : Star" :loading="favoriteBusy"
+          data-action="toggle-favorite" @click="toggleFavorite" />
+        <router-link :to="`/courses/${course.id}`" class="course-detail-link">查看详情</router-link>
       </div>
-    </div>
-    <div class="entry-side" @click.stop>
-      <div class="price-line">
-        <el-tag v-if="course.price_mode === 'free'" type="success" size="small">免费</el-tag>
-        <template v-else>
-          <span class="price-now" style="font-size: 17px">¥ {{ formatPrice(displayPrice) }}</span>
-          <span v-if="onSale" class="price-std">¥ {{ formatPrice(course.list_price) }}</span>
-        </template>
-      </div>
-      <el-button
-        v-if="showFavorite"
-        circle
-        text
-        class="favbtn"
-        :class="{ on: favorited }"
-        :title="favorited ? '取消收藏' : '收藏'"
-        :aria-label="favorited ? '取消收藏' : '收藏'"
-        :icon="favorited ? StarFilled : Star"
-        :loading="favoriteBusy"
-        data-action="toggle-favorite"
-        @click="toggleFavorite"
-      />
     </div>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { Star, StarFilled } from '@element-plus/icons-vue';
+import { Picture, Star, StarFilled, User } from '@element-plus/icons-vue';
 import type { CourseListItemDTO } from '@learn-site/contracts';
 import { addFavorite, removeFavorite } from '@/api/learner';
 import { useLoginFamilyStore } from '@/api/login';
@@ -64,17 +42,9 @@ const props = withDefaults(
   { showFavorite: false, initialFavorited: false },
 );
 
-const router = useRouter();
 const session = useLoginFamilyStore();
 const favorited = ref(props.initialFavorited);
 const favoriteBusy = ref(false);
-
-const HUES = ['#34566b', '#4c7a5a', '#a8842c', '#6b4a5e', '#3d6b6b', '#5a6470'];
-
-const hue = computed(() => HUES[props.course.id % HUES.length]);
-const glyph = computed(() => props.course.title.slice(0, 1));
-const coverMeta = computed(() => props.course.title.slice(0, 4).toUpperCase());
-const coverStyle = computed(() => ({ '--hue': hue.value }));
 
 const displayPrice = computed(() =>
   props.course.sale_price > 0 ? props.course.sale_price : props.course.list_price,
@@ -86,10 +56,6 @@ const onSale = computed(
 
 function formatPrice(n: number): string {
   return n % 1 === 0 ? String(n) : n.toFixed(2);
-}
-
-function goCourse(): void {
-  void router.push(`/courses/${props.course.id}`);
 }
 
 async function toggleFavorite(): Promise<void> {
@@ -107,3 +73,24 @@ async function toggleFavorite(): Promise<void> {
   }
 }
 </script>
+
+<style scoped>
+.course-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--card); overflow: hidden; transition: border-color .15s; }
+.course-card:hover { border-color: var(--seal); }
+.course-card__cover { position: relative; aspect-ratio: 1.79; width: 100%; display: flex; align-items: center; justify-content: center; background: var(--paper-2); color: var(--ink-3); overflow: hidden; }
+.course-card__cover img { width: 100%; height: 100%; object-fit: cover; }
+.preview-tag { position: absolute; top: 12px; left: 12px; }
+.course-card__body { padding: 20px; display: flex; flex: 1; flex-direction: column; }
+.course-card h3 { font-size: 18px; line-height: 1.5; margin: 0 0 10px; }
+.course-card h3 a { color: var(--ink); }
+.course-card h3 a:hover { color: var(--seal); }
+.course-summary { color: var(--ink-2); font-size: 14px; line-height: 1.65; margin: 0 0 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.course-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; font-size: 13px; color: var(--ink-2); }
+.course-meta span { display: flex; align-items: center; gap: 5px; }
+.course-card__footer { display: flex; align-items: center; gap: 12px; min-height: 48px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.course-price { display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
+.course-price strong, .course-free { font-size: 19px; font-weight: 650; }
+.course-free, .is-favorited { color: var(--seal); }
+.course-price del { font-size: 12px; color: var(--ink-3); }
+.course-detail-link { white-space: nowrap; font-size: 13px; }
+</style>

@@ -13,6 +13,8 @@ const learnerApi = vi.hoisted(() => ({
   fetchOrders: vi.fn(),
   fetchLearnerProfile: vi.fn(),
   updateLearnerProfile: vi.fn(),
+  uploadLearnerAvatar: vi.fn(),
+  deleteLearnerAvatar: vi.fn(),
 }));
 const notificationsApi = vi.hoisted(() => ({
   listNotifications: vi.fn(),
@@ -450,7 +452,7 @@ describe('StudentCenterView', () => {
       await flushPromises();
 
       expect(learnerApi.removeFavorite).toHaveBeenCalledWith(9);
-      expect(wrapper.text()).toContain('收藏夹还是空的');
+      expect(wrapper.text()).toContain('还没有收藏课程');
     });
   });
 
@@ -519,6 +521,81 @@ describe('StudentCenterView', () => {
       expect(wrapper.text()).toContain('关联内容已不可用');
       expect(wrapper.find('button[data-resource-id="4"]').exists()).toBe(false);
     });
+
+    it('shows the total count from the server rather than the current page length', async () => {
+      setPath('/me/messages');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('2 条未读 · 共 2 条');
+    });
+
+    it('shows pagination even when total fits on one page', async () => {
+      setPath('/me/messages');
+      const wrapper = mountView();
+      await flushPromises();
+
+      const pagination = wrapper.findComponent({ name: 'ElPagination' });
+      expect(pagination.exists()).toBe(true);
+      expect(pagination.props('total')).toBe(2);
+      expect(notificationsApi.listNotifications).toHaveBeenCalledWith(1, 20);
+    });
+
+    it('hides pagination on the empty state', async () => {
+      notificationsApi.listNotifications.mockResolvedValue({
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+      });
+      setPath('/me/messages');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('暂无消息');
+      expect(wrapper.findComponent({ name: 'ElPagination' }).exists()).toBe(false);
+    });
+
+    it('renders el-pagination when total exceeds the page size and re-fetches on current/size change', async () => {
+      const paginatedItems = Array.from({ length: 20 }, (_, i) => ({
+        id: i + 1,
+        kind: 'announcement',
+        title: `通知 ${i + 1}`,
+        body: null,
+        resource_type: null,
+        resource_id: null,
+        resource_path: null,
+        resource_available: false,
+        resource_unavailable_reason: null,
+        payload: null,
+        read: i % 2 === 0,
+        created_at: '2026-09-01 10:00:00',
+      }));
+      notificationsApi.listNotifications.mockResolvedValue({
+        items: paginatedItems,
+        total: 47,
+        page: 1,
+        limit: 20,
+      });
+      setPath('/me/messages');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('2 条未读 · 共 47 条');
+
+      const pagination = wrapper.findComponent({ name: 'ElPagination' });
+      expect(pagination.exists()).toBe(true);
+
+      notificationsApi.listNotifications.mockClear();
+      pagination.vm.$emit('current-change', 3);
+      await flushPromises();
+      expect(notificationsApi.listNotifications).toHaveBeenLastCalledWith(3, 20);
+
+      notificationsApi.listNotifications.mockClear();
+      pagination.vm.$emit('size-change', 50);
+      await flushPromises();
+      expect(notificationsApi.listNotifications).toHaveBeenLastCalledWith(1, 50);
+    });
   });
 
   describe('checkins tab', () => {
@@ -531,7 +608,7 @@ describe('StudentCenterView', () => {
             id: 1,
             checkin_date: todayIso,
             plan_html: '<p>今日计划</p>',
-            checked_in_at: `${todayIso}T09:00:00+08:00`,
+            checked_in_at: `${todayIso} 09:00:00`,
           },
         ],
         total: 1,
@@ -565,7 +642,7 @@ describe('StudentCenterView', () => {
             id: 1,
             checkin_date: '2026-08-30',
             plan_html: '<p>今日计划</p>',
-            checked_in_at: '2026-08-30T09:00:00+08:00',
+            checked_in_at: '2026-08-30 09:00:00',
           },
         ],
         total: 1,
@@ -588,6 +665,27 @@ describe('StudentCenterView', () => {
       wrapper.unmount();
       // afterSuccess subscriber created on mount → no unsubscribe asserted here because
       // the inject default is null in tests; verify the call does not throw.
+    });
+
+    it('renders pagination even when total fits on one page so the user can change page size', async () => {
+      checkinsApi.listCheckins.mockResolvedValueOnce({
+        items: Array.from({ length: 5 }, (_, i) => ({
+          id: i + 1,
+          checkin_date: `2026-08-2${i}`,
+          plan_html: `<p>计划 ${i + 1}</p>`,
+          checked_in_at: `2026-08-2${i} 09:00:00`,
+        })),
+        total: 5,
+        page: 1,
+        limit: 20,
+      });
+      setPath('/me/checkins');
+      const wrapper = mountView();
+      await flushPromises();
+
+      const pagination = wrapper.findComponent({ name: 'ElPagination' });
+      expect(pagination.exists()).toBe(true);
+      expect(pagination.props('total')).toBe(5);
     });
   });
 
@@ -612,6 +710,15 @@ describe('StudentCenterView', () => {
         show_on_course: true,
       });
       expect(wrapper.text()).toContain('资料已更新');
+    });
+
+    it('renders the avatar upload on the account form', async () => {
+      setPath('/me/account');
+      const wrapper = mountView();
+      await flushPromises();
+
+      expect(wrapper.find('[data-testid="learner-avatar-upload"]').exists()).toBe(true);
+      expect(wrapper.text()).toContain('个人头像');
     });
   });
 });
