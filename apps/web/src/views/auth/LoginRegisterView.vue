@@ -39,7 +39,7 @@
           <el-button type="primary" native-type="submit" size="large" class="auth-submit"
             :disabled="busy || loadingCaptcha" :loading="busy" data-testid="submit-button">{{ copy.submit }}</el-button>
         </el-form>
-        <p class="auth-switch">{{ copy.switchPrompt }} <button type="button" data-testid="switch-mode" @click="switchMode">{{ copy.switchLabel }}</button></p>
+        <p class="auth-switch">{{ copy.switchPrompt }} <el-button text class="auth-switch__button" data-testid="switch-mode" @click="switchMode">{{ copy.switchLabel }}</el-button></p>
         <nav class="auth-legal" aria-label="服务条款"><router-link to="/terms">用户协议</router-link><router-link to="/help">帮助中心</router-link></nav>
       </section>
     </main>
@@ -226,7 +226,7 @@ onMounted(() => {
 .captcha-button img { display: block; width: 130px; height: 44px; object-fit: contain; }
 .auth-submit { width: 100%; height: 46px; margin-top: 2px; font-size: 15px; border-radius: 6px; }
 .auth-switch { margin: 24px 0 0; font-size: 14px; color: var(--ink-2); text-align: center; }
-.auth-switch button { border: 0; padding: 0; background: transparent; color: var(--seal); cursor: pointer; }
+.auth-switch__button { height: auto; padding: 0; color: var(--seal); vertical-align: baseline; }
 .auth-legal { display: flex; gap: 24px; justify-content: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
 .auth-legal a { color: var(--ink-3); font-size: 12px; }
 </style>

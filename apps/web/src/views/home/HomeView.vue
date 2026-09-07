@@ -30,9 +30,9 @@
         <header class="discovery-heading">
           <h2>发现课程</h2>
           <nav class="category-nav" aria-label="课程分类">
-            <button type="button" :class="{ on: selectedId === null }" :aria-pressed="selectedId === null" data-action="all-categories" @click="selectCategory(null)">全部课程</button>
-            <button v-for="category in categories" :key="category.id" type="button" :class="{ on: rootId === category.id }"
-              :aria-pressed="rootId === category.id" :data-category-id="category.id" @click="selectCategory(category.id)">{{ category.name }}</button>
+            <el-button text class="category-nav__button" :class="{ on: selectedId === null }" :aria-pressed="selectedId === null" data-action="all-categories" @click="selectCategory(null)">全部课程</el-button>
+            <el-button v-for="category in categories" :key="category.id" text class="category-nav__button" :class="{ on: rootId === category.id }"
+              :aria-pressed="rootId === category.id" :data-category-id="category.id" @click="selectCategory(category.id)">{{ category.name }}</el-button>
           </nav>
         </header>
         <div v-if="selectedId !== null" class="category-detail">
@@ -162,9 +162,9 @@ onMounted(async () => {
 .discovery-heading h2 { margin: 0; font-size: 24px; white-space: nowrap; }
 .discovery-heading > a { display: flex; gap: 8px; align-items: center; }
 .category-nav { display: flex; justify-content: flex-end; flex-wrap: wrap; column-gap: 24px; row-gap: 8px; }
-.category-nav button { border: 0; border-bottom: 2px solid transparent; padding: 6px 0; background: transparent; color: var(--ink-2); cursor: pointer; }
-.category-nav button.on { border-color: var(--seal); color: var(--seal); font-weight: 600; }
-.category-nav button:hover { color: var(--seal); }
+.category-nav__button { border-bottom: 2px solid transparent; padding: 6px 0; color: var(--ink-2); }
+.category-nav__button.on { border-color: var(--seal); color: var(--seal); font-weight: 600; }
+.category-nav__button:hover { color: var(--seal); }
 .category-detail { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
 .category-detail :deep(.el-select) { width: 220px; }
 .course-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
