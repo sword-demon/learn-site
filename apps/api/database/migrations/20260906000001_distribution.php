@@ -208,7 +208,18 @@ final class Distribution extends AbstractMigration
         // Idempotent guard: re-running this migration must not trip MySQL
         // 1061 "Duplicate key name". down() drops the constraint symmetrically.
         $siteSettings = $this->table('site_settings');
-        if (!$siteSettings->hasCheckConstraint('chk_distribution_level_cap')) {
+        $hasLevelCapConstraint = method_exists($siteSettings, 'hasCheckConstraint')
+            ? $siteSettings->hasCheckConstraint('chk_distribution_level_cap')
+            : $this->fetchRow(
+                "SELECT 1
+                 FROM information_schema.TABLE_CONSTRAINTS
+                 WHERE CONSTRAINT_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'site_settings'
+                   AND CONSTRAINT_NAME = 'chk_distribution_level_cap'
+                   AND CONSTRAINT_TYPE = 'CHECK'
+                 LIMIT 1"
+            ) !== false;
+        if (!$hasLevelCapConstraint) {
             $this->execute(
                 "ALTER TABLE site_settings
                    ADD CONSTRAINT chk_distribution_level_cap
