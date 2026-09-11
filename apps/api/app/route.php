@@ -19,6 +19,11 @@ Route::group($learnerV1, function () {
     Route::get('/r/{code}', [\App\controller\public\ShareLandingController::class, 'show']);
 })->middleware([\App\middleware\RateLimit::class]);
 
+Route::group('/api/public', function () {
+    Route::get('/s/{code}', [\App\controller\public\ShareLandingController::class, 'show']);
+    Route::get('/s/{code}/info', [\App\controller\public\ShareLandingController::class, 'info']);
+})->middleware([\App\middleware\RateLimit::class]);
+
 Route::group($learnerV1, function () {
     // 005-learner-daily-checkin + 009-learner-coupons — write/read hot paths
     Route::get('/checkins/today', [\App\controller\learner\CheckinController::class, 'today']);
@@ -100,6 +105,12 @@ Route::group($learnerV1, function () {
     Route::get('/me/share-entries', [\App\controller\learner\ShareEntryController::class, 'index']);
     Route::post('/me/share-entries', [\App\controller\learner\ShareEntryController::class, 'store']);
     Route::delete('/me/share-entries/{id}', [\App\controller\learner\ShareEntryController::class, 'revoke']);
+    Route::get('/distribution/status', [\App\controller\learner\DistributionController::class, 'status']);
+    Route::get('/distribution/share-entries', [\App\controller\learner\DistributionController::class, 'shareEntries']);
+    Route::post('/distribution/share-entries', [\App\controller\learner\DistributionController::class, 'createShareEntry']);
+    Route::delete('/distribution/share-entries/{id}', [\App\controller\learner\DistributionController::class, 'revokeShareEntry']);
+    Route::get('/distribution/commissions', [\App\controller\learner\DistributionController::class, 'commissions']);
+    Route::get('/distribution/downline', [\App\controller\learner\DistributionController::class, 'downline']);
 
     // 009-learner-coupons — learner claim center, my coupons, checkout options
     Route::get('/coupons/claimable', [\App\controller\learner\CouponController::class, 'claimable']);
@@ -325,6 +336,16 @@ Route::group($adminV1, function () {
     // Z-Pay Payment Configuration (site.manage)
     Route::get('/payment/config', [\App\controller\admin\PaymentConfigController::class, 'get']);
     Route::patch('/payment/config', [\App\controller\admin\PaymentConfigController::class, 'update']);
+    Route::get('/distribution/config', [\App\controller\admin\DistributionController::class, 'getConfig']);
+    Route::put('/distribution/config', [\App\controller\admin\DistributionController::class, 'updateConfig']);
+    Route::get('/distribution/course-overrides', [\App\controller\admin\DistributionController::class, 'listOverrides']);
+    Route::put('/distribution/course-overrides/{courseId}', [\App\controller\admin\DistributionController::class, 'upsertOverride']);
+    Route::get('/distribution/reconcile/by-order/{orderId}', [\App\controller\admin\DistributionController::class, 'reconcileByOrder']);
+    Route::get('/distribution/commissions', [\App\controller\admin\DistributionController::class, 'listCommissions']);
+    Route::get('/distribution/commissions/export', [\App\controller\admin\DistributionController::class, 'exportCommissions']);
+    Route::post('/distribution/commissions/{id}/void', [\App\controller\admin\DistributionController::class, 'voidCommission']);
+    Route::get('/distribution/audit', [\App\controller\admin\DistributionController::class, 'audit']);
+
     Route::get('/payment/whitelist', [\App\controller\admin\PaymentWhitelistController::class, 'index']);
     Route::post('/payment/whitelist', [\App\controller\admin\PaymentWhitelistController::class, 'create']);
     Route::patch('/payment/whitelist/{id}', [\App\controller\admin\PaymentWhitelistController::class, 'update']);

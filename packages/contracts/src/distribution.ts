@@ -5,10 +5,7 @@
 // Each shape mirrors a single API response or input. Money is integer cents;
 // phone numbers are masked at the service boundary so no DTO carries plaintext.
 //
-// ⚠️  SC-003 / FR-010 compliance ceiling — `level_cap` is locked at 3 by
-// z.literal(3) below. The DB CHECK constraint and the service-level validator
-// (DistributionConfigValidator::assertValidConfig) re-state the same rule;
-// changing this literal requires updating all three layers in lockstep.
+// 本文件受 SC-003 合规硬约束保护, level_cap 不得修改为 4.
 //
 // Forbidden in any DTO: plaintext phone, plaintext short code, plaintext
 // referrer nickname, full referral chain beyond the receiver's own window.
@@ -37,24 +34,15 @@ export const CommissionSource = z.enum([
 ]);
 export type CommissionSource = z.infer<typeof CommissionSource>;
 
-export const DistributionPayoutForm = z.enum([
-  "cash_record_only",
-  "site_balance",
-]);
+export const DistributionPayoutForm = z.literal("cash_record_only");
 export type DistributionPayoutForm = z.infer<typeof DistributionPayoutForm>;
 
-export const DistributionSettlement = z.enum([
-  "order_settled",
+export const DistributionSettlement = z.literal(
   "order_settled_after_refund_window",
-  "admin_manual",
-]);
+);
 export type DistributionSettlement = z.infer<typeof DistributionSettlement>;
 
-export const DistributionRefundVoidRule = z.enum([
-  "void_all",
-  "pro_rata",
-  "none",
-]);
+export const DistributionRefundVoidRule = z.literal("void_all");
 export type DistributionRefundVoidRule = z.infer<typeof DistributionRefundVoidRule>;
 
 export const DistributionBase = z.enum([
@@ -82,7 +70,7 @@ export type DistributionAuditAction = z.infer<typeof DistributionAuditAction>;
 
 export const DistributionConfigDTO = z.object({
   enabled: z.boolean(),
-  level_cap: z.literal(3), // FR-010 / SC-003 hard cap
+  level_cap: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   level1_pct: z.number().min(0).max(1),
   level2_pct: z.number().min(0).max(1),
   level3_pct: z.number().min(0).max(1),
@@ -104,6 +92,12 @@ export const DistributionConfigUpdateInput = DistributionConfigDTO.omit({
   updated_by: true,
 });
 export type DistributionConfigUpdateInput = z.infer<typeof DistributionConfigUpdateInput>;
+
+export const DistributionStatusDTO = z.object({
+  enabled: z.boolean(),
+  learner_can_view_detail: z.boolean(),
+});
+export type DistributionStatusDTO = z.infer<typeof DistributionStatusDTO>;
 
 // ---------------------------------------------------------------------------
 // Course-level override
@@ -170,7 +164,7 @@ export type ShareEntryCreateInput = z.infer<typeof ShareEntryCreateInput>;
 // Commission records (learner view + admin reconcile)
 // ---------------------------------------------------------------------------
 
-const MaskedPhone = z.string().regex(/^1[3-9]\*{8}\d{4}$/);
+const MaskedPhone = z.string().regex(/^1[3-9]\d\*{4}\d{4}$/);
 
 export const CommissionRecordDTO = z.object({
   id: z.number().int().positive(),
@@ -231,6 +225,7 @@ export const AdminCommissionByOrderDTO = z.object({
   config_snapshot: DistributionConfigDTO,
   receivers: z.array(
     z.object({
+      id: z.number().int().positive(),
       referrer_learner_id: z.number().int().positive(),
       referrer_masked_phone: MaskedPhone,
       level: CommissionLevel,

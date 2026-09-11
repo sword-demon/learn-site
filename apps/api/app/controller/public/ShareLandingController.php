@@ -69,6 +69,14 @@ final class ShareLandingController
         );
     }
 
+    public function info(Request $request, string $code): Response
+    {
+        if (!$this->service->isActiveCode($code)) {
+            return ApiResponse::fail(ApiResponse::NOT_FOUND, 'SHARE_NOT_FOUND');
+        }
+        return ApiResponse::ok(['ok' => true]);
+    }
+
     // ponytail: empty body keeps the redirect side-effect free — visitor
     // cannot sniff referrer / code / token from the HTML. Mirrors the
     // idiom used by PaymentNotifyController for gateway callbacks.

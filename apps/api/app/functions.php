@@ -11,10 +11,8 @@ declare(strict_types=1);
 
 if (!function_exists('maskPhone')) {
     /**
-     * Mask a mainland-China phone per FR-024. Wire shape locked by the Zod
-     * `MaskedPhone` regex /^1[3-9]\*{8}\d{4}$/ — 14 chars: leading "1X" + 8
-     * asterisks + last 4 digits. Returns "—" for empty input rather than a
-     * regex-mangled string.
+     * Mask a mainland-China phone per FR-024. Wire shape: 138****1234
+     * (`^1[3-9]\d\*{4}\d{4}$`). Returns "—" for empty input.
      */
     function maskPhone(string $phone): string
     {
@@ -22,10 +20,9 @@ if (!function_exists('maskPhone')) {
             return '—';
         }
         if (!preg_match('/^1[3-9]\d{9}$/', $phone)) {
-            // Already masked or invalid; pass through rather than corrupt.
             return $phone;
         }
-        return substr($phone, 0, 2) . str_repeat('*', 8) . substr($phone, -4);
+        return substr($phone, 0, 3) . '****' . substr($phone, -4);
     }
 }
 

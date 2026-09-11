@@ -32,24 +32,15 @@ export const CommissionSource = z.enum([
 ]);
 export type CommissionSource = z.infer<typeof CommissionSource>;
 
-export const DistributionPayoutForm = z.enum([
-  "cash_record_only",
-  "site_balance",
-]);
+export const DistributionPayoutForm = z.literal("cash_record_only");
 export type DistributionPayoutForm = z.infer<typeof DistributionPayoutForm>;
 
-export const DistributionSettlement = z.enum([
-  "order_settled",
+export const DistributionSettlement = z.literal(
   "order_settled_after_refund_window",
-  "admin_manual",
-]);
+);
 export type DistributionSettlement = z.infer<typeof DistributionSettlement>;
 
-export const DistributionRefundVoidRule = z.enum([
-  "void_all",
-  "pro_rata",
-  "none",
-]);
+export const DistributionRefundVoidRule = z.literal("void_all");
 export type DistributionRefundVoidRule = z.infer<typeof DistributionRefundVoidRule>;
 
 export const DistributionBase = z.enum([
@@ -77,7 +68,7 @@ export type DistributionAuditAction = z.infer<typeof DistributionAuditAction>;
 
 export const DistributionConfigDTO = z.object({
   enabled: z.boolean(),
-  level_cap: z.literal(3), // FR-010 / SC-003 hard cap
+  level_cap: z.union([z.literal(1), z.literal(2), z.literal(3)]), // FR-010 / SC-003
   level1_pct: z.number().min(0).max(1),
   level2_pct: z.number().min(0).max(1),
   level3_pct: z.number().min(0).max(1),
@@ -166,7 +157,7 @@ export type ShareEntryCreateInput = z.infer<typeof ShareEntryCreateInput>;
 // Commission records (learner view + admin reconcile)
 // ---------------------------------------------------------------------------
 
-const MaskedPhone = z.string().regex(/^1[3-9]\*{8}\d{4}$/);
+const MaskedPhone = z.string().regex(/^1[3-9]\d\*{4}\d{4}$/);
 
 export const CommissionRecordDTO = z.object({
   id: z.number().int().positive(),

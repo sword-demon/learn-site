@@ -50,4 +50,42 @@ final class DistributionAuditService
         ]);
         return $id;
     }
+
+    /**
+     * @return array{items: list<array<string, mixed>>, total: int, page: int, limit: int}
+     */
+    public function list(int $page, int $limit, ?string $action = null): array
+    {
+        $page = max(1, $page);
+        $limit = max(1, min(200, $limit));
+        $totalQ = Db::name('distribution_audit_log');
+        $listQ = Db::name('distribution_audit_log');
+        if ($action !== null && $action !== '') {
+            $totalQ->where('action', $action);
+            $listQ->where('action', $action);
+        }
+        $total = (int) $totalQ->count();
+        $rows = $listQ->order('id', 'desc')->page($page, $limit)->select()->toArray();
+        $items = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            $items[] = [
+                'id' => (int) $row['id'],
+                'actor_type' => (string) $row['actor_type'],
+                'actor_id' => $row['actor_id'] !== null ? (int) $row['actor_id'] : null,
+                'action' => (string) $row['action'],
+                'subject_type' => (string) $row['subject_type'],
+                'subject_id' => $row['subject_id'] !== null ? (int) $row['subject_id'] : null,
+                'before_json' => $row['before_json'] !== null ? json_decode((string) $row['before_json'], true) : null,
+                'after_json' => $row['after_json'] !== null ? json_decode((string) $row['after_json'], true) : null,
+                'reason' => $row['reason'] !== null ? (string) $row['reason'] : null,
+                'created_at' => (string) $row['created_at'],
+            ];
+        }
+        return [
+            'items' => $items,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+        ];
+    }
 }

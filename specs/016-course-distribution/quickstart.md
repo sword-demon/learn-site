@@ -78,7 +78,7 @@
 
 ### SC-009: 全场景无明文手机号
 
-1. 学员 A GET `/api/learner/distribution/commissions` → `referee_masked_phone` 全部 `^1[3-9]\*{8}\d{4}$`.
+1. 学员 A GET `/api/learner/distribution/commissions` → `referee_masked_phone` 全部 `^1[3-9]\d\*{4}\d{4}$`.
 2. 学员 A GET `/api/learner/distribution/downline` → `masked_phone` 全部脱敏.
 3. 管理员 GET `/api/admin/distribution/reconcile/by-order/<orderId>` → `referrer_masked_phone` 全部脱敏.
 4. 管理员导出 csv `/api/admin/distribution/commissions/export?format=csv` → 文件内所有手机号脱敏.

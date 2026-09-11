@@ -9,7 +9,7 @@
 | 实体 | 持久化 | 用途 |
 |---|---|---|
 | `learners.referrer_learner_id` (新列) | `learners` 表 | 推荐关系, 一旦写入不可改 |
-| `share_entries` (新表) | 学员生成的一次性分享入口 |
+| `share_entries` (新表) | 学员生成的专属分享入口 |
 | `share_visits` (新表) | 访客打开分享入口的访问痕迹 |
 | `distribution_course_overrides` (新表) | 单课分销覆盖 |
 | `commission_records` (新表) | 佣金记录 (按订单快照) |
@@ -17,6 +17,8 @@
 | `site_settings` 复用 | 站点级分销配置 (key=`distribution_config`) |
 
 ## 表与字段
+
+新表与新列默认 `CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`, 与现库一致.
 
 ### learners — 列扩展
 
@@ -127,7 +129,7 @@ DB 触发器 (migration 内): 禁止 `UPDATE learners SET referrer_learner_id = 
 ```jsonc
 {
   "enabled": false,
-  "level_cap": 3,                    // DB CHECK 约束 <= 3
+  "level_cap": 3,                    // DB CHECK: BETWEEN 1 AND 3
   "level1_pct": 0.10,
   "level2_pct": 0.05,
   "level3_pct": 0.025,
@@ -135,14 +137,14 @@ DB 触发器 (migration 内): 禁止 `UPDATE learners SET referrer_learner_id = 
   "per_order_cap_cents": 5000,
   "per_learner_course_cap_cents": 20000,
   "per_learner_total_cap_cents": null,
-  "settlement": "order_settled_after_refund_window", // order_settled / order_settled_after_refund_window / admin_manual
-  "refund_void_rule": "void_all",   // void_all / pro_rata / none
-  "payout_form": "cash_record_only", // cash_record_only (首版) / site_balance
+  "settlement": "order_settled_after_refund_window", // 首版唯一值
+  "refund_void_rule": "void_all",   // 首版唯一值
+  "payout_form": "cash_record_only", // 首版唯一值; 禁止 site_balance
   "learner_can_view_detail": true
 }
 ```
 
-DB 层加 CHECK: `JSON_EXTRACT(value, '$.level_cap') <= 3`. (MySQL 8 支持.)
+DB 层加 CHECK: `JSON_EXTRACT(value, '$.level_cap') BETWEEN 1 AND 3`. (MySQL 8 支持.)
 
 ## 状态机
 
@@ -198,9 +200,10 @@ distribution_audit_log (独立, 通过 subject_type+subject_id 反查)
 
 ### 推荐关系写入 (FR-001 / FR-002 / FR-005)
 
-- 注册事务第一行: 按 visitor_token 查 share_visits, 取最新未绑定的访问, 拿到 share_entry.learner_id 作为 referrer.
-- 校验: referrer 必须存在且不是当前注册学员. 校验通过后 UPDATE learners SET referrer_learner_id = ? WHERE id = ? AND referrer_learner_id IS NULL.
-- 同 visitor_token 第二个注册: 因 referrer_learner_id 已非 NULL, 校验失败, 该次注册获得 referrer = NULL.
+- 注册事务内: 若请求没有 visitor_token 或找不到 visit, 不绑定, 禁止凭空生成 token.
+- 按 visitor_token 取最后一次有效访问, 拿到 share_entry.learner_id 作为候选推荐人.
+- 若该 visitor_token 或该 share_entry 已有 bound_learner_id, 新注册 referrer 保持 NULL.
+- 校验: 推荐人必须存在且不是当前注册学员. 校验通过后 UPDATE learners SET referrer_learner_id = ? WHERE id = ? AND referrer_learner_id IS NULL.
 
 ### 结算完整性 (FR-011 / FR-012)
 
@@ -213,7 +216,7 @@ distribution_audit_log (独立, 通过 subject_type+subject_id 反查)
 
 ### 配置变更 (FR-016)
 
-- level_cap: 应用层拒绝 > 3, DB CHECK 拒绝 > 3, 单测覆盖.
+- level_cap: 应用层拒绝 ≤ 0 或 > 3, DB CHECK 拒绝非 1–3, 单测覆盖.
 - 其它字段: 写入时校验与单笔封顶一致 (level1_pct + level2_pct + level3_pct 三级之和不得导致总额超 per_order_cap_cents / order_paid_cents). 若选 base=order_paid, 按 1 元订单反推, 上限比例 = per_order_cap_cents / 100. 三级比例之和 ≤ 该上限.
 
 ## 容量估算

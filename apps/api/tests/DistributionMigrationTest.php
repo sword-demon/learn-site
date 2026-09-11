@@ -58,6 +58,7 @@ final class DistributionMigrationTest extends TestCase
         self::assertStringContainsString('chk_distribution_level_cap', $this->migrationSource);
         self::assertStringContainsString("`key` <> 'distribution_config'", $this->migrationSource);
         self::assertStringContainsString("'$.level_cap'", $this->migrationSource);
+        self::assertStringContainsString('BETWEEN 1 AND 3', $this->migrationSource);
     }
 
     public function testReferrerImmutableTriggerBlocksUpdateAndDelete(): void

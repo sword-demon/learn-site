@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide } from 'vue';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import {
@@ -105,6 +105,7 @@ import {
   SwitchButton,
   Tickets,
   User,
+  Share,
   Wallet,
 } from '@element-plus/icons-vue';
 import DailyCheckinDialog from '@/components/DailyCheckinDialog.vue';
@@ -113,6 +114,7 @@ import { useDailyCheckinPrompt } from '@/composables/useDailyCheckinPrompt';
 import { usePushNotifications } from '@/composables/usePushNotifications';
 import { useTheme } from '@/composables/useTheme';
 import { useLearnerProfileStore } from '@/stores/learnerProfile';
+import { fetchDistributionStatus } from '@/api/distribution';
 
 const session = useLoginFamilyStore();
 const router = useRouter();
@@ -131,16 +133,45 @@ const {
 } = checkinPrompt;
 provide('dailyCheckinPrompt', checkinPrompt);
 
-const personalLinks = [
-  { path: '/me/learning', label: '我的学习', icon: Reading },
-  { path: '/me/favorites', label: '我的收藏', icon: Star },
-  { path: '/me/orders', label: '我的订单', icon: Tickets },
-  { path: '/me/messages', label: '消息中心', icon: Bell },
-  { path: '/me/checkins', label: '每日签到', icon: Calendar },
-  { path: '/me/coupons', label: '优惠券', icon: Wallet },
-  { path: '/me/redeem', label: '激活码兑换', icon: Key },
-  { path: '/me/account', label: '账户设置', icon: Setting },
-];
+const distributionEnabled = ref(false);
+async function loadDistributionFlag(): Promise<void> {
+  if (!session.loggedIn) {
+    distributionEnabled.value = false;
+    return;
+  }
+  try {
+    const status = await fetchDistributionStatus();
+    distributionEnabled.value = status.enabled;
+  } catch {
+    distributionEnabled.value = false;
+  }
+}
+onMounted(() => {
+  void loadDistributionFlag();
+});
+watch(
+  () => session.loggedIn,
+  () => {
+    void loadDistributionFlag();
+  },
+);
+
+const personalLinks = computed(() => {
+  const links = [
+    { path: '/me/learning', label: '我的学习', icon: Reading },
+    { path: '/me/favorites', label: '我的收藏', icon: Star },
+    { path: '/me/orders', label: '我的订单', icon: Tickets },
+    { path: '/me/messages', label: '消息中心', icon: Bell },
+    { path: '/me/checkins', label: '每日签到', icon: Calendar },
+    { path: '/me/coupons', label: '优惠券', icon: Wallet },
+    { path: '/me/redeem', label: '激活码兑换', icon: Key },
+    { path: '/me/account', label: '账户设置', icon: Setting },
+  ];
+  if (distributionEnabled.value) {
+    links.splice(6, 0, { path: '/me/distribution', label: '我的分销', icon: Share });
+  }
+  return links;
+});
 
 async function onUserMenu(command: string): Promise<void> {
   if (command === 'logout') {
@@ -148,7 +179,7 @@ async function onUserMenu(command: string): Promise<void> {
     await router.push('/');
     return;
   }
-  const target = personalLinks.find((item) => item.path === `/me/${command}`);
+  const target = personalLinks.value.find((item) => item.path === `/me/${command}`);
   if (target) await router.push(target.path);
 }
 </script>

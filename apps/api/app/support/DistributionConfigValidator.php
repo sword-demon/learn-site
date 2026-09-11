@@ -72,6 +72,22 @@ final class DistributionConfigValidator
         if (!is_bool($cfg['learner_can_view_detail'] ?? null)) {
             throw new BusinessException('VALIDATION_FAILED', 'INVALID_LEARNER_VIEW_FLAG');
         }
+
+        if (($cfg['payout_form'] ?? 'cash_record_only') !== 'cash_record_only') {
+            throw new BusinessException('VALIDATION_FAILED', 'PAYOUT_FORM_UNSUPPORTED:合规硬约束,首版不挂入学员钱包');
+        }
+        if (($cfg['settlement'] ?? 'order_settled_after_refund_window') !== 'order_settled_after_refund_window') {
+            throw new BusinessException('VALIDATION_FAILED', 'SETTLEMENT_UNSUPPORTED:合规硬约束');
+        }
+        if (($cfg['refund_void_rule'] ?? 'void_all') !== 'void_all') {
+            throw new BusinessException('VALIDATION_FAILED', 'REFUND_VOID_UNSUPPORTED:合规硬约束');
+        }
+
+        $cap = (int) ($cfg['per_order_cap_cents'] ?? 0);
+        $theoretical = self::theoreticalMaxCommissionCents($cfg, 10000);
+        if ($cap > 0 && $theoretical > $cap) {
+            throw new BusinessException('VALIDATION_FAILED', 'TOTAL_COMMISSION_EXCEEDS_CAP:合规硬约束');
+        }
     }
 
     /**

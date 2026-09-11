@@ -195,7 +195,7 @@ final class Distribution extends AbstractMigration
                      'per_order_cap_cents', 5000,
                      'per_learner_course_cap_cents', 50000,
                      'per_learner_total_cap_cents', NULL,
-                     'settlement', 'order_settled',
+                     'settlement', 'order_settled_after_refund_window',
                      'refund_void_rule', 'void_all',
                      'payout_form', 'cash_record_only',
                      'learner_can_view_detail', true,
@@ -225,7 +225,7 @@ final class Distribution extends AbstractMigration
                    ADD CONSTRAINT chk_distribution_level_cap
                    CHECK (
                      `key` <> 'distribution_config'
-                     OR CAST(JSON_EXTRACT(`value`, '$.level_cap') AS UNSIGNED) <= 3
+                     OR CAST(JSON_EXTRACT(`value`, '$.level_cap') AS UNSIGNED) BETWEEN 1 AND 3)
                    )"
             );
         }

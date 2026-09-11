@@ -123,7 +123,7 @@ final class DistributionConfigService
             'per_order_cap_cents' => 5000,
             'per_learner_course_cap_cents' => 50000,
             'per_learner_total_cap_cents' => null,
-            'settlement' => 'order_settled',
+            'settlement' => 'order_settled_after_refund_window',
             'refund_void_rule' => 'void_all',
             'payout_form' => 'cash_record_only',
             'learner_can_view_detail' => true,

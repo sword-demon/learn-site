@@ -15,7 +15,7 @@
   - apps/api: think-orm, webman-framework 2.2, Phinx (migration), 既有 OrderService / EntitlementService / NotificationDispatchService
   - packages/contracts: zod
   - apps/web / apps/admin: Element Plus, Pinia, vue-router
-- **Storage**: MySQL 8.4 (新增 5 张表 + 1 列扩展 + 1 行 site_settings key); Redis 仅用于短期 cookie / 临时 share_visits 缓存, 不作为主存储
+- **Storage**: MySQL 8.4 (新增 5 张表 + 1 列扩展 + 1 行 site_settings key, 字符集 utf8mb4). 访客标识 = HttpOnly cookie `distribution_visitor_token` + `share_visits` 表; Redis 不用于分销, 仅用于宪章允许的令牌与图形验证码.
 - **Testing**: PHPUnit (apps/api/tests), Vitest (apps/web/tests, apps/admin/tests), Playwright (make test-e2e)
 - **Target Platform**: Webman 服务端 + 两端 SPA (无移动端原生, 不涉及)
 - **Project Type**: 既有 monorepo (apps/api + apps/web + apps/admin + packages/contracts), 沿用
@@ -25,25 +25,24 @@
   - 金额一律以分为单位存储与计算
   - 时区 `Asia/Shanghai`
   - 不修改学员主表 status 字段语义, 不挂入既有通知 / 钱包
-- **Scale/Scope**: 5 张新表, 1 列扩展, 1 行 site_settings key; 管理端 8 个新路由, 学习端 5 个新路由, 公开落地页 2 个路由; 4 个新权限点; 1 个新 Vue 页面 (学习端) + 3 个新 Vue 页面 (管理端)
+- **Scale/Scope**: 5 张新表, 1 列扩展, 1 行 site_settings key; 管理端 9 个 API 路由 (含 csv 导出), 学习端 5 个 API 路由, 公开落地页 2 个路由; PermissionSeeder 3 个管理端权限点; 1 个新 Vue 页面 (学习端) + 4 个新 Vue 页面 (管理端)
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-无 project constitution, 退而采用既有 CLAUDE.md / 通用规则作为约束, 全部满足:
+对照 `.specify/memory/constitution.md` (v1.2.0), 全部满足:
 
-- **简单优先** (CLAUDE.md): 5 张新表是为合规审计边界必须的最小集, 不为将来扩展预留
-- **无懒惰**: 不写"待以后实现"占位; 退款撤销钩子在 OrderService::markRefunded 内同步完成, 不另起 cron 兜底
-- **库 API 优先核对** (CLAUDE.md): 复用 think-orm / webman / zod / phinx / Element Plus; 不引入新依赖
-- **管理端写操作审计** (CLAUDE.md 既有约定): 所有写操作经 service `writeAudit()`, 落到 `distribution_audit_log`
-- **service 层规约** (CLAUDE.md 既有约定): 跨方法常量变 private const; 时区统一 `Asia/Shanghai`; 副作用封装为 `writeAudit()` 私有方法; 写路径第一行做业务闸门
-- **契约字段必须从 packages/contracts 引用** (CLAUDE.md): 前端不手写 DTO 类型
-- **新增视图同 commit 提交对应 vitest/phpunit 测试** (CLAUDE.md): 见 quickstart.md 测试覆盖矩阵
-- **Webman + think-orm** (CLAUDE.md): 明确 webman 2.2 + think-orm, 不用 Laravel/PHP-FPM 推断
+- **I 容器即运行契约**: 验收走 Makefile / Compose, 不在宿主机跑 PHP / Node 作为交付证据
+- **III 契约优先**: 新 DTO 进 `packages/contracts`, 两端 Zod 校验; 金额 int cents; API 时间 ISO-8601
+- **IV 数据变更安全**: 单文件 Phinx 迁移; 模型继承 `support\think\Model`; 查询走 think-orm; 字符集 utf8mb4
+- **V 质量门禁**: PHPUnit + Vitest + Playwright; `make lint` / `typecheck` / `phpstan`; contracts 变更 `make rebuild-all`
+- **质量门禁 #2 Redis**: Redis 不用于 share_visits 或分销缓存; 访客标识 = HttpOnly cookie + `share_visits` 表
+- **简单优先**: 5 张新表是合规审计边界最小集; 不引入 MQ / 钱包挂接 / 新账户类型
+- **无懒惰**: 退款撤销钩子在 `OrderService::markRefunded` 内同步完成, 不另起 cron 兜底; 退款窗口结束转 settled 挂既有订单状态迁移, 禁止新 cron
+- **管理端写操作审计**: 所有写操作经 service `writeAudit()`, 落到 `distribution_audit_log`
+- **service 层规约**: 跨方法常量变 private const; 时区 `Asia/Shanghai`; 写路径第一行做业务闸门
 - **不修改既有模块语义**: 不动 orders 主表 / EntitlementService / NotificationDispatchService
-- **依赖 session 状态的弹窗 / 抽屉** (CLAUDE.md): 「我的分销」页走 composable, 关闭 tab 自动撤销
-- **trust boundary 取值** (CLAUDE.md): 所有 share_entries / commission_records / distribution_audit_log 的 id 与数值统一 int, 时间统一 int Unix 秒
 
 无 violation, 无需 Complexity Tracking 表.
 
@@ -77,7 +76,7 @@ apps/api/
 │   │   ├── ShareEntryService.php
 │   │   ├── ShareVisitService.php
 │   │   ├── ReferralBindingService.php                # 注册事务钩子
-│   │   ├── CommissionService.php                     # 结算 / 撤销 / 对账
+│   │   ├── CommissionService.php                     # pending 写入 / 窗口结束 settled / 撤销 / 对账
 │   │   ├── CommissionReplayService.php               # 回放校验
 │   │   └── DistributionAuditService.php
 │   ├── model/
@@ -92,7 +91,7 @@ apps/api/
 │   └── functions.php                                 # 新增 referral maskPhone 等
 ├── database/migrations/
 │   └── 20260906000001_distribution.php              # 单文件, 全部新表 + 列扩展
-├── database/seeds/PermissionSeeder.php               # 新增 4 行 permission
+├── database/seeds/PermissionSeeder.php               # 新增 3 行 permission
 └── tests/
     ├── DistributionConfigServiceTest.php
     ├── ShareEntryServiceTest.php
@@ -151,7 +150,7 @@ packages/contracts/src/
 1. 推荐关系持久化在 `learners.referrer_learner_id`, DB 触发器禁止 UPDATE
 2. 分享入口用「短码 + cookie + DB」三层, 注册时按 visitor_token 持久化标识恢复
 3. 佣金记录与订单同事务写入, 表内 `config_snapshot_json` 保证回放可证
-4. 结算事件订阅 `OrderService::markSucceeded`, 退款订阅 `OrderService::markRefunded`
+4. 支付成功订阅 `OrderService::markSucceeded` 写入 pending; 退款窗口结束将 pending → settled; 退款订阅 `OrderService::markRefunded` 全部 voided. 禁止新 cron / MQ.
 5. 级别上限 ≤ 3 走应用层 + DB CHECK + 单测三层防护
 6. 单笔接收人 ≤ 3 走应用层计数 + DB UNIQUE 双层防护
 7. 脱敏在 service 层一次性做, 前端 / 导出 / 审计均不返明文
@@ -161,10 +160,11 @@ packages/contracts/src/
 
 | 集成点 | 文件 | 改动 |
 |---|---|---|
-| `OrderService::markSucceeded` | apps/api/app/service/OrderService.php | 回调链尾追加 `CommissionService::settleForOrder($orderId)` |
+| `OrderService::markSucceeded` | apps/api/app/service/OrderService.php | 回调链尾追加 `CommissionService::settleForOrder($orderId)` (写 pending / pending_blocked) |
+| 订单退款窗口结束 | apps/api/app/service/OrderService.php (既有状态迁移, 禁止新 cron) | 追加 `CommissionService::markSettledForOrder($orderId)` (pending → settled) |
 | `OrderService::markRefunded` | apps/api/app/service/OrderService.php | 回调链尾追加 `CommissionService::voidForOrder($orderId, 'order_refund')` |
-| `LearnerController::register` | apps/api/app/controller/learner/AuthController.php | 注册事务内追加 `ReferralBindingService::bindFromVisitor($learnerId)` |
-| `PermissionSeeder` | apps/api/database/seeds/PermissionSeeder.php | 新增 4 行 permission 记录 |
+| `AuthController::register` | apps/api/app/controller/learner/AuthController.php | 注册事务内追加 `ReferralBindingService::bindFromVisitor($learnerId)` |
+| `PermissionSeeder` | apps/api/database/seeds/PermissionSeeder.php | 新增 3 行: `distribution.config` / `distribution.reconcile` / `distribution.audit` |
 | `packages/contracts/src/index.ts` | packages/contracts/src/index.ts | + `export * from "./distribution"` |
 
 ## 验收口径

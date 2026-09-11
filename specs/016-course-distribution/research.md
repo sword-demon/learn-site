@@ -37,17 +37,18 @@
 - 不存 config_snapshot, 只存数值: 后续回放无法证明当时为什么是这个数, 影响 SC-011 验收.
 - 引用当前配置: 配置变更后无法复盘.
 
-### Decision 4 — 结算事件订阅既有 OrderService::markSucceeded
+### Decision 4 — 支付成功写 pending, 退款窗口结束再 settled
 
-**Rationale**: OrderService 已经在 markSucceeded 成功后调用 EntitlementService 颁发课程访问权. 在同一回调里增加一行 commission->settle($orderId), 由 CommissionService 监听. 退款事件订阅 OrderService::markRefunded. 这两个 hook 都已经在订单生命周期里, 不需要新外部消息总线.
+**Rationale**: FR-018 首版固定「订单成功且退款期结束」. `markSucceeded` 与颁发课程访问权同一事务内调用 `settleForOrder`, 只写入 `pending` / `pending_blocked` 并固化 `config_snapshot_json`. 既有订单「退款窗口结束且未退款」状态迁移处调用 `markSettledForOrder` (`pending → settled`). 退款订阅 `OrderService::markRefunded` → `voidForOrder`. 三者都挂既有订单生命周期, 不需要新外部消息总线或 cron.
 
 **Alternatives considered**:
-- 引入新的 message queue / Redis stream: 过度工程, 既没有跨服务需求也没有横向扩展需求. Webman 单进程内同步回调 + 异常回滚足够.
+- 引入新的 message queue / Redis stream: 过度工程, 且宪章禁止把 Redis 用于令牌/验证码以外的业务缓存.
+- 在 markSucceeded 时直接写 settled: 违反退款窗口默认, 会出现先发后退款的窗口.
 - cron 周期扫描订单: 不能保证结算及时, SC-007 要求退款 30 秒内撤销.
 
 ### Decision 5 — 级别上限 ≤ 3 走「应用层 + DB CHECK 约束 + 单测」三层防护
 
-**Rationale**: SC-003 要求"写入失败率 100%, 任何管理员 (含超级管理员) 都不能解除". 三层防护: (a) DistributionConfigService::saveConfig 拒绝 > 3; (b) distribution_configs.level_cap 列 CHECK (level_cap BETWEEN 0 AND 3); (c) 单测覆盖试图绕过 API 直写 DB 的场景.
+**Rationale**: SC-003 要求"写入失败率 100%, 任何管理员 (含超级管理员) 都不能解除". 三层防护: (a) DistributionConfigService::saveConfig 拒绝 ≤ 0 或 > 3; (b) site_settings JSON CHECK (`level_cap` BETWEEN 1 AND 3); (c) 单测覆盖试图绕过 API 直写 DB 的场景.
 
 **Alternatives considered**:
 - 仅应用层校验: 不可, 因为有运维通道 (SQL 直写) 能绕过.
@@ -87,11 +88,11 @@
 - `distribution.view_own` (module=distribution) — 学员看自己的佣金/下级
 - `distribution.reconcile` (module=distribution) — 管理员对账
 - `distribution.audit` (module=distribution) — 管理员审计
-学员端 `distribution.share` 和 `distribution.view_own` 不需要 PermissionSeeder, 由 JWT 学员身份自动具备; 仅管理端的 4 个点写入 PermissionSeeder.
+学员端 `distribution.share` 和 `distribution.view_own` 不需要 PermissionSeeder, 由 JWT 学员身份自动具备. 管理端写入 PermissionSeeder 的是 3 个点: `distribution.config` / `distribution.reconcile` (对账 + 撤销) / `distribution.audit`. 撤销不单独 seeder.
 
 **Alternatives considered**:
 - 用现有 module (如 promotion): 课程分销与优惠券虽都是促销, 但合规审计边界不同, 单独 module 更便于按模块出审计报表.
-- 不分多个权限点: 不可, 因为 FR-013 要求"配置 / 对账 / 审计 / 撤销"是可独立授权的.
+- 把撤销拆成第四个管理端权限点: 首版对账与撤销同一职责, 挂在 `distribution.reconcile` 即可.
 
 ### Decision 10 — 配置变更不引入新表, 沿用 site_settings 单行表
 

@@ -81,6 +81,12 @@ const router = createRouter({
           component: () => import('@/views/me/StudentCenterView.vue'),
         },
         {
+          path: 'me/distribution',
+          name: 'distribution',
+          beforeEnter: requireLearnerAuth,
+          component: () => import('@/views/DistributionView.vue'),
+        },
+        {
           path: 'me/account',
           name: 'account',
           beforeEnter: requireLearnerAuth,

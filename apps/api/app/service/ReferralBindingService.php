@@ -33,11 +33,19 @@ final class ReferralBindingService
      */
     public function bindFromVisitor(int $newLearnerId, ?string $visitorToken = null, ?int $shareEntryId = null): ?int
     {
-        $resolved = null;
-        if ($visitorToken !== null && $shareEntryId !== null) {
-            $resolved = $this->shares->resolveByVisitor($visitorToken, $shareEntryId);
+        if ($visitorToken === null || $visitorToken === '') {
+            return null;
         }
-        return $this->bind($newLearnerId, $resolved['referrer_learner_id'] ?? null);
+        $resolved = $shareEntryId !== null
+            ? $this->shares->resolveByVisitor($visitorToken, $shareEntryId)
+            : $this->shares->resolveLatestVisit($visitorToken);
+        if ($resolved === null) {
+            return null;
+        }
+        if ($this->shares->isVisitorOrEntryBound($visitorToken, $resolved['share_entry_id'])) {
+            return null;
+        }
+        return $this->bind($newLearnerId, $resolved['referrer_learner_id']);
     }
 
     /**

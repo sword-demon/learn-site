@@ -97,6 +97,18 @@ final class Authorize implements MiddlewareInterface
         if ($path === '/api/admin/v1/banner-images' && $method === 'POST') {
             return 'banner.manage';
         }
+        if (preg_match('#^/api/admin/v1/distribution/config$#', $path)) {
+            return 'distribution.config';
+        }
+        if (preg_match('#^/api/admin/v1/distribution/course-overrides#', $path)) {
+            return 'distribution.config';
+        }
+        if (preg_match('#^/api/admin/v1/distribution/audit#', $path)) {
+            return 'distribution.audit';
+        }
+        if (preg_match('#^/api/admin/v1/distribution/(?:reconcile|commissions)#', $path)) {
+            return 'distribution.reconcile';
+        }
         if ($method === 'GET' && preg_match('#^/api/admin/v1/courses/\d+/publish-checklist$#', $path)) {
             return 'course.view';
         }

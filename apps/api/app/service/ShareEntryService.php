@@ -27,8 +27,8 @@ use function nowDatetime;
  */
 final class ShareEntryService
 {
-    public const VISITOR_COOKIE = 'ds_ref_visitor';
-    public const COOKIE_TTL_SECONDS = 86400; // 1 day, per user instruction
+    public const VISITOR_COOKIE = 'distribution_visitor_token';
+    public const COOKIE_TTL_SECONDS = 180 * 86400;
 
     public function __construct(
         private readonly DistributionConfigService $config = new DistributionConfigService(),
@@ -48,6 +48,15 @@ final class ShareEntryService
         }
         if ($scope === 'course' && ($courseId === null || $courseId <= 0)) {
             throw new BusinessException('VALIDATION_FAILED', 'COURSE_REQUIRED');
+        }
+        if ($scope === 'course') {
+            $course = Db::name('courses')->where('id', $courseId)->field('id,status')->find();
+            if (!is_array($course)) {
+                throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
+            }
+            if ((string) $course['status'] !== 'published') {
+                throw new BusinessException('VALIDATION_FAILED', 'COURSE_NOT_PUBLISHED');
+            }
         }
 
         // ponytail: refuse to mint dead links when the global switch is off —
@@ -194,6 +203,17 @@ final class ShareEntryService
         if (!$entry) {
             throw new BusinessException('NOT_FOUND', 'SHARE_NOT_FOUND');
         }
+        if ((int) ($entry['distribution_enabled_at_creation'] ?? 0) === 0) {
+            return [
+                'visitor_token' => $visitorToken !== null && strlen($visitorToken) === 32
+                    ? $visitorToken
+                    : bin2hex(random_bytes(16)),
+                'share_entry_id' => (int) $entry['id'],
+                'learner_id' => (int) $entry['learner_id'],
+                'scope' => (string) $entry['scope'],
+                'course_id' => isset($entry['course_id']) ? (int) $entry['course_id'] : null,
+            ];
+        }
 
         $token = $visitorToken !== null && strlen($visitorToken) === 32
             ? $visitorToken
@@ -217,6 +237,34 @@ final class ShareEntryService
             'scope' => (string) $entry['scope'],
             'course_id' => isset($entry['course_id']) ? (int) $entry['course_id'] : null,
         ];
+    }
+
+    public function isActiveCode(string $shortCode): bool
+    {
+        if (!ShareShortCode::isValid($shortCode)) {
+            return false;
+        }
+        $entry = Db::name('share_entries')
+            ->where('short_code', $shortCode)
+            ->whereNull('revoked_at')
+            ->find();
+        return $entry !== null;
+    }
+
+    /** @return array{share_entry_id: int, referrer_learner_id: int}|null */
+    public function resolveLatestVisit(string $visitorToken): ?array
+    {
+        if (strlen($visitorToken) !== 32) {
+            return null;
+        }
+        $visit = Db::name('share_visits')
+            ->where('visitor_token', $visitorToken)
+            ->order('id', 'desc')
+            ->find();
+        if (!$visit) {
+            return null;
+        }
+        return $this->resolveByVisitor($visitorToken, (int) $visit['share_entry_id']);
     }
 
     /**
@@ -246,8 +294,6 @@ final class ShareEntryService
         if (!$entry) {
             return null;
         }
-        // ponytail: snapshot the enabled flag at create-time so toggling
-        // distribution later doesn't retroactively activate dead links.
         if ((int) ($entry['distribution_enabled_at_creation'] ?? 0) === 0) {
             return null;
         }
@@ -255,6 +301,22 @@ final class ShareEntryService
             'share_entry_id' => $shareEntryId,
             'referrer_learner_id' => (int) $entry['learner_id'],
         ];
+    }
+
+    public function isVisitorOrEntryBound(string $visitorToken, int $shareEntryId): bool
+    {
+        $boundVisit = Db::name('share_visits')
+            ->where('visitor_token', $visitorToken)
+            ->whereNotNull('bound_learner_id')
+            ->find();
+        if ($boundVisit) {
+            return true;
+        }
+        $boundEntry = Db::name('share_visits')
+            ->where('share_entry_id', $shareEntryId)
+            ->whereNotNull('bound_learner_id')
+            ->find();
+        return $boundEntry !== null;
     }
 
     /**
