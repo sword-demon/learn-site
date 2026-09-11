@@ -30,12 +30,16 @@ final class JobDispatcher
             return;
         }
 
-        if (!class_exists(\Webman\RedisQueue\Client::class)) {
+        if (!class_exists(\Webman\RedisQueue\Redis::class)) {
             Logger::error('queue.client_missing', ['queue' => $queue]);
             throw new \RuntimeException('queue_unavailable');
         }
 
-        \Webman\RedisQueue\Client::send($queue, $data);
+        $sent = \Webman\RedisQueue\Redis::send($queue, $data);
+        if ($sent !== true) {
+            Logger::error('queue.send_unconfirmed', ['queue' => $queue]);
+            throw new \RuntimeException('queue_unavailable');
+        }
     }
 
     private function shouldRunSync(): bool

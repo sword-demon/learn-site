@@ -88,6 +88,7 @@
             <file>tests/DistributionMigrationTest.php</file>
             <file>tests/DefaultRouteDisabledTest.php</file>
             <file>tests/DistributionAdminGateTest.php</file>
+            <file>tests/JobDispatcherSendTest.php</file>
             <file>tests/ShareShortCodeTest.php</file>
             <file>tests/ShareEntryServiceTest.php</file>
             <file>tests/ShareLandingControllerTest.php</file>
