@@ -32,8 +32,7 @@ import { useNotificationStore } from '@/stores/notifications';
 
 defineOptions({ name: 'StudentCenterView' });
 
-type TabKey =
-  'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account' | 'coupons' | 'redeem';
+type TabKey = 'learning' | 'favorites' | 'orders' | 'messages' | 'checkins' | 'account' | 'redeem';
 
 type CheckinPrompt = {
   dialogVisible: { value: boolean };
@@ -47,7 +46,6 @@ const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 const route = useRoute();
 const router = useRouter();
 
-// ponytail: H1 activeTab 从 path 单一守卫点派生
 const TAB_BY_PATH: Record<string, TabKey> = {
   '/me/learning': 'learning',
   '/me/favorites': 'favorites',
@@ -55,7 +53,6 @@ const TAB_BY_PATH: Record<string, TabKey> = {
   '/me/messages': 'messages',
   '/me/checkins': 'checkins',
   '/me/account': 'account',
-  '/me/coupons': 'coupons',
   '/me/redeem': 'redeem',
 };
 
@@ -145,26 +142,43 @@ async function openCheckinDialog(): Promise<void> {
 const learningItems = ref<MyLearningItemDTO[]>([]);
 const learningLoading = ref(true);
 const learningLoadError = ref(false);
-const learningFilter = ref('all');
-const filteredLearning = computed(() => learningItems.value.filter((item) =>
-  learningFilter.value === 'all' || (learningFilter.value === 'completed' ? Boolean(item.completed_at) : !item.completed_at),
-));
-const completedCount = computed(() => learningItems.value.filter((item) => item.completed_at).length);
+const learningFilter = ref<'all' | 'active' | 'completed'>('all');
+const filteredLearning = computed(() =>
+  learningItems.value.filter((item) => {
+    if (learningFilter.value === 'all') return true;
+    if (learningFilter.value === 'completed') return Boolean(item.completed_at);
+    return !item.completed_at;
+  }),
+);
+const completedCount = computed(
+  () => learningItems.value.filter((item) => item.completed_at).length,
+);
 const weekCells = computed(() => {
   if (!heatmapCells.value.length) return [];
   const today = new Date();
   const monday = new Date(today);
-  monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
   return WEEKDAYS.map((label, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     const key = dateKey(date);
-    return { label, date: key, day: date.getDate(), hit: heatmapCells.value.some((cell) => cell.date === key && cell.hit), today: key === dateKey(today) };
+    return {
+      label,
+      date: key,
+      day: date.getDate(),
+      hit: heatmapCells.value.some((cell) => cell.date === key && cell.hit),
+      today: key === dateKey(today),
+    };
   });
 });
 const tabTitles: Record<TabKey, string> = {
-  learning: '我的学习', favorites: '我的收藏', orders: '我的订单', messages: '消息中心',
-  checkins: '每日签到', account: '账户设置', coupons: '优惠券', redeem: '兑换课程',
+  learning: '我的学习',
+  favorites: '我的收藏',
+  orders: '我的订单',
+  messages: '消息中心',
+  checkins: '每日签到',
+  account: '账户设置',
+  redeem: '兑换课程',
 };
 const rejoiningCourseId = ref<number | null>(null);
 const rejoinErrorCourseId = ref<number | null>(null);
@@ -338,12 +352,8 @@ function kindTagType(
   return types[kind];
 }
 
-function resourcePath(message: LearnerNotificationDTO): string | null {
-  return message.resource_path;
-}
-
 async function openMessageResource(message: LearnerNotificationDTO): Promise<void> {
-  const target = resourcePath(message);
+  const target = message.resource_path;
   if (!target || !message.resource_available) return;
   if (!message.read) {
     await markRead(message.id);
@@ -475,11 +485,9 @@ async function ensureLoaded(tab: TabKey): Promise<void> {
   if (loadedTabs.has(tab)) return;
   loadedTabs.add(tab);
   if (tab === 'learning') {
-    await loadLearning();
-    await loadMessages();
+    await Promise.all([loadLearning(), loadMessages()]);
     messagesLoading.value = false;
-  }
-  else if (tab === 'favorites') await loadFavorites();
+  } else if (tab === 'favorites') await loadFavorites();
   else if (tab === 'orders') await loadOrders();
   else if (tab === 'messages') {
     notifStore.init();
@@ -516,15 +524,26 @@ onBeforeUnmount(() => {
   <main class="student-center-page" :class="{ 'is-learning': activeTab === 'learning' }">
     <header class="center-heading" data-testid="streak-banner">
       <div>
-        <h1>{{ activeTab === 'learning' ? `你好，${profileStore.displayName}` : tabTitles[activeTab] }}</h1>
+        <h1>
+          {{
+            activeTab === 'learning' ? `你好，${profileStore.displayName}` : tabTitles[activeTab]
+          }}
+        </h1>
         <p v-if="activeTab === 'learning' && !learningLoading && !learningLoadError">
-          {{ learningItems.length - completedCount }} 门学习中 <span>·</span> {{ completedCount }} 门已完成
+          {{ learningItems.length - completedCount }} 门学习中 <span>·</span>
+          {{ completedCount }} 门已完成
         </p>
       </div>
       <div class="checkin-status">
         <span>{{ checkinPrompt?.checkedInToday.value ? '今日已签到' : '今日未签到' }}</span>
-        <el-button type="primary" :icon="Check" :disabled="checkinPrompt?.checkedInToday.value"
-          data-action="open-checkin" @click="openCheckinDialog">{{ checkinPrompt?.checkedInToday.value ? '已签到' : '今日签到' }}</el-button>
+        <el-button
+          type="primary"
+          :icon="Check"
+          :disabled="checkinPrompt?.checkedInToday.value"
+          data-action="open-checkin"
+          @click="openCheckinDialog"
+          >{{ checkinPrompt?.checkedInToday.value ? '已签到' : '今日签到' }}</el-button
+        >
       </div>
     </header>
     <section v-if="activeTab === 'checkins'" class="streak-heatmap" aria-label="近 30 天签到日历">
@@ -571,15 +590,15 @@ onBeforeUnmount(() => {
         :closable="false"
         show-icon
       />
-      <el-empty v-else-if="filteredLearning.length === 0" :description="learningItems.length === 0 ? '还没有开始任何课程' : '暂无这类课程'">
+      <el-empty
+        v-else-if="filteredLearning.length === 0"
+        :description="learningItems.length === 0 ? '还没有开始任何课程' : '暂无这类课程'"
+      >
         <router-link to="/" class="btn btn-primary btn-sm">去首页选课</router-link>
       </el-empty>
       <div v-else class="entry-list">
         <article v-for="item in filteredLearning" :key="item.course_id" class="rec">
-          <router-link
-            :to="`/courses/${item.course_id}`"
-            class="cover"
-          >
+          <router-link :to="`/courses/${item.course_id}`" class="cover">
             <img
               v-if="item.course.cover_url"
               :src="item.course.cover_url"
@@ -589,9 +608,7 @@ onBeforeUnmount(() => {
           </router-link>
           <div>
             <h3>
-              <router-link :to="`/courses/${item.course_id}`"
-                >{{ item.course.title }}</router-link
-              >
+              <router-link :to="`/courses/${item.course_id}`">{{ item.course.title }}</router-link>
             </h3>
             <el-progress
               style="max-width: 300px"
@@ -670,10 +687,7 @@ onBeforeUnmount(() => {
       />
       <div v-else-if="favorites && favorites.items.length" class="entry-list">
         <article v-for="course in favorites.items" :key="course.course_id" class="rec">
-          <router-link
-            :to="`/courses/${course.course_id}`"
-            class="cover"
-          >
+          <router-link :to="`/courses/${course.course_id}`" class="cover">
             <img v-if="course.cover_url" :src="course.cover_url" :alt="course.title" />
             <el-icon v-else :size="32"><Picture /></el-icon>
           </router-link>
@@ -723,10 +737,7 @@ onBeforeUnmount(() => {
         :closable="false"
         show-icon
       />
-      <el-empty
-        v-else-if="orders.length === 0"
-        description="还没有订单"
-      />
+      <el-empty v-else-if="orders.length === 0" description="还没有订单" />
       <div v-else>
         <article v-for="order in orders" :key="order.order_id" class="panel order-row">
           <div>
@@ -781,10 +792,7 @@ onBeforeUnmount(() => {
         :closable="false"
         show-icon
       />
-      <el-empty
-        v-else-if="messages.length === 0"
-        description="暂无消息"
-      />
+      <el-empty v-else-if="messages.length === 0" description="暂无消息" />
       <div v-else class="panel">
         <article
           v-for="message in messages"
@@ -810,7 +818,7 @@ onBeforeUnmount(() => {
             </div>
             <div v-if="message.body" class="mbody">{{ message.body }}</div>
             <el-button
-              v-if="message.resource_available && resourcePath(message)"
+              v-if="message.resource_available && message.resource_path"
               link
               type="primary"
               class="btn-link message-resource-link"
@@ -953,7 +961,11 @@ onBeforeUnmount(() => {
         <div v-else class="week-checkins">
           <div v-for="day in weekCells" :key="day.date">
             <span>{{ day.label.slice(1) }}</span>
-            <time :datetime="day.date" :class="{ hit: day.hit, today: day.today }" :title="`${day.date} ${day.hit ? '已签到' : '未签到'}`">
+            <time
+              :datetime="day.date"
+              :class="{ hit: day.hit, today: day.today }"
+              :title="`${day.date} ${day.hit ? '已签到' : '未签到'}`"
+            >
               <el-icon v-if="day.hit"><Check /></el-icon><template v-else>{{ day.day }}</template>
             </time>
           </div>
@@ -961,7 +973,9 @@ onBeforeUnmount(() => {
         <router-link to="/me/checkins" class="rail-link">查看签到记录</router-link>
       </section>
       <section class="latest-message">
-        <h2><el-icon><Bell /></el-icon>最新通知</h2>
+        <h2>
+          <el-icon><Bell /></el-icon>最新通知
+        </h2>
         <p v-if="messagesError" class="muted">{{ messagesError }}</p>
         <template v-else-if="messages[0]">
           <h3>{{ messages[0].title }}</h3>
@@ -975,60 +989,284 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.student-center-page { min-width: 0; }
-.student-center-page.is-learning { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 28px; align-items: start; }
-.center-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 32px; grid-column: 1 / -1; }
-.is-learning .center-heading { margin-bottom: 4px; }
-.center-heading h1 { font-size: 28px; font-weight: 700; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
-.center-heading p { margin: 10px 0 0; color: var(--ink-2); }
-.center-heading p span { margin: 0 10px; color: var(--line-2); }
-.checkin-status { display: flex; align-items: center; flex-shrink: 0; gap: 16px; color: var(--ink-2); font-size: 13px; }
-.sc-section { min-width: 0; }
-.sc-section > .list-head { display: flex; justify-content: flex-end; padding-bottom: 16px; margin: 0; border-bottom: 1px solid var(--line); }
-.sc-section > .list-head h2 { display: none; }
-.sc-section .cnt { color: var(--ink-3); font-size: 13px; }
-.learning-tabs :deep(.el-tabs__header) { margin: 0 0 20px; }
-.entry-list { gap: 16px; }
-.rec { grid-template-columns: 148px minmax(0, 1fr) auto; gap: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
-.rec > div { min-width: 0; }
-.rec .cover { width: 148px; height: 100px; border-radius: 4px; background: var(--paper-2); color: var(--ink-3); }
-.rec .cover::before, .rec .cover::after { display: none; }
-.rec .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.rec h3 { font-size: 17px; line-height: 1.5; margin-bottom: 12px; }
-.rec .lmeta { margin-top: 8px; font-size: 12px; }
-.learning-rail { padding-left: 4px; }
-.learning-rail section { padding: 12px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
-.learning-rail h2 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 20px; }
-.week-checkins { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.week-checkins > div { display: flex; align-items: center; flex-direction: column; gap: 8px; font-size: 11px; color: var(--ink-3); }
-.week-checkins time { display: flex; align-items: center; justify-content: center; width: 27px; height: 27px; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); }
-.week-checkins time.hit { color: #fff; background: var(--seal); }
-.week-checkins time.today { outline: 1px solid var(--seal); outline-offset: 2px; }
-.rail-link { display: inline-block; font-size: 12px; margin-top: 18px; }
-.latest-message h3 { font-size: 14px; margin: 0 0 8px; }
-.latest-message p { margin: 0; font-size: 13px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.streak-heatmap { margin-bottom: 32px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
-.heatmap-heading { display: flex; justify-content: space-between; max-width: 640px; align-items: center; margin-bottom: 16px; }
-.heatmap-heading h3 { font-size: 16px; margin: 0; }
-.heatmap-range { font-size: 12px; color: var(--ink-3); }
-.heatmap-weekdays, .heatmap-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 640px; gap: 8px; }
-.heatmap-weekdays { text-align: center; color: var(--ink-3); margin-bottom: 8px; font-size: 12px; }
-.heatmap-cell { position: relative; padding: 10px; aspect-ratio: 1.2; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-2); color: var(--ink-2); font-size: 14px; }
-.heatmap-cell.empty { visibility: hidden; }
-.heatmap-cell.hit { background: var(--seal-soft); color: var(--seal); border-color: var(--seal-soft); }
-.heatmap-cell.today { outline: 1px solid var(--seal); }
-.heatmap-check { position: absolute; width: 16px; right: 10px; bottom: 10px; }
-.profile-form { display: grid; gap: 20px; max-width: 520px; }
-.profile-form :deep(.el-form-item) { margin-bottom: 0; }
-.profile-form > .el-button { justify-self: start; }
-.list { display: grid; gap: 16px; }
-.card { border: 1px solid var(--line); border-radius: 6px; background: var(--card); padding: 20px; }
-.card-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }
-.pager { display: flex; justify-content: flex-end; margin-top: 24px; }
-.message-resource-link.el-button { height: auto; margin: 6px 0 0; padding: 0; }
-.order-row, .msg-row { background: var(--card); }
+.student-center-page {
+  min-width: 0;
+}
+.student-center-page.is-learning {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 28px;
+  align-items: start;
+}
+.center-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 32px;
+  grid-column: 1 / -1;
+}
+.is-learning .center-heading {
+  margin-bottom: 4px;
+}
+.center-heading h1 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.center-heading p {
+  margin: 10px 0 0;
+  color: var(--ink-2);
+}
+.center-heading p span {
+  margin: 0 10px;
+  color: var(--line-2);
+}
+.checkin-status {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 16px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.sc-section {
+  min-width: 0;
+}
+.sc-section > .list-head {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 16px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+.sc-section > .list-head h2 {
+  display: none;
+}
+.sc-section .cnt {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.learning-tabs :deep(.el-tabs__header) {
+  margin: 0 0 20px;
+}
+.entry-list {
+  gap: 16px;
+}
+.rec {
+  grid-template-columns: 148px minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+}
+.rec > div {
+  min-width: 0;
+}
+.rec .cover {
+  width: 148px;
+  height: 100px;
+  border-radius: 4px;
+  background: var(--paper-2);
+  color: var(--ink-3);
+}
+.rec .cover::before,
+.rec .cover::after {
+  display: none;
+}
+.rec .cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rec h3 {
+  font-size: 17px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.rec .lmeta {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.learning-rail {
+  padding-left: 4px;
+}
+.learning-rail section {
+  padding: 12px 0 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.learning-rail h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+.week-checkins {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.week-checkins > div {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.week-checkins time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.week-checkins time.hit {
+  color: #fff;
+  background: var(--seal);
+}
+.week-checkins time.today {
+  outline: 1px solid var(--seal);
+  outline-offset: 2px;
+}
+.rail-link {
+  display: inline-block;
+  font-size: 12px;
+  margin-top: 18px;
+}
+.latest-message h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.latest-message p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.streak-heatmap {
+  margin-bottom: 32px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.heatmap-heading {
+  display: flex;
+  justify-content: space-between;
+  max-width: 640px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.heatmap-heading h3 {
+  font-size: 16px;
+  margin: 0;
+}
+.heatmap-range {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.heatmap-weekdays,
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  max-width: 640px;
+  gap: 8px;
+}
+.heatmap-weekdays {
+  text-align: center;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.heatmap-cell {
+  position: relative;
+  padding: 10px;
+  aspect-ratio: 1.2;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.heatmap-cell.empty {
+  visibility: hidden;
+}
+.heatmap-cell.hit {
+  background: var(--seal-soft);
+  color: var(--seal);
+  border-color: var(--seal-soft);
+}
+.heatmap-cell.today {
+  outline: 1px solid var(--seal);
+}
+.heatmap-check {
+  position: absolute;
+  width: 16px;
+  right: 10px;
+  bottom: 10px;
+}
+.profile-form {
+  display: grid;
+  gap: 20px;
+  max-width: 520px;
+}
+.profile-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.profile-form > .el-button {
+  justify-self: start;
+}
+.list {
+  display: grid;
+  gap: 16px;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  padding: 20px;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+.message-resource-link.el-button {
+  height: auto;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.order-row,
+.msg-row {
+  background: var(--card);
+}
 @media (max-width: 1250px) {
-  .student-center-page.is-learning { grid-template-columns: minmax(0, 1fr); }
-  .learning-rail { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; }
+  .student-center-page.is-learning {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .learning-rail {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 32px;
+  }
 }
 </style>
