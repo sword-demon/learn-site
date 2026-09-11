@@ -12,13 +12,17 @@ const courseStudentsApi = vi.hoisted(() => ({
 }));
 const authApi = vi.hoisted(() => ({ hasPermission: vi.fn() }));
 type MockRoute = { name: string; params: Record<string, string | string[]> };
-const routerApi = vi.hoisted((): { route: MockRoute } => ({
+const routerApi = vi.hoisted((): { route: MockRoute; push: ReturnType<typeof vi.fn> } => ({
   route: { name: 'course-students', params: { id: '12' } },
+  push: vi.fn(),
 }));
 
 vi.mock('@/api/courseStudents', () => courseStudentsApi);
 vi.mock('@/api/http', () => authApi);
-vi.mock('vue-router', () => ({ useRoute: () => routerApi.route }));
+vi.mock('vue-router', () => ({
+  useRoute: () => routerApi.route,
+  useRouter: () => ({ push: routerApi.push }),
+}));
 
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
 
@@ -143,6 +147,17 @@ describe('CourseStudentView', () => {
     await flushPromises();
 
     expect(courseStudentsApi.revokeCourseStudent).not.toHaveBeenCalled();
+  });
+
+  it('opens the learning fact funnel for the current course', async () => {
+    const wrapper = mount(CourseStudentView, { global: { plugins: [installElementPlus] } });
+    await flushPromises();
+    await wrapper.get('[data-action="open-funnel"]').trigger('click');
+    expect(routerApi.push).toHaveBeenCalledWith({
+      name: 'course-learning-funnel',
+      params: { id: '12' },
+    });
+    wrapper.unmount();
   });
 
   it('does not call the API when the route has no valid course id', async () => {

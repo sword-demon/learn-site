@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessageBox } from 'element-plus';
 import { hasPermission } from '@/api/http';
 import {
@@ -15,6 +15,7 @@ import AdminListPager from '@/components/AdminListPager.vue';
 defineOptions({ name: 'CourseStudentView' });
 
 const route = useRoute();
+const router = useRouter();
 const courseId = computed(() => {
   const raw = route.params.id;
   if (raw === undefined || raw === null || Array.isArray(raw)) return null;
@@ -38,6 +39,11 @@ const filters = ref({
 const total = computed(() => list.value?.total ?? 0);
 const canReset = computed(() => hasPermission('course_student.reset'));
 const canRevoke = computed(() => hasPermission('course_student.revoke_free'));
+
+function openFunnel(): void {
+  if (courseId.value === null) return;
+  void router.push({ name: 'course-learning-funnel', params: { id: String(courseId.value) } });
+}
 
 async function reload(): Promise<void> {
   if (courseId.value === null) return;
@@ -163,6 +169,15 @@ function revokeErrorMessage(error: unknown): string {
     <header class="head">
       <h1 class="display">课程 {{ courseId ?? '—' }} · 学员名单</h1>
       <p class="muted">共 {{ total }} 人</p>
+      <el-button
+        type="primary"
+        link
+        data-action="open-funnel"
+        :disabled="courseId === null"
+        @click="openFunnel"
+      >
+        学习事实漏斗
+      </el-button>
     </header>
 
     <el-form class="filters filter-form" inline @submit.prevent="((filters.page = 1), reload())">

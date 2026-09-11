@@ -20,6 +20,7 @@ import LearnerListView from '@/views/students/LearnerListView.vue';
 import LearnerProgressView from '@/views/students/LearnerProgressView.vue';
 import LearnerLearningRecordsView from '@/views/students/LearnerLearningRecordsView.vue';
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
+import LearningFactFunnelView from '@/views/catalog/LearningFactFunnelView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
 import PaymentConfigView from '@/views/site/PaymentConfigView.vue';
@@ -250,6 +251,17 @@ const routes: RouteRecordRaw[] = [
           title: '课程学员',
           permission: 'course_student.view',
           breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程学员' }],
+        },
+      },
+      {
+        path: 'courses/:id/learning-funnel',
+        name: 'course-learning-funnel',
+        component: LearningFactFunnelView,
+        props: true,
+        meta: {
+          title: '学习事实漏斗',
+          permission: 'course_student.view',
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '学习事实漏斗' }],
         },
       },
       {
