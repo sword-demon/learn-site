@@ -18,14 +18,8 @@
         v-for="(finding, index) in checklist.findings"
         :key="index"
         :title="finding.message"
-        :description="
-          finding.lesson_id
-            ? `课节 #${finding.lesson_id}`
-            : finding.chapter_id
-              ? `章节 #${finding.chapter_id}`
-              : '课程'
-        "
-        :type="finding.severity === 'hard' ? 'error' : finding.severity"
+        :description="findingScope(finding)"
+        :type="findingAlertType(finding)"
         :closable="false"
         show-icon
       />
@@ -103,6 +97,18 @@ import { fetchPublishChecklist, publishCourse } from '@/api/catalog';
 
 const props = defineProps<{ modelValue: boolean; courseId: number }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; published: [] }>();
+
+function findingScope(finding: { lesson_id?: number | null; chapter_id?: number | null }): string {
+  if (finding.lesson_id) return `课节 #${finding.lesson_id}`;
+  if (finding.chapter_id) return `章节 #${finding.chapter_id}`;
+  return '课程';
+}
+
+function findingAlertType(finding: {
+  severity: 'hard' | 'warning' | 'info';
+}): 'error' | 'warning' | 'info' {
+  return finding.severity === 'hard' ? 'error' : finding.severity;
+}
 const checklist = ref<PublishChecklistDTO | null>(null);
 const loading = ref(false);
 const error = ref('');
