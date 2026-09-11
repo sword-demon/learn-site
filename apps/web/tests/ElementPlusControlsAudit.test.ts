@@ -20,7 +20,6 @@ const controlGroups: Record<string, string[]> = {
     'views/catalog/AccessGate.vue',
     'views/catalog/CategoryView.vue',
     'views/catalog/CourseDetailView.vue',
-    'views/catalog/CourseOutline.vue',
     'views/catalog/ShareBar.vue',
     'views/checkout/CheckoutView.vue',
     'components/SharePosterDialog.vue',

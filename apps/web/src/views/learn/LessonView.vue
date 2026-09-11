@@ -267,32 +267,20 @@ const positionLabel = computed(() => {
 const prev = computed<Sibling | null>(() => findSibling(-1));
 const next = computed<Sibling | null>(() => findSibling(+1));
 
+const KIND_UI = {
+  markdown: { label: '图文', chip: 't-md' },
+  pdf: { label: 'PDF', chip: 't-pdf' },
+  video: { label: '视频', chip: 't-video' },
+} as const;
+
 const kindLabel = computed(() => {
   if (!delivery.value) return '';
-  switch (delivery.value.kind) {
-    case 'markdown':
-      return '图文';
-    case 'pdf':
-      return 'PDF';
-    case 'video':
-      return '视频';
-    default:
-      return '';
-  }
+  return KIND_UI[delivery.value.kind]?.label ?? '';
 });
 
 const typechipClass = computed(() => {
   if (!delivery.value) return '';
-  switch (delivery.value.kind) {
-    case 'markdown':
-      return 't-md';
-    case 'pdf':
-      return 't-pdf';
-    case 'video':
-      return 't-video';
-    default:
-      return '';
-  }
+  return KIND_UI[delivery.value.kind]?.chip ?? '';
 });
 
 const qaAuthorized = computed((): boolean => {
