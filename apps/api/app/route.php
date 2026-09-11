@@ -273,6 +273,7 @@ Route::group($adminV1, function () {
     Route::get('/learners/{id}/learning-progress', [\App\controller\admin\LearnerController::class, 'learningProgress']);
     Route::get('/learners/{id}/learning-records', [\App\controller\admin\LearnerController::class, 'learningRecords']);
     Route::get('/courses/{courseId}/students', [\App\controller\admin\CourseStudentController::class, 'index']);
+    Route::get('/courses/{id}/learning-funnel', [\App\controller\admin\LearningFactFunnelController::class, 'show']);
     Route::post('/courses/{courseId}/students/{accountId}/progress/reset', [\App\controller\admin\CourseStudentController::class, 'resetProgress']);
     Route::post('/courses/{courseId}/students/{accountId}/revoke', [\App\controller\admin\CourseStudentController::class, 'revoke']);
 

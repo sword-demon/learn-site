@@ -94,6 +94,9 @@
             <file>tests/ShareLandingControllerTest.php</file>
             <file>tests/ReferralBindingServiceTest.php</file>
             <file>tests/HelperMaskingTest.php</file>
+            <file>tests/LearningFactFunnelServiceTest.php</file>
+            <file>tests/LearningFactFunnelRouteTest.php</file>
+            <file>tests/LearningFactFunnelIsolationTest.php</file>
         </testsuite>
     </testsuites>
     <source>

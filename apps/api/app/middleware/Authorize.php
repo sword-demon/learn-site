@@ -94,6 +94,9 @@ final class Authorize implements MiddlewareInterface
         if (preg_match('#^/api/admin/v1/courses/(\d+)/students$#', $path)) {
             return 'course_student.view';
         }
+        if (preg_match('#^/api/admin/v1/courses/(\d+)/learning-funnel$#', $path)) {
+            return 'course_student.view';
+        }
         if ($path === '/api/admin/v1/assets') {
             return 'asset.upload';
         }
