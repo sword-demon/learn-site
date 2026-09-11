@@ -33,3 +33,4 @@ export * from "./paymentWhitelist.js";
 export * from "./opsInbox.js";
 export * from "./contentTodo.js";
 export * from "./coursePublishChecklist.js";
+export * from "./learningFactFunnel.js";
