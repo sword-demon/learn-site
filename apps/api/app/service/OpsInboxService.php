@@ -666,7 +666,8 @@ final class OpsInboxService
      */
     private function contentProjection(array $row): ?array
     {
-        if (!isset($row['content_todo_id']) || $row['content_todo_id'] === null || (int) $row['content_todo_id'] <= 0) {
+        // isset() 已排除 null，再判一次 null 属于死代码（PHPStan 会判定恒为 false）。
+        if (!isset($row['content_todo_id']) || (int) $row['content_todo_id'] <= 0) {
             return null;
         }
         return [
@@ -780,7 +781,7 @@ final class OpsInboxService
 
     /**
      * @param array<string,mixed> $params
-     * @return array{source_type:?string,state:string,age_min_hours:?int,sort_by:string,sort_dir:string,page:int,limit:int}
+     * @return array{source_type:?string,state:string,age_min_hours:?int,sort_by:string,sort_dir:string,page:int,limit:int,content_only:bool,workflow_status:?string}
      */
     private function normalizeListParams(array $params): array
     {
@@ -793,10 +794,13 @@ final class OpsInboxService
         $page = max(1, (int) ($params['page'] ?? 1)); $limit = (int) ($params['limit'] ?? 20); if ($limit < 1 || $limit > self::MAX_PAGE_LIMIT) throw new BusinessException('VALIDATION_FAILED', 'OPS_LIMIT_TOO_LARGE');
         $age = $params['age_min_hours'] ?? null; if ($age !== null && ((int) $age < 0 || (int) $age > 720)) throw new BusinessException('VALIDATION_FAILED', 'OPS_AGE_INVALID');
         $contentOnly = !empty($params['content_only']);
-        $workflowStatus = $params['workflow_status'] ?? null;
-        if ($workflowStatus !== null && !in_array($workflowStatus, ['untriaged', 'triaged', 'awaiting_approval', 'resolved', 'closed'], true)) {
+        // 内容工作流筛选：非字符串或不在枚举内一律按参数错误拒绝，
+        // 通过校验后再收窄成 ?string，满足返回形状声明。
+        $workflowStatusRaw = $params['workflow_status'] ?? null;
+        if ($workflowStatusRaw !== null && (!is_string($workflowStatusRaw) || !in_array($workflowStatusRaw, ['untriaged', 'triaged', 'awaiting_approval', 'resolved', 'closed'], true))) {
             throw new BusinessException('VALIDATION_FAILED', 'CONTENT_TODO_STATUS_INVALID');
         }
+        $workflowStatus = is_string($workflowStatusRaw) ? $workflowStatusRaw : null;
         return ['source_type' => $source, 'state' => $state, 'age_min_hours' => $age !== null ? (int) $age : null, 'sort_by' => $sortBy, 'sort_dir' => $sortDir, 'page' => $page, 'limit' => $limit, 'content_only' => $contentOnly, 'workflow_status' => $workflowStatus];
     }
 

@@ -147,6 +147,7 @@ final class ContentTodoService
     /**
      * Keep legacy question/feedback admin routes inside the content workflow.
      *
+     * @param list<string> $permissions 调用者已持有权限码，用于二次收口
      * @return array<string,mixed>
      */
     public function projectSource(
