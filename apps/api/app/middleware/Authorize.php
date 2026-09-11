@@ -37,6 +37,15 @@ final class Authorize implements MiddlewareInterface
     public static function permissionFor(string $path, string $method): ?string
     {
         $method = strtoupper($method);
+        if (preg_match('#^/api/admin/v1/ops-inbox/content-todos(?:/\d+)?$#', $path)) {
+            return $method === 'GET' ? 'ops_inbox.view' : 'content_todo.manage';
+        }
+        if (preg_match('#^/api/admin/v1/ops-inbox/content-todos/\d+/(?:respond|candidates|close)$#', $path)) {
+            return 'content_todo.manage';
+        }
+        if (preg_match('#^/api/admin/v1/ops-inbox/content-todos/\d+/candidates/\d+(?:/(?:approve|reject))?$#', $path)) {
+            return 'content_todo.manage';
+        }
         if (preg_match('#^/api/admin/v1/staff/(\d+)/overrides$#', $path)) {
             return 'org.grant';
         }

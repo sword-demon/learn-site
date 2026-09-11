@@ -54,6 +54,15 @@ final class AuthorizeLeakTest extends TestCase
         yield 'activation code void' => ['/api/admin/v1/courses/42/activation-codes/9/void', 'POST', 'activation_code.manage'];
         yield 'course feedback list' => ['/api/admin/v1/courses/42/feedback', 'GET', 'course_feedback.manage'];
         yield 'course feedback update' => ['/api/admin/v1/courses/42/feedback/9', 'PATCH', 'course_feedback.manage'];
+        yield 'content todo list' => ['/api/admin/v1/ops-inbox/content-todos', 'GET', 'ops_inbox.view'];
+        yield 'content todo detail' => ['/api/admin/v1/ops-inbox/content-todos/9', 'GET', 'ops_inbox.view'];
+        yield 'content todo triage' => ['/api/admin/v1/ops-inbox/content-todos/9', 'PATCH', 'content_todo.manage'];
+        yield 'content todo candidate edit' => ['/api/admin/v1/ops-inbox/content-todos/9/candidates/3', 'PATCH', 'content_todo.manage'];
+        yield 'content todo candidate approve' => ['/api/admin/v1/ops-inbox/content-todos/9/candidates/3/approve', 'POST', 'content_todo.manage'];
+        yield 'content todo respond' => ['/api/admin/v1/ops-inbox/content-todos/9/respond', 'POST', 'content_todo.manage'];
+        yield 'content todo generate' => ['/api/admin/v1/ops-inbox/content-todos/9/candidates', 'POST', 'content_todo.manage'];
+        yield 'content todo reject' => ['/api/admin/v1/ops-inbox/content-todos/9/candidates/3/reject', 'POST', 'content_todo.manage'];
+        yield 'content todo close' => ['/api/admin/v1/ops-inbox/content-todos/9/close', 'POST', 'content_todo.manage'];
         yield 'scheduled tasks list' => ['/api/admin/v1/scheduled-tasks', 'GET', 'scheduled_task.manage'];
         yield 'scheduled tasks run' => ['/api/admin/v1/scheduled-tasks/1/run', 'POST', 'scheduled_task.manage'];
         yield 'checkin list' => ['/api/admin/v1/checkins', 'GET', 'checkin.manage'];

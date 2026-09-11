@@ -261,6 +261,15 @@ Route::group($adminV1, function () {
     Route::get('/orders',      [\App\controller\admin\OrderController::class, 'index']);
     Route::get('/orders/{id}', [\App\controller\admin\OrderController::class, 'show']);
     Route::get('/ops-inbox', [\App\controller\admin\OpsInboxController::class, 'index']);
+    Route::get('/ops-inbox/content-todos', [\App\controller\admin\ContentTodoController::class, 'index']);
+    Route::get('/ops-inbox/content-todos/{id}', [\App\controller\admin\ContentTodoController::class, 'show']);
+    Route::patch('/ops-inbox/content-todos/{id}', [\App\controller\admin\ContentTodoController::class, 'patch']);
+    Route::post('/ops-inbox/content-todos/{id}/respond', [\App\controller\admin\ContentTodoController::class, 'respond']);
+    Route::post('/ops-inbox/content-todos/{id}/candidates', [\App\controller\admin\ContentTodoController::class, 'generateCandidate']);
+    Route::patch('/ops-inbox/content-todos/{id}/candidates/{candidateId}', [\App\controller\admin\ContentTodoController::class, 'editCandidate']);
+    Route::post('/ops-inbox/content-todos/{id}/candidates/{candidateId}/approve', [\App\controller\admin\ContentTodoController::class, 'approveCandidate']);
+    Route::post('/ops-inbox/content-todos/{id}/candidates/{candidateId}/reject', [\App\controller\admin\ContentTodoController::class, 'rejectCandidate']);
+    Route::post('/ops-inbox/content-todos/{id}/close', [\App\controller\admin\ContentTodoController::class, 'close']);
     Route::post('/ops-inbox/{id}/transition', [\App\controller\admin\OpsInboxController::class, 'transition']);
     Route::post('/ops-inbox/queue-failed/{source_key}/retry', [\App\controller\admin\OpsInboxController::class, 'retry']);
 

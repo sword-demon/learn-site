@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  ContentTodoLabelSchema,
+  ContentTodoTargetSchema,
+  ContentTodoWorkflowStatusSchema,
+} from "./contentTodo";
 
 export const OpsSourceTypeSchema = z.enum([
   "course_unpublished",
@@ -51,6 +56,11 @@ export const OpsExceptionSchema = z.object({
   last_error_code: z.string().max(64).nullable(),
   retry_count: z.number().int().min(0).max(10),
   subtype: z.string().max(64).nullable().optional(),
+  content_todo_id: z.number().int().positive().nullable().optional(),
+  content_workflow_status: ContentTodoWorkflowStatusSchema.nullable().optional(),
+  content_label: ContentTodoLabelSchema.nullable().optional(),
+  content_target: ContentTodoTargetSchema.nullable().optional(),
+  content_first_response_at: z.string().nullable().optional(),
 });
 export type OpsException = z.infer<typeof OpsExceptionSchema>;
 export const OpsInboxListRequestSchema = z.object({
@@ -61,6 +71,8 @@ export const OpsInboxListRequestSchema = z.object({
   sort_dir: z.enum(["asc", "desc"]).optional().default("desc"),
   page: z.number().int().min(1).optional().default(1),
   limit: z.number().int().min(1).max(50).optional().default(20),
+  content_only: z.boolean().optional(),
+  workflow_status: ContentTodoWorkflowStatusSchema.optional(),
 });
 export type OpsInboxListRequest = z.infer<typeof OpsInboxListRequestSchema>;
 export const OpsInboxListResponseSchema = z.object({

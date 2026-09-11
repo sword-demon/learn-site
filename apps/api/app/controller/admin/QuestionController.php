@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\controller\admin;
 
 use App\service\BusinessException;
+use App\service\ContentTodoService;
 use App\service\QuestionService;
 use App\support\ApiResponse;
 use App\support\Logger;
@@ -61,11 +62,19 @@ final class QuestionController
         return $this->wrap(function () use ($request, $id) {
             $staffId = $this->staffId($request);
             $body = self::readJson($request);
-            return $this->questions->adminAnswer(
+            $result = $this->questions->adminAnswer(
                 $staffId,
                 $this->id($id),
                 (string) ($body['body'] ?? ''),
             );
+            (new ContentTodoService())->projectSource(
+                $staffId,
+                'question_pending',
+                $this->id($id),
+                'public_answer',
+                $this->permissions($request),
+            );
+            return $result;
         });
     }
 
@@ -73,7 +82,15 @@ final class QuestionController
     {
         return $this->wrap(function () use ($request, $id) {
             $staffId = $this->staffId($request);
-            return $this->questions->adminClose($staffId, $this->id($id));
+            $result = $this->questions->adminClose($staffId, $this->id($id));
+            (new ContentTodoService())->projectSource(
+                $staffId,
+                'question_pending',
+                $this->id($id),
+                null,
+                $this->permissions($request),
+            );
+            return $result;
         });
     }
 
@@ -98,6 +115,13 @@ final class QuestionController
             throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
         }
         return $n;
+    }
+
+    /** @return list<string> */
+    private function permissions(Request $request): array
+    {
+        $permissions = $request->permissions ?? [];
+        return is_array($permissions) ? array_values(array_filter($permissions, 'is_string')) : [];
     }
 
     private function wrap(callable $fn): \support\Response

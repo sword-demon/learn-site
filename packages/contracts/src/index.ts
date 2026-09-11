@@ -31,4 +31,5 @@ export * from "./courseFeedback.js";
 export * from "./paymentConfig.js";
 export * from "./paymentWhitelist.js";
 export * from "./opsInbox.js";
+export * from "./contentTodo.js";
 export * from "./coursePublishChecklist.js";

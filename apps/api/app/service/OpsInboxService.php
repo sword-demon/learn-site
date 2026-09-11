@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\service;
 
+use App\model\ContentTodo;
 use App\support\Logger;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -16,8 +17,8 @@ final class OpsInboxService
     private const SOURCE_PERMISSIONS = [
         'course_unpublished' => 'course.view',
         'map_anomaly' => 'map.view',
-        'question_pending' => 'qa.view',
-        'feedback_pending' => 'review.view',
+        ContentTodo::SOURCE_QUESTION_PENDING => 'qa.view',
+        ContentTodo::SOURCE_FEEDBACK_PENDING => 'course_feedback.manage',
         'payment_unknown' => 'order.view',
         'queue_failed' => 'notification.manage',
         'long_pending' => '*',
@@ -27,18 +28,18 @@ final class OpsInboxService
     private const SOURCE_WEIGHTS = [
         'payment_unknown' => 100,
         'queue_failed' => 80,
-        'question_pending' => 60,
+        ContentTodo::SOURCE_QUESTION_PENDING => 60,
         'course_unpublished' => 40,
         'map_anomaly' => 30,
-        'feedback_pending' => 20,
+        ContentTodo::SOURCE_FEEDBACK_PENDING => 20,
         'long_pending' => 10,
     ];
 
     private const SOURCE_ACTIONS = [
         'course_unpublished' => '审核发布课程',
         'map_anomaly' => '修复学习地图课程',
-        'question_pending' => '回复学员问题',
-        'feedback_pending' => '处理课程反馈',
+        ContentTodo::SOURCE_QUESTION_PENDING => '回复学员问题',
+        ContentTodo::SOURCE_FEEDBACK_PENDING => '处理课程反馈',
         'payment_unknown' => '核对支付回调并处理订单',
         'queue_failed' => '手动重发或转人工',
         'long_pending' => '检查并处理长期积压事项',
@@ -91,6 +92,9 @@ final class OpsInboxService
             if ($sourceType === 'long_pending' || !$this->canView($sourceType, $permissions)) {
                 continue;
             }
+            if ($params['content_only'] && !in_array($sourceType, ['question_pending', 'feedback_pending'], true)) {
+                continue;
+            }
             if ($params['source_type'] !== null && $params['source_type'] !== $sourceType && $params['source_type'] !== 'long_pending') {
                 continue;
             }
@@ -118,8 +122,11 @@ final class OpsInboxService
             if ($params['age_min_hours'] !== null && $row['age_seconds'] < $params['age_min_hours'] * 3600) {
                 continue;
             }
+            if ($params['workflow_status'] !== null && ($row['content_workflow_status'] ?? null) !== $params['workflow_status']) {
+                continue;
+            }
             unset($row['department_id'], $row['creator_id']);
-            if ($row['age_seconds'] >= $this->longPendingHours() * 3600 && ($state['status'] ?? 'open') === 'open') {
+            if (!$params['content_only'] && $row['age_seconds'] >= $this->longPendingHours() * 3600 && ($state['status'] ?? 'open') === 'open') {
                 $longPending[] = [
                     ...$row,
                     'source_type' => 'long_pending',
@@ -235,6 +242,12 @@ final class OpsInboxService
         $toState = (string) ($body['to_state'] ?? '');
         if (!array_key_exists($toState, self::ALLOWED_TRANSITIONS)) {
             throw new BusinessException('VALIDATION_FAILED', 'OPS_STATE_INVALID');
+        }
+        if (
+            $toState === 'resolved'
+            && in_array($sourceType, [ContentTodo::SOURCE_QUESTION_PENDING, ContentTodo::SOURCE_FEEDBACK_PENDING], true)
+        ) {
+            throw new BusinessException('CONFLICT', 'CONTENT_TODO_REQUIRED');
         }
         $existing = Db::name('ops_inbox_state')
             ->where('source_type', $sourceType)
@@ -433,9 +446,7 @@ final class OpsInboxService
         if ($required === '*') {
             return $permissions !== [];
         }
-        // Feedback and queue use their existing concrete admin permissions.
-        return $required !== null && (in_array($required, $permissions, true)
-            || ($sourceType === 'feedback_pending' && in_array('course_feedback.manage', $permissions, true)));
+        return $required !== null && in_array($required, $permissions, true);
     }
 
     /** @return list<array<string,mixed>> */
@@ -445,8 +456,8 @@ final class OpsInboxService
         $rows = match ($sourceType) {
             'course_unpublished' => $this->queryCourseUnpublished($scope, $staffAccountId),
             'map_anomaly' => $this->queryMapAnomaly($scope, $staffAccountId),
-            'question_pending' => $this->queryQuestionPending($scope, $staffAccountId),
-            'feedback_pending' => $this->queryFeedbackPending($scope, $staffAccountId),
+            ContentTodo::SOURCE_QUESTION_PENDING => $this->queryQuestionPending($scope, $staffAccountId),
+            ContentTodo::SOURCE_FEEDBACK_PENDING => $this->queryFeedbackPending($scope, $staffAccountId),
             'payment_unknown' => $this->queryPaymentUnknown($scope, $staffAccountId),
             'queue_failed' => $this->queryQueueFailed($scope, $staffAccountId),
             default => [],
@@ -490,10 +501,28 @@ final class OpsInboxService
      */
     private function queryQuestionPending(array $scope, int $staffAccountId): array
     {
-        $query = Db::name('questions')->alias('q')->join('courses c', 'c.id = q.course_id')->where('q.status', 'pending');
+        $query = Db::name('questions')->alias('q')
+            ->join('courses c', 'c.id = q.course_id')
+            ->leftJoin('content_todos ct', "ct.source_type = '" . ContentTodo::SOURCE_QUESTION_PENDING . "' AND ct.source_key = q.id")
+            ->where(function (Query $where): void {
+                $where->where(function (Query $pending): void {
+                        $pending->where('q.status', 'pending')->whereNull('ct.id');
+                    })
+                    ->whereOr(function (Query $existing): void {
+                        $existing->whereNotNull('ct.id')->whereNotIn('ct.workflow_status', [ContentTodo::STATUS_RESOLVED, ContentTodo::STATUS_CLOSED]);
+                    });
+            });
         $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id');
-        $rows = $query->field('q.id,q.title,q.created_at,q.learner_id,c.department_id,c.created_by_staff_id')->order('q.created_at', 'asc')->order('q.id', 'asc')->limit(50)->select()->toArray();
-        return array_map(static fn (array $row): array => ['source_key' => (string) $row['id'], 'title' => '待回答问题：' . (string) ($row['title'] ?? '学员提问'), 'created_at' => (string) $row['created_at'], 'impact' => ['learners' => 1], 'deep_link' => ['name' => 'qa', 'query' => ['id' => (string) $row['id']]], 'department_id' => (int) $row['department_id'], 'creator_id' => (int) $row['created_by_staff_id']], is_array($rows) ? $rows : []);
+        $rows = $query->field('q.id,q.title,q.created_at,q.learner_id,c.department_id,c.created_by_staff_id,ct.id AS content_todo_id,ct.workflow_status AS content_workflow_status,ct.label AS content_label,ct.target_course_id,ct.target_chapter_id,ct.target_lesson_id,ct.first_response_at AS content_first_response_at')->order('q.created_at', 'asc')->order('q.id', 'asc')->limit(50)->select()->toArray();
+        return array_map(fn (array $row): array => $this->withContentProjection($row, [
+            'source_key' => (string) $row['id'],
+            'title' => '待回答问题：' . (string) ($row['title'] ?? '学员提问'),
+            'created_at' => (string) $row['created_at'],
+            'impact' => ['learners' => 1],
+            'deep_link' => ['name' => 'qa', 'query' => ['id' => (string) $row['id']]],
+            'department_id' => (int) $row['department_id'],
+            'creator_id' => (int) $row['created_by_staff_id'],
+        ]), is_array($rows) ? $rows : []);
     }
 
     /**
@@ -502,10 +531,28 @@ final class OpsInboxService
      */
     private function queryFeedbackPending(array $scope, int $staffAccountId): array
     {
-        $query = Db::name('course_feedbacks')->alias('f')->join('courses c', 'c.id = f.course_id')->where('f.status', 'pending');
+        $query = Db::name('course_feedbacks')->alias('f')
+            ->join('courses c', 'c.id = f.course_id')
+            ->leftJoin('content_todos ct', "ct.source_type = '" . ContentTodo::SOURCE_FEEDBACK_PENDING . "' AND ct.source_key = f.id")
+            ->where(function (Query $where): void {
+                $where->where(function (Query $pending): void {
+                        $pending->where('f.status', 'pending')->whereNull('ct.id');
+                    })
+                    ->whereOr(function (Query $existing): void {
+                        $existing->whereNotNull('ct.id')->whereNotIn('ct.workflow_status', [ContentTodo::STATUS_RESOLVED, ContentTodo::STATUS_CLOSED]);
+                    });
+            });
         $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id');
-        $rows = $query->field('f.id,f.created_at,f.learner_id,f.course_id,c.title AS course_title,c.department_id,c.created_by_staff_id')->order('f.created_at', 'asc')->order('f.id', 'asc')->limit(50)->select()->toArray();
-        return array_map(static fn (array $row): array => ['source_key' => (string) $row['id'], 'title' => '课程「' . (string) $row['course_title'] . '」有待处理反馈', 'created_at' => (string) $row['created_at'], 'impact' => ['learners' => 1, 'replies' => 0], 'deep_link' => ['name' => 'course-feedback', 'query' => ['course_id' => (string) $row['course_id'], 'feedback_id' => (string) $row['id']]], 'department_id' => (int) $row['department_id'], 'creator_id' => (int) $row['created_by_staff_id']], is_array($rows) ? $rows : []);
+        $rows = $query->field('f.id,f.created_at,f.learner_id,f.course_id,c.title AS course_title,c.department_id,c.created_by_staff_id,ct.id AS content_todo_id,ct.workflow_status AS content_workflow_status,ct.label AS content_label,ct.target_course_id,ct.target_chapter_id,ct.target_lesson_id,ct.first_response_at AS content_first_response_at')->order('f.created_at', 'asc')->order('f.id', 'asc')->limit(50)->select()->toArray();
+        return array_map(fn (array $row): array => $this->withContentProjection($row, [
+            'source_key' => (string) $row['id'],
+            'title' => '课程「' . (string) $row['course_title'] . '」有待处理反馈',
+            'created_at' => (string) $row['created_at'],
+            'impact' => ['learners' => 1, 'replies' => 0],
+            'deep_link' => ['name' => 'course-feedback', 'query' => ['course_id' => (string) $row['course_id'], 'feedback_id' => (string) $row['id']]],
+            'department_id' => (int) $row['department_id'],
+            'creator_id' => (int) $row['created_by_staff_id'],
+        ]), is_array($rows) ? $rows : []);
     }
 
     /**
@@ -561,7 +608,76 @@ final class OpsInboxService
         $subtype = $row['subtype'] ?? null;
         $suggested = (string) ($row['suggested_action'] ?? self::SOURCE_ACTIONS[$sourceType]);
         if ($sourceType === 'queue_failed' && $subtype === 'unrecoverable') $suggested = '检查账户状态或通知参数';
-        return ['id' => $sourceType . ':' . (string) $row['source_key'], 'source_type' => $sourceType, 'source_key' => (string) $row['source_key'], 'title' => (string) $row['title'], 'severity' => $weight >= 80 || $age >= $this->longPendingHours() * 3600 ? 'critical' : ($weight >= 30 ? 'warning' : 'info'), 'age_seconds' => $age, 'age_label' => $this->ageLabel($age), 'weight' => $weight, 'impact' => ['learners' => 0, ...($row['impact'] ?? [])], 'suggested_action' => $suggested, 'deep_link' => $row['deep_link'], 'state' => 'open', 'assignee_id' => null, 'snooze_until' => null, 'last_error_code' => $row['last_error_code'] ?? null, 'retry_count' => (int) ($row['retry_count'] ?? 0), 'subtype' => $subtype, 'department_id' => $row['department_id'] ?? null, 'creator_id' => $row['creator_id'] ?? null];
+        $content = $this->contentProjection($row);
+        return [
+            'id' => $sourceType . ':' . (string) $row['source_key'],
+            'source_type' => $sourceType,
+            'source_key' => (string) $row['source_key'],
+            'title' => (string) $row['title'],
+            'severity' => $weight >= 80 || $age >= $this->longPendingHours() * 3600 ? 'critical' : ($weight >= 30 ? 'warning' : 'info'),
+            'age_seconds' => $age,
+            'age_label' => $this->ageLabel($age),
+            'weight' => $weight,
+            'impact' => ['learners' => 0, ...($row['impact'] ?? [])],
+            'suggested_action' => $suggested,
+            'deep_link' => is_array($content)
+                ? ['name' => 'ops-inbox', 'query' => ['content_todo_id' => (int) $content['id']]]
+                : $row['deep_link'],
+            'state' => 'open',
+            'assignee_id' => null,
+            'snooze_until' => null,
+            'last_error_code' => $row['last_error_code'] ?? null,
+            'retry_count' => (int) ($row['retry_count'] ?? 0),
+            'subtype' => $subtype,
+            'department_id' => $row['department_id'] ?? null,
+            'creator_id' => $row['creator_id'] ?? null,
+            'content_todo_id' => is_array($content) ? (int) $content['id'] : null,
+            'content_workflow_status' => is_array($content) ? (string) $content['workflow_status'] : null,
+            'content_label' => is_array($content) && $content['label'] !== null ? (string) $content['label'] : null,
+            'content_target' => is_array($content) ? [
+                'course_id' => $content['target_course_id'] !== null ? (int) $content['target_course_id'] : null,
+                'chapter_id' => $content['target_chapter_id'] !== null ? (int) $content['target_chapter_id'] : null,
+                'lesson_id' => $content['target_lesson_id'] !== null ? (int) $content['target_lesson_id'] : null,
+            ] : null,
+            'content_first_response_at' => is_array($content) && $content['first_response_at'] !== null ? (string) $content['first_response_at'] : null,
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @param array<string,mixed> $shaped
+     * @return array<string,mixed>
+     */
+    private function withContentProjection(array $row, array $shaped): array
+    {
+        $shaped['content_todo_id'] = $row['content_todo_id'] ?? null;
+        $shaped['content_workflow_status'] = $row['content_workflow_status'] ?? null;
+        $shaped['content_label'] = $row['content_label'] ?? null;
+        $shaped['target_course_id'] = $row['target_course_id'] ?? null;
+        $shaped['target_chapter_id'] = $row['target_chapter_id'] ?? null;
+        $shaped['target_lesson_id'] = $row['target_lesson_id'] ?? null;
+        $shaped['content_first_response_at'] = $row['content_first_response_at'] ?? null;
+        return $shaped;
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>|null
+     */
+    private function contentProjection(array $row): ?array
+    {
+        if (!isset($row['content_todo_id']) || $row['content_todo_id'] === null || (int) $row['content_todo_id'] <= 0) {
+            return null;
+        }
+        return [
+            'id' => (int) $row['content_todo_id'],
+            'workflow_status' => $row['content_workflow_status'] ?? null,
+            'label' => $row['content_label'] ?? null,
+            'target_course_id' => $row['target_course_id'] ?? null,
+            'target_chapter_id' => $row['target_chapter_id'] ?? null,
+            'target_lesson_id' => $row['target_lesson_id'] ?? null,
+            'first_response_at' => $row['content_first_response_at'] ?? null,
+        ];
     }
 
     /** @return array<string,mixed>|null */
@@ -676,7 +792,12 @@ final class OpsInboxService
         $sortDir = (string) ($params['sort_dir'] ?? 'desc'); if (!in_array($sortDir, ['asc', 'desc'], true)) throw new BusinessException('VALIDATION_FAILED', 'OPS_SORT_INVALID');
         $page = max(1, (int) ($params['page'] ?? 1)); $limit = (int) ($params['limit'] ?? 20); if ($limit < 1 || $limit > self::MAX_PAGE_LIMIT) throw new BusinessException('VALIDATION_FAILED', 'OPS_LIMIT_TOO_LARGE');
         $age = $params['age_min_hours'] ?? null; if ($age !== null && ((int) $age < 0 || (int) $age > 720)) throw new BusinessException('VALIDATION_FAILED', 'OPS_AGE_INVALID');
-        return ['source_type' => $source, 'state' => $state, 'age_min_hours' => $age !== null ? (int) $age : null, 'sort_by' => $sortBy, 'sort_dir' => $sortDir, 'page' => $page, 'limit' => $limit];
+        $contentOnly = !empty($params['content_only']);
+        $workflowStatus = $params['workflow_status'] ?? null;
+        if ($workflowStatus !== null && !in_array($workflowStatus, ['untriaged', 'triaged', 'awaiting_approval', 'resolved', 'closed'], true)) {
+            throw new BusinessException('VALIDATION_FAILED', 'CONTENT_TODO_STATUS_INVALID');
+        }
+        return ['source_type' => $source, 'state' => $state, 'age_min_hours' => $age !== null ? (int) $age : null, 'sort_by' => $sortBy, 'sort_dir' => $sortDir, 'page' => $page, 'limit' => $limit, 'content_only' => $contentOnly, 'workflow_status' => $workflowStatus];
     }
 
     private function parseSnooze(string $raw): string

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type {
   OpsException,
   OpsInboxListRequest,
@@ -11,10 +11,33 @@ import type {
 import AdminListPager from '@/components/AdminListPager.vue';
 import { transitionOpsInbox } from '@/api/opsInbox';
 import { useOpsInboxPolling } from '@/composables/useOpsInboxPolling';
+import ContentTodoDrawer from './ContentTodoDrawer.vue';
 
 defineOptions({ name: 'OpsInboxView' });
 
 const router = useRouter();
+const route = useRoute();
+const contentTodoId = ref<number | null>(null);
+const contentTodoVisible = ref(false);
+
+function parsePositiveInt(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === null || raw === undefined || raw === '') return null;
+  const parsed = typeof raw === 'number' ? raw : Number(String(raw));
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.trunc(parsed);
+}
+
+watch(
+  () => route.query.content_todo_id,
+  (value) => {
+    const id = parsePositiveInt(value);
+    if (id === null) return;
+    contentTodoId.value = id;
+    contentTodoVisible.value = true;
+  },
+  { immediate: true },
+);
 const filters = reactive<{
   source_type: OpsSourceType | '';
   state: OpsState;
@@ -23,6 +46,7 @@ const filters = reactive<{
   sort_dir: 'asc' | 'desc';
   page: number;
   limit: number;
+  content_only: boolean;
 }>({
   source_type: '',
   state: 'open',
@@ -31,6 +55,7 @@ const filters = reactive<{
   sort_dir: 'desc',
   page: 1,
   limit: 20,
+  content_only: false,
 });
 
 function request(): OpsInboxListRequest {
@@ -43,6 +68,7 @@ function request(): OpsInboxListRequest {
   };
   if (filters.source_type) value.source_type = filters.source_type;
   if (filters.age_min_hours !== undefined) value.age_min_hours = filters.age_min_hours;
+  if (filters.content_only) value.content_only = true;
   return value;
 }
 
@@ -57,7 +83,7 @@ function sourceLabel(source: OpsSourceType): string {
     course_unpublished: '未发布课程',
     map_anomaly: '学习地图',
     question_pending: '待答问题',
-    feedback_pending: '待处理反馈',
+    feedback_pending: '待处理课程意见反馈',
     payment_unknown: '支付未知',
     queue_failed: '队列失败',
     long_pending: '长期积压',
@@ -84,6 +110,11 @@ function tagType(severity: OpsException['severity']): 'info' | 'warning' | 'dang
   return severity === 'critical' ? 'danger' : severity === 'warning' ? 'warning' : 'info';
 }
 async function go(row: OpsException): Promise<void> {
+  if (row.content_todo_id) {
+    contentTodoId.value = row.content_todo_id;
+    contentTodoVisible.value = true;
+    return;
+  }
   try {
     await router.push({
       name: row.deep_link.name,
@@ -120,8 +151,8 @@ async function snooze(row: OpsException): Promise<void> {
     await transitionOpsInbox(row.id, { to_state: 'snoozed', snooze_until: result.value });
     items.value = items.value.filter((item) => item.id !== row.id);
     ElMessage.success('已搁置');
-  } catch (error) {
-    if (error !== 'cancel' && error !== 'close') ElMessage.error('搁置失败');
+  } catch {
+    return;
   }
 }
 async function assign(row: OpsException): Promise<void> {
@@ -134,11 +165,20 @@ async function assign(row: OpsException): Promise<void> {
     await transitionOpsInbox(row.id, { to_state: 'assigned', assignee_id: Number(result.value) });
     items.value = items.value.filter((item) => item.id !== row.id);
     ElMessage.success('已指派');
-  } catch (error) {
-    if (error !== 'cancel' && error !== 'close') ElMessage.error('指派失败');
+  } catch {
+    return;
   }
 }
 async function onCommand(command: string, row: OpsException): Promise<void> {
+  if (command === 'resolve' && (row.source_type === 'question_pending' || row.source_type === 'feedback_pending')) {
+    if (row.content_todo_id) {
+      contentTodoId.value = row.content_todo_id;
+      contentTodoVisible.value = true;
+      return;
+    }
+    ElMessage.warning('请从内容待办处理, 不能用来源已处理代替内容结果');
+    return;
+  }
   if (command === 'resolve') await acknowledge(row);
   else if (command === 'snooze') await snooze(row);
   else if (command === 'assign') await assign(row);
@@ -213,6 +253,7 @@ function filterSource(source: string): void {
       <el-select v-model="filters.sort_dir" @change="applyFilter"
         ><el-option label="降序" value="desc" /><el-option label="升序" value="asc"
       /></el-select>
+      <el-checkbox v-model="filters.content_only" @change="applyFilter">仅内容待办</el-checkbox>
     </div>
     <el-alert v-if="listError" :title="listError" type="error" show-icon class="mb-3" />
     <el-alert
@@ -249,6 +290,14 @@ function filterSource(source: string): void {
       <el-table-column label="状态" width="100"
         ><template #default="{ row }">{{ stateLabel(row.state) }}</template></el-table-column
       >
+      <el-table-column label="内容结果" width="130"
+        ><template #default="{ row }">{{
+          row.content_workflow_status ?? '—'
+        }}</template></el-table-column
+      >
+      <el-table-column label="内容标签" width="110"
+        ><template #default="{ row }">{{ row.content_label ?? '—' }}</template></el-table-column
+      >
       <el-table-column label="操作" width="180" fixed="right"
         ><template #default="{ row }"
           ><el-button link type="primary" @click="go(row)">跳转处理</el-button
@@ -265,6 +314,11 @@ function filterSource(source: string): void {
         ></el-table-column
       >
     </el-table>
+    <ContentTodoDrawer
+      v-model:visible="contentTodoVisible"
+      :todo-id="contentTodoId"
+      @changed="reload"
+    />
     <el-empty v-if="!loading && items.length === 0" description="暂无待处理事项" />
     <AdminListPager
       v-model:page="filters.page"
