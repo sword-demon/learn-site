@@ -2,11 +2,12 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
-import type {
-  OpsException,
-  OpsInboxListRequest,
-  OpsSourceType,
-  OpsState,
+import {
+  OpsSourceTypeSchema,
+  type OpsException,
+  type OpsInboxListRequest,
+  type OpsSourceType,
+  type OpsState,
 } from '@contracts/opsInbox';
 import AdminListPager from '@/components/AdminListPager.vue';
 import { transitionOpsInbox } from '@/api/opsInbox';
@@ -170,7 +171,10 @@ async function assign(row: OpsException): Promise<void> {
   }
 }
 async function onCommand(command: string, row: OpsException): Promise<void> {
-  if (command === 'resolve' && (row.source_type === 'question_pending' || row.source_type === 'feedback_pending')) {
+  if (
+    command === 'resolve' &&
+    (row.source_type === 'question_pending' || row.source_type === 'feedback_pending')
+  ) {
     if (row.content_todo_id) {
       contentTodoId.value = row.content_todo_id;
       contentTodoVisible.value = true;
@@ -188,23 +192,12 @@ function applyFilter(): void {
   void reload();
 }
 function filterSource(source: string): void {
-  if (
-    source in
-    {
-      course_unpublished: 1,
-      map_anomaly: 1,
-      question_pending: 1,
-      feedback_pending: 1,
-      payment_unknown: 1,
-      queue_failed: 1,
-      long_pending: 1,
-    }
-  ) {
-    filters.source_type = source as OpsSourceType;
-    filters.page = 1;
-    void router.replace({ query: { source_type: source } });
-    void reload();
-  }
+  const parsed = OpsSourceTypeSchema.safeParse(source);
+  if (!parsed.success) return;
+  filters.source_type = parsed.data;
+  filters.page = 1;
+  void router.replace({ query: { source_type: parsed.data } });
+  void reload();
 }
 </script>
 
@@ -217,17 +210,9 @@ function filterSource(source: string): void {
         placeholder="异常类型"
         @change="applyFilter"
         ><el-option
-          v-for="source in [
-            'course_unpublished',
-            'map_anomaly',
-            'question_pending',
-            'feedback_pending',
-            'payment_unknown',
-            'queue_failed',
-            'long_pending',
-          ]"
+          v-for="source in OpsSourceTypeSchema.options"
           :key="source"
-          :label="sourceLabel(source as OpsSourceType)"
+          :label="sourceLabel(source)"
           :value="source"
       /></el-select>
       <el-select v-model="filters.state" placeholder="状态" @change="applyFilter"

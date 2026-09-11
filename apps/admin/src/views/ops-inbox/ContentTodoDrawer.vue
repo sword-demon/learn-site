@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
-import type {
-  ContentTodoDetail,
-  ContentTodoLabel,
-  ContentTodoApproveRequest,
-  ContentTodoCloseRequest,
+import {
+  ContentTodoErrorCodes,
+  type ContentTodoDetail,
+  type ContentTodoLabel,
+  type ContentTodoApproveRequest,
+  type ContentTodoCloseRequest,
 } from '@contracts/contentTodo';
 import { hasPermission } from '@/api/http';
 import {
@@ -39,9 +40,8 @@ const targetLessonId = ref<number | null>(null);
 const responseBody = ref('');
 const candidateBody = ref('');
 const notifyMode = ref<NonNullable<ContentTodoApproveRequest['notify_mode']>>('submitter');
-const closeReason = ref<NonNullable<ContentTodoCloseRequest['close_reason_code']>>(
-  'already_covered',
-);
+const closeReason =
+  ref<NonNullable<ContentTodoCloseRequest['close_reason_code']>>('already_covered');
 const closeNote = ref('');
 
 const canManage = computed(() => hasPermission('content_todo.manage'));
@@ -66,9 +66,12 @@ function actionError(err: unknown, fallback: string): string {
   const payload = err as { response?: { data?: { error?: { code?: string; message?: string } } } };
   const code = payload.response?.data?.error?.code;
   const message = payload.response?.data?.error?.message;
-  if (message === 'CONTENT_TODO_VERSION_CONFLICT') return '待办已被其他人更新, 请刷新后重试';
-  if (message === 'CONTENT_TODO_CONTENT_CHANGED') return '目标内容已变化, 请重新生成候选';
-  if (message === 'CONTENT_TODO_TARGET_CHANGED') return '目标位置已变化, 请重新生成候选';
+  if (message === ContentTodoErrorCodes.CONTENT_TODO_VERSION_CONFLICT)
+    return '待办已被其他人更新, 请刷新后重试';
+  if (message === ContentTodoErrorCodes.CONTENT_TODO_CONTENT_CHANGED)
+    return '目标内容已变化, 请重新生成候选';
+  if (message === ContentTodoErrorCodes.CONTENT_TODO_TARGET_CHANGED)
+    return '目标位置已变化, 请重新生成候选';
   if (code === 'FORBIDDEN') return '没有权限执行该操作';
   if (code === 'CONFLICT') return message ?? '操作冲突';
   if (code === 'VALIDATION_FAILED') return message ?? '校验失败';
@@ -318,7 +321,12 @@ async function openCourseEditor(): Promise<void> {
           打开课程编辑器
         </el-button>
         <el-form-item label="管理员响应" class="mt-4">
-          <el-input v-model="responseBody" type="textarea" :rows="3" :disabled="!canManage || !isOpen" />
+          <el-input
+            v-model="responseBody"
+            type="textarea"
+            :rows="3"
+            :disabled="!canManage || !isOpen"
+          />
         </el-form-item>
         <el-button :disabled="!canManage || !isOpen" @click="respond">发送响应</el-button>
       </el-form>
@@ -335,7 +343,12 @@ async function openCourseEditor(): Promise<void> {
       </div>
       <el-form v-if="draftCandidate" label-position="top" class="mt-3">
         <el-form-item :label="`候选 v${draftCandidate.version}`">
-          <el-input v-model="candidateBody" type="textarea" :rows="6" :disabled="!canManage || !isOpen" />
+          <el-input
+            v-model="candidateBody"
+            type="textarea"
+            :rows="6"
+            :disabled="!canManage || !isOpen"
+          />
         </el-form-item>
         <el-form-item label="通知对象">
           <el-select v-model="notifyMode" :disabled="!canManage || !isOpen">
@@ -369,9 +382,19 @@ async function openCourseEditor(): Promise<void> {
           </el-select>
         </el-form-item>
         <el-form-item label="关闭说明">
-          <el-input v-model="closeNote" type="textarea" :rows="2" :disabled="!canManage || !isOpen" />
+          <el-input
+            v-model="closeNote"
+            type="textarea"
+            :rows="2"
+            :disabled="!canManage || !isOpen"
+          />
         </el-form-item>
-        <el-button type="danger" plain :disabled="!canManage || !isOpen" @click="closeWithoutChange">
+        <el-button
+          type="danger"
+          plain
+          :disabled="!canManage || !isOpen"
+          @click="closeWithoutChange"
+        >
           无内容变更关闭
         </el-button>
       </el-form>
