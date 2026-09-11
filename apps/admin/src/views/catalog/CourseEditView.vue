@@ -4,7 +4,7 @@
       <div>
         <el-button link @click="goBack"> ← 返回课程列表 </el-button>
         <h2 class="title">
-          {{ isNew ? '新建课程' : `编辑：${form.title || `#${courseId}`}` }}
+          {{ isNew ? '新建课程' : `编辑：${form.title || `#${courseId ?? '—'}`}` }}
         </h2>
       </div>
       <div class="actions">
@@ -157,7 +157,11 @@
                 新增
               </el-button>
             </div>
-            <el-table :data="selectedChapter?.lessons ?? []" row-key="id">
+            <el-table
+              :data="selectedChapter?.lessons ?? []"
+              row-key="id"
+              :row-class-name="lessonRowClass"
+            >
               <el-table-column prop="sort" label="#" width="60" />
               <el-table-column prop="title" label="标题" min-width="200" />
               <el-table-column label="类型" width="100">
@@ -312,7 +316,7 @@
         </el-button>
       </template>
     </el-dialog>
-    <CoursePublishChecklistDialog v-model="publishing" :course-id="courseId" @published="reload" />
+    <CoursePublishChecklistDialog v-model="publishing" :course-id="courseId ?? 0" @published="reload" />
   </section>
 </template>
 
@@ -367,7 +371,17 @@ const saving = ref(false);
 const publishing = ref(false);
 
 const isNew = computed(() => route.name === 'course-new');
-const courseId = computed(() => (route.params.id ? Number(route.params.id) : 0));
+function parsePositiveInt(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === null || raw === undefined || raw === '') return null;
+  const parsed = typeof raw === 'number' ? raw : Number(String(raw));
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.trunc(parsed);
+}
+const courseId = computed(() => parsePositiveInt(route.params.id));
+function requireCourseId(): number | null {
+  return courseId.value;
+}
 
 interface ChapterWithLessons extends ChapterDTO {
   lessons: LessonDTO[];
@@ -433,9 +447,29 @@ watch(form, (v) => {
 });
 
 const selectedChapterId = ref<number | null>(null);
+const selectedLessonId = ref<number | null>(null);
 const selectedChapter = computed(
   () => tree.chapters.find((c) => c.id === selectedChapterId.value) ?? null,
 );
+
+function applyStructureQuery(): void {
+  const chapterId = parsePositiveInt(route.query.chapter_id);
+  const lessonId = parsePositiveInt(route.query.lesson_id);
+  if (chapterId !== null && tree.chapters.some((chapter) => chapter.id === chapterId)) {
+    selectedChapterId.value = chapterId;
+    activeTab.value = 'structure';
+  }
+  if (lessonId === null) return;
+  const chapter = tree.chapters.find((item) => item.lessons.some((lesson) => lesson.id === lessonId));
+  if (!chapter) return;
+  selectedChapterId.value = chapter.id;
+  selectedLessonId.value = lessonId;
+  activeTab.value = 'structure';
+}
+
+function lessonRowClass({ row }: { row: LessonDTO }): string {
+  return row.id === selectedLessonId.value ? 'is-target-lesson' : '';
+}
 
 function contentTypeLabel(t: LessonContentType): string {
   switch (t) {
@@ -498,6 +532,8 @@ async function loadCourseTree(id: number): Promise<void> {
     lessons: ch.lessons ?? [],
   }));
   selectedChapterId.value = tree.chapters[0]?.id ?? null;
+  selectedLessonId.value = null;
+  applyStructureQuery();
 }
 
 async function loadCategories(): Promise<void> {
@@ -510,10 +546,12 @@ async function loadCategories(): Promise<void> {
 
 async function reload(): Promise<void> {
   if (isNew.value) return;
+  const id = courseId.value;
+  if (id === null) return;
   status.value = 'idle';
   errorMessage.value = '';
   try {
-    await loadCourseTree(courseId.value);
+    await loadCourseTree(id);
   } catch (err: unknown) {
     status.value = 'error';
     errorMessage.value = readError(err, '加载课程失败');
@@ -566,7 +604,9 @@ async function saveDraft(): Promise<void> {
       router.replace({ name: 'course-edit', params: { id: dto.id } });
       ElMessage.success('已创建草稿');
     } else {
-      await updateCourse(courseId.value, payload);
+      const id = courseId.value;
+      if (id === null) return;
+      await updateCourse(id, payload);
       ElMessage.success('已保存');
     }
     await reload();
@@ -586,7 +626,8 @@ async function onPublish(): Promise<void> {
 }
 
 function goPreview(): void {
-  if (!isNew.value) router.push(`/courses/${courseId.value}/preview`);
+  const previewId = requireCourseId();
+  if (!isNew.value && previewId !== null) router.push(`/courses/${previewId}/preview`);
 }
 
 function goBack(): void {
@@ -638,14 +679,18 @@ async function saveChapter(): Promise<void> {
         title: chapterDialog.title.trim(),
         sort: chapterDialog.sort,
       };
-      await createChapter(courseId.value, input);
+      const id = requireCourseId();
+      if (id === null) return;
+      await createChapter(id, input);
     } else {
       const input: UpdateChapterInput = {
         title: chapterDialog.title.trim(),
         sort: chapterDialog.sort,
         status: chapterDialog.status,
       };
-      await updateChapter(courseId.value, chapterDialog.id, input);
+      const id = requireCourseId();
+      if (id === null) return;
+      await updateChapter(id, chapterDialog.id, input);
     }
     chapterDialog.visible = false;
     ElMessage.success('已保存章节');
@@ -669,7 +714,9 @@ async function onChapterCommand(cmd: string, row: ChapterDTO): Promise<void> {
       return;
     }
     try {
-      await deleteChapter(courseId.value, row.id);
+      const id = requireCourseId();
+      if (id === null) return;
+      await deleteChapter(id, row.id);
       ElMessage.success('已删除');
       if (selectedChapterId.value === row.id) selectedChapterId.value = null;
       await reload();
@@ -783,7 +830,9 @@ async function saveLesson(): Promise<void> {
         is_preview: lessonDialog.is_preview,
         duration_seconds: lessonDialog.duration_seconds,
       };
-      await createLesson(courseId.value, input);
+      const id = requireCourseId();
+      if (id === null) return;
+      await createLesson(id, input);
     } else {
       const input: UpdateLessonInput = {
         title: lessonDialog.title.trim(),
@@ -799,7 +848,9 @@ async function saveLesson(): Promise<void> {
         is_preview: lessonDialog.is_preview,
         duration_seconds: lessonDialog.duration_seconds,
       };
-      await updateLesson(courseId.value, lessonDialog.id, input);
+      const id = requireCourseId();
+      if (id === null) return;
+      await updateLesson(id, lessonDialog.id, input);
     }
     lessonDialog.visible = false;
     ElMessage.success('已保存课节');
@@ -818,7 +869,9 @@ async function onDeleteLesson(row: LessonDTO): Promise<void> {
     return;
   }
   try {
-    await deleteLesson(courseId.value, row.id);
+    const id = requireCourseId();
+    if (id === null) return;
+    await deleteLesson(id, row.id);
     ElMessage.success('已删除');
     await reload();
   } catch (err: unknown) {
@@ -978,5 +1031,8 @@ onMounted(async () => {
 }
 .preview .small {
   font-size: 12px;
+}
+:deep(.is-target-lesson) {
+  background: #ecfeff;
 }
 </style>

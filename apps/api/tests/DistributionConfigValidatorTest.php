@@ -27,7 +27,7 @@ final class DistributionConfigValidatorTest extends TestCase
             'per_order_cap_cents' => 5000,
             'per_learner_course_cap_cents' => 50000,
             'per_learner_total_cap_cents' => null,
-            'settlement' => 'order_settled',
+            'settlement' => 'order_settled_after_refund_window',
             'refund_void_rule' => 'void_all',
             'payout_form' => 'cash_record_only',
             'learner_can_view_detail' => true,
@@ -40,10 +40,23 @@ final class DistributionConfigValidatorTest extends TestCase
         $this->assertTrue(true, 'baseline config is accepted');
     }
 
+    public function testLevelCapOneAndTwoAreAccepted(): void
+    {
+        DistributionConfigValidator::assertValidConfig($this->baseline(['level_cap' => 1]));
+        DistributionConfigValidator::assertValidConfig($this->baseline(['level_cap' => 2]));
+        $this->assertTrue(true);
+    }
+
     public function testLevelCapThreeIsAccepted(): void
     {
         DistributionConfigValidator::assertValidConfig($this->baseline(['level_cap' => 3]));
         $this->assertTrue(true);
+    }
+
+    public function testSiteBalancePayoutIsRejected(): void
+    {
+        $this->expectException(BusinessException::class);
+        DistributionConfigValidator::assertValidConfig($this->baseline(['payout_form' => 'site_balance']));
     }
 
     public function testLevelCapFourIsRejected(): void

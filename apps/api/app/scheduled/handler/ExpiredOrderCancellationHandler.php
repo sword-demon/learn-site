@@ -19,7 +19,11 @@ final class ExpiredOrderCancellationHandler implements ScheduledTaskHandler
     {
         /** @var OrderService $orders */
         $orders = Container::get(OrderService::class);
-        return ['cancelled' => $orders->cancelExpiredPending(15, (int) $params['batch_size'])];
+        $batchSize = (int) $params['batch_size'];
+        return [
+            'cancelled' => $orders->cancelExpiredPending(15, $batchSize),
+            'refund_windows_closed' => $orders->closeExpiredRefundWindows($batchSize),
+        ];
     }
 
     public function normalizeParams(array $params): array

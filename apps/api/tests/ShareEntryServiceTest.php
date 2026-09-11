@@ -82,15 +82,25 @@ final class ShareEntryServiceTest extends TestCase
 
     public function testCreateAcceptsCourseScopeWithCourseId(): void
     {
-        $entry = $this->service->create($this->learnerId, 'course', 12345);
+        $courseId = $this->insertPublishedCourse();
+        $entry = $this->service->create($this->learnerId, 'course', $courseId);
         self::assertSame('course', $entry['scope']);
-        self::assertSame(12345, $entry['course_id']);
+        self::assertSame($courseId, $entry['course_id']);
+    }
+
+    public function testCreateRejectsUnpublishedCourse(): void
+    {
+        $courseId = $this->insertPublishedCourse();
+        Db::name('courses')->where('id', $courseId)->update(['status' => 'draft']);
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('COURSE_NOT_PUBLISHED');
+        $this->service->create($this->learnerId, 'course', $courseId);
     }
 
     public function testListForLearnerMasksCodes(): void
     {
         $first = $this->service->create($this->learnerId, 'site', null);
-        $second = $this->service->create($this->learnerId, 'course', 999);
+        $second = $this->service->create($this->learnerId, 'course', $this->insertPublishedCourse());
         $items = $this->service->listForLearner($this->learnerId);
         self::assertCount(2, $items);
         $codes = array_column($items, 'masked_code');
@@ -237,11 +247,8 @@ final class ShareEntryServiceTest extends TestCase
             'created_at' => $now,
         ]);
         $visit = $this->service->recordVisit($code, null, null, null);
-        // Visits still recorded (audit / analytics needs the row).
         $count = (int) Db::name('share_visits')->where('share_entry_id', $entryId)->count();
-        self::assertSame(1, $count, 'visit must still log even when distribution disabled at creation');
-        // But resolveByVisitor isolates this entry, so a downstream referral
-        // never binds to it.
+        self::assertSame(0, $count, 'T082: generated-while-off entries do not log visits');
         self::assertNull(
             $this->service->resolveByVisitor($visit['visitor_token'], $entryId),
             'distribution_enabled_at_creation=0 entries must not resolve a referrer'
@@ -283,5 +290,38 @@ final class ShareEntryServiceTest extends TestCase
             ->find();
         self::assertNull($visitRowA['bound_learner_id']);
         self::assertNotNull($visitRowB['bound_learner_id']);
+    }
+
+    private function insertPublishedCourse(): int
+    {
+        $now = date('Y-m-d H:i:s');
+        $categoryId = (int) Db::name('categories')->insertGetId([
+            'parent_id' => 0,
+            'name' => 'share-cat-' . bin2hex(random_bytes(2)),
+            'path' => '/',
+            'depth' => 1,
+            'sort' => 0,
+            'status' => 'enabled',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        return (int) Db::name('courses')->insertGetId([
+            'department_id' => null,
+            'category_id' => $categoryId,
+            'title' => 'Share Course',
+            'cover_url' => null,
+            'teacher_name' => 'T',
+            'summary' => null,
+            'intro_rich_text' => null,
+            'status' => 'published',
+            'price_mode' => 'free',
+            'list_price' => 0,
+            'sale_price' => 0,
+            'sale_start_at' => null,
+            'sale_end_at' => null,
+            'created_by_staff_id' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 }

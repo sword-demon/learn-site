@@ -34,6 +34,7 @@ use support\think\Db;
 final class OrderService
 {
     private const PENDING_TIMEOUT_MINUTES = 15;
+    private const REFUND_WINDOW_DAYS = 7;
 
     public static function pendingDeadline(\DateTimeImmutable $createdAt, int $timeoutMinutes = self::PENDING_TIMEOUT_MINUTES): \DateTimeImmutable
     {
@@ -51,6 +52,7 @@ final class OrderService
         private readonly ?CouponService $coupons = null,
         private readonly ?PaymentConfigService $paymentConfig = null,
         private readonly ?PaymentWhitelistService $paymentWhitelist = null,
+        private readonly ?CommissionService $commission = null,
     ) {
         $payment->setSuccessHandler(function (int $orderId, string $providerRef): void {
             $this->markSucceeded($orderId, $providerRef);
@@ -356,8 +358,44 @@ final class OrderService
                 'learner_id' => (int) $row['learner_id'],
                 'course_id'  => (int) $row['course_id'],
             ]);
+            $this->commissions()->settleForOrder($orderId);
         });
         return $changed;
+    }
+
+    public function markRefunded(int $orderId, string $reason = 'order_refund'): void
+    {
+        $this->commissions()->voidForOrder($orderId, $reason);
+    }
+
+    public function closeRefundWindow(int $orderId): void
+    {
+        $this->commissions()->markSettledForOrder($orderId);
+    }
+
+    public function closeExpiredRefundWindows(int $batchSize = 200): int
+    {
+        $batchSize = max(1, min(200, $batchSize));
+        $cutoff = (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai')))
+            ->modify('-' . self::REFUND_WINDOW_DAYS . ' days')
+            ->format('Y-m-d H:i:s');
+        $ids = Db::name('orders')
+            ->where('status', 'succeeded')
+            ->where('succeeded_at', '<=', $cutoff)
+            ->order('id', 'asc')
+            ->limit($batchSize)
+            ->column('id');
+        $closed = 0;
+        foreach (is_array($ids) ? $ids : [] as $id) {
+            $this->closeRefundWindow((int) $id);
+            $closed++;
+        }
+        return $closed;
+    }
+
+    private function commissions(): CommissionService
+    {
+        return $this->commission ?? new CommissionService();
     }
 
     /**

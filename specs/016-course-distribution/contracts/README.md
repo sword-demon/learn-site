@@ -8,7 +8,7 @@
 
 ## 落地说明
 
-`distribution.ts` 作为新模块加进 `packages/contracts/src/`, 在 `packages/contracts/src/index.ts` 增补 `export * from "./distribution";` 一行. 严格沿用既有 `*.ts` 风格: 顶层 `import { z } from "zod"`, 每个 DTO 用 `z.object(...)` + `z.infer<...>`, 金额一律 `number().int()` (单位: 分), 时间一律 `string().min(1)` (ISO-8601, `Asia/Shanghai`), phone 一律正则 `^1[3-9]\*{8}\d{4}$`.
+`distribution.ts` 作为新模块加进 `packages/contracts/src/`, 在 `packages/contracts/src/index.ts` 增补 `export * from "./distribution";` 一行. 严格沿用既有 `*.ts` 风格: 顶层 `import { z } from "zod"`, 每个 DTO 用 `z.object(...)` + `z.infer<...>`, 金额一律 `number().int()` (单位: 分), 时间一律 `string().min(1)` (ISO-8601, `Asia/Shanghai`), phone 一律正则 `^1[3-9]\d\*{4}\d{4}$`.
 
 ## API 路由与权限点对照
 
@@ -26,6 +26,7 @@
 | `/commissions` | GET | `distribution.reconcile` | query: `page`, `limit`, `learner_id?`, `course_id?`, `status?` | paginated `CommissionRecordDTO` |
 | `/commissions/:id/void` | POST | `distribution.reconcile` | `CommissionVoidInput` | `CommissionRecordDTO` |
 | `/audit` | GET | `distribution.audit` | query: `page`, `limit`, `action?`, `from?`, `to?` | `DistributionAuditListDTO` |
+| `/commissions/export` | GET | `distribution.reconcile` | query: 与 `/commissions` 相同筛选 | csv (手机号脱敏, SC-009) |
 
 ### 学习端 (`/api/learner/distribution/...`)
 
@@ -47,16 +48,20 @@
 ### 与注册流程的钩子
 
 `POST /api/learner/auth/register` 在事务内增加:
-- 读 cookie `distribution_visitor_token` (无则生成 32 位写入).
-- 按 visitor_token 查 share_visits, 取最新一条未绑定的访问, 得到 share_entry_id.
-- 若 share_entry.learner_id ≠ 当前注册学员, 设置 learners.referrer_learner_id = share_entry.learner_id (应用层 + DB 触发器双层校验 referrer_learner_id IS NULL).
-- 把 share_visits.bound_learner_id 写为新学员 id, bound_at = NOW.
+- 读 cookie `distribution_visitor_token`. 无 token 或找不到 visit 则不绑定, **禁止凭空生成 token**.
+- 按 visitor_token 取最后一次有效访问, 得到 share_entry_id.
+- 若该 visitor_token 或该 share_entry 已有 bound_learner_id, 新注册 referrer 保持 NULL.
+- 若 share_entry.learner_id ≠ 当前注册学员且新学员 referrer 仍为 NULL, 设置 learners.referrer_learner_id = share_entry.learner_id (应用层 + DB 触发器双层校验).
+- 把本次 visit 的 bound_learner_id 写为新学员 id, bound_at = NOW.
 - 注册事务 commit 之后, 不再回填, 也无法回滚推荐关系.
 
 ### 与订单生命周期的钩子
 
 `OrderService::markSucceeded` 回调链尾增加 (与颁发课程访问权同一事务内):
-- `CommissionService::settleForOrder($orderId)` — 读 orders 行锁, 沿 referee 链路取 ≤ 3 个推荐人, 算金额, 写 commission_records (status = pending 或 pending_blocked), 按 config_snapshot 写入.
+- `CommissionService::settleForOrder($orderId)` — 读 orders 行锁, 沿 referee 链路取 ≤ 3 个推荐人, 算金额, 写 commission_records (status = pending 或 pending_blocked), 按 config_snapshot 写入. 此步不写 settled.
+
+订单退款窗口结束且未退款 (既有订单状态迁移, 禁止新 cron):
+- `CommissionService::markSettledForOrder($orderId)` — pending → settled; pending_blocked 与 voided 不升为 settled.
 
 `OrderService::markRefunded` 回调链尾增加:
 - `CommissionService::voidForOrder($orderId, reason='order_refund')` — 把该 order 的所有 commission_records 状态置 voided, source = system_refund_void, 写审计 (actor_type = system).

@@ -165,13 +165,7 @@ final class CourseService
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
         }
         if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
-            $courseRow = $course->toArray();
-            DataScopeService::assertCourseAccessibleFromScope(
-                (new DataScopeService())->resolveForCourses($actorStaffAccountId),
-                (int) $courseRow['department_id'],
-                (int) $courseRow['created_by_staff_id'],
-                $actorStaffAccountId,
-            );
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $status = (string) $course->status;
         if ($status === 'published') {
@@ -319,11 +313,14 @@ final class CourseService
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */
-    public function createChapter(int $courseId, array $input): array
+    public function createChapter(int $courseId, array $input, ?int $actorStaffAccountId = null): array
     {
         $course = Course::find($courseId);
         if (!$course) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $title = trim((string) ($input['title'] ?? ''));
         if ($title === '' || mb_strlen($title) > 128) {
@@ -348,11 +345,18 @@ final class CourseService
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */
-    public function updateChapter(int $chapterId, array $input): array
+    public function updateChapter(int $chapterId, array $input, ?int $actorStaffAccountId = null, ?int $expectedCourseId = null): array
     {
         $chapter = Chapter::find($chapterId);
         if (!$chapter) {
             throw new BusinessException('NOT_FOUND', 'CHAPTER_NOT_FOUND');
+        }
+        $course = Course::find((int) $chapter->course_id);
+        if (!$course || ($expectedCourseId !== null && (int) $course->id !== $expectedCourseId)) {
+            throw new BusinessException('NOT_FOUND', 'CHAPTER_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $patch = ['updated_at' => date('Y-m-d H:i:s')];
         if (array_key_exists('title', $input)) {
@@ -378,11 +382,18 @@ final class CourseService
         return $this->chapterRow($chapterId);
     }
 
-    public function deleteChapter(int $chapterId): void
+    public function deleteChapter(int $chapterId, ?int $actorStaffAccountId = null, ?int $expectedCourseId = null): void
     {
         $chapter = Chapter::find($chapterId);
         if (!$chapter) {
             throw new BusinessException('NOT_FOUND', 'CHAPTER_NOT_FOUND');
+        }
+        $course = Course::find((int) $chapter->course_id);
+        if (!$course || ($expectedCourseId !== null && (int) $course->id !== $expectedCourseId)) {
+            throw new BusinessException('NOT_FOUND', 'CHAPTER_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $lessonCount = (int) Db::name('lessons')->where('chapter_id', $chapterId)->count();
         if ($lessonCount > 0) {
@@ -397,11 +408,14 @@ final class CourseService
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */
-    public function createLesson(int $courseId, array $input): array
+    public function createLesson(int $courseId, array $input, ?int $actorStaffAccountId = null): array
     {
         $course = Course::find($courseId);
         if (!$course) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $chapterId = (int) ($input['chapter_id'] ?? 0);
         if ($chapterId <= 0) {
@@ -427,11 +441,19 @@ final class CourseService
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */
-    public function updateLesson(int $lessonId, array $input): array
+    public function updateLesson(int $lessonId, array $input, ?int $actorStaffAccountId = null, ?int $expectedCourseId = null): array
     {
         $lesson = Lesson::find($lessonId);
         if (!$lesson) {
             throw new BusinessException('NOT_FOUND', 'LESSON_NOT_FOUND');
+        }
+        $chapter = Chapter::find((int) $lesson->chapter_id);
+        $course = $chapter ? Course::find((int) $chapter->course_id) : null;
+        if (!$chapter || !$course || ($expectedCourseId !== null && (int) $course->id !== $expectedCourseId)) {
+            throw new BusinessException('NOT_FOUND', 'LESSON_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $patch = $this->buildLessonRow($input, isUpdate: true);
         $patch['updated_at'] = date('Y-m-d H:i:s');
@@ -441,15 +463,34 @@ final class CourseService
         return $this->lessonRow($lessonId);
     }
 
-    public function deleteLesson(int $lessonId): void
+    public function deleteLesson(int $lessonId, ?int $actorStaffAccountId = null, ?int $expectedCourseId = null): void
     {
         $lesson = Lesson::find($lessonId);
         if (!$lesson) {
             throw new BusinessException('NOT_FOUND', 'LESSON_NOT_FOUND');
         }
+        $chapter = Chapter::find((int) $lesson->chapter_id);
+        $course = $chapter ? Course::find((int) $chapter->course_id) : null;
+        if (!$chapter || !$course || ($expectedCourseId !== null && (int) $course->id !== $expectedCourseId)) {
+            throw new BusinessException('NOT_FOUND', 'LESSON_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
+        }
         Db::transaction(function () use ($lessonId) {
             Lesson::where('id', $lessonId)->delete();
         });
+    }
+
+    /** @param array<string,mixed> $course */
+    private function assertCourseAccess(array $course, int $actorStaffAccountId): void
+    {
+        DataScopeService::assertCourseAccessibleFromScope(
+            (new DataScopeService())->resolveForCourses($actorStaffAccountId),
+            (int) $course['department_id'],
+            (int) $course['created_by_staff_id'],
+            $actorStaffAccountId,
+        );
     }
 
     /**

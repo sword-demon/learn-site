@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\controller\admin;
 
 use App\service\BusinessException;
+use App\service\ContentTodoService;
 use App\service\CourseFeedbackService;
 use App\support\ApiResponse;
 use App\support\Logger;
@@ -41,12 +42,25 @@ final class CourseFeedbackController
     public function update(Request $request, string $courseId, string $feedbackId): \support\Response
     {
         $body = self::readJson($request);
-        return $this->wrap(fn (): array => $this->feedback->updateStatus(
-            (int) ($request->account_id ?? 0),
-            $this->id($courseId),
-            $this->id($feedbackId),
-            (string) ($body['status'] ?? ''),
-        ));
+        return $this->wrap(function () use ($request, $courseId, $feedbackId, $body): array {
+            $staffId = (int) ($request->account_id ?? 0);
+            $course = $this->id($courseId);
+            $feedback = $this->id($feedbackId);
+            $result = $this->feedback->updateStatus(
+                $staffId,
+                $course,
+                $feedback,
+                (string) ($body['status'] ?? ''),
+            );
+            (new ContentTodoService())->projectSource(
+                $staffId,
+                'feedback_pending',
+                $feedback,
+                null,
+                $this->permissions($request),
+            );
+            return $result;
+        });
     }
 
     private function id(string $id): int
@@ -55,6 +69,13 @@ final class CourseFeedbackController
             throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
         }
         return (int) $id;
+    }
+
+    /** @return list<string> */
+    private function permissions(Request $request): array
+    {
+        $permissions = $request->permissions ?? [];
+        return is_array($permissions) ? array_values(array_filter($permissions, 'is_string')) : [];
     }
 
     private function wrap(callable $operation): \support\Response

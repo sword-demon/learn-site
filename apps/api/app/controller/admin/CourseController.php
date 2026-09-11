@@ -106,18 +106,18 @@ final class CourseController
 
     public function createChapter(Request $request, string $id): \support\Response
     {
-        return $this->wrap(fn() => $this->service->createChapter($this->id($id), self::readJson($request)));
+        return $this->wrap(fn() => $this->service->createChapter($this->id($id), self::readJson($request), (int) ($request->account_id ?? 0)));
     }
 
     public function updateChapter(Request $request, string $id, string $chapterId): \support\Response
     {
-        return $this->wrap(fn() => $this->service->updateChapter($this->id($chapterId), self::readJson($request)));
+        return $this->wrap(fn() => $this->service->updateChapter($this->id($chapterId), self::readJson($request), (int) ($request->account_id ?? 0), $this->id($id)));
     }
 
     public function deleteChapter(Request $request, string $id, string $chapterId): \support\Response
     {
-        return $this->wrap(function () use ($chapterId) {
-            $this->service->deleteChapter($this->id($chapterId));
+        return $this->wrap(function () use ($request, $id, $chapterId) {
+            $this->service->deleteChapter($this->id($chapterId), (int) ($request->account_id ?? 0), $this->id($id));
             return ['deleted' => true];
         });
     }
@@ -145,18 +145,18 @@ final class CourseController
 
     public function createLesson(Request $request, string $id): \support\Response
     {
-        return $this->wrap(fn() => $this->service->createLesson($this->id($id), self::readJson($request)));
+        return $this->wrap(fn() => $this->service->createLesson($this->id($id), self::readJson($request), (int) ($request->account_id ?? 0)));
     }
 
     public function updateLesson(Request $request, string $id, string $lessonId): \support\Response
     {
-        return $this->wrap(fn() => $this->service->updateLesson($this->id($lessonId), self::readJson($request)));
+        return $this->wrap(fn() => $this->service->updateLesson($this->id($lessonId), self::readJson($request), (int) ($request->account_id ?? 0), $this->id($id)));
     }
 
     public function deleteLesson(Request $request, string $id, string $lessonId): \support\Response
     {
-        return $this->wrap(function () use ($lessonId) {
-            $this->service->deleteLesson($this->id($lessonId));
+        return $this->wrap(function () use ($request, $id, $lessonId) {
+            $this->service->deleteLesson($this->id($lessonId), (int) ($request->account_id ?? 0), $this->id($id));
             return ['deleted' => true];
         });
     }

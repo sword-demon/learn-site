@@ -34,6 +34,17 @@ const ENTRIES: readonly AdminMenuEntry[] = [
   { path: '/reviews', label: '评价管理', permission: 'review.view' },
   { path: '/maps', label: '学习地图', permission: 'map.view' },
   { path: '/orders', label: '订单管理', permission: 'order.view' },
+  {
+    path: '/distribution',
+    label: '分销',
+    permission: 'distribution.config',
+    children: [
+      { path: '/distribution/config', label: '分销配置', permission: 'distribution.config' },
+      { path: '/distribution/overrides', label: '课程覆盖', permission: 'distribution.config' },
+      { path: '/distribution/reconcile', label: '对账', permission: 'distribution.reconcile' },
+      { path: '/distribution/audit', label: '审计', permission: 'distribution.audit' },
+    ],
+  },
   { path: '/ops-inbox', label: '运营收件箱', permission: 'ops_inbox.view' },
   { path: '/learners', label: '学员账号', permission: 'learner.view' },
   { path: '/notifications', label: '通知管理', permission: 'notification.manage' },

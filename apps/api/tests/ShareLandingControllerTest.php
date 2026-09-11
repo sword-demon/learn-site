@@ -106,7 +106,7 @@ final class ShareLandingControllerTest extends TestCase
             $entry['plaintext_code'],
         );
         $cookies1 = $this->flattenSetCookie($first->getHeader('Set-Cookie'));
-        self::assertStringContainsString('ds_ref_visitor=', $cookies1);
+        self::assertStringContainsString('distribution_visitor_token=', $cookies1);
         self::assertStringContainsString('HttpOnly', $cookies1);
         // Extract the cookie value.
         $token = $this->extractCookieValue($cookies1);
@@ -233,7 +233,7 @@ final class LandingRequest extends Request
     public function __construct(string $code, string $visitorToken)
     {
         $cookieHeader = $visitorToken !== ''
-            ? "Cookie: ds_ref_visitor={$visitorToken}\r\n"
+            ? "Cookie: distribution_visitor_token={$visitorToken}\r\n"
             : '';
         $raw = "GET /r/{$code} HTTP/1.1\r\nHost: test\r\nUser-Agent: phpunit\r\n{$cookieHeader}\r\n";
         parent::__construct($raw);

@@ -93,6 +93,54 @@ final class NotificationDispatchService
     }
 
     /**
+     * Enqueue a selected-recipient internal notice after a domain write.
+     * Queue failure is recorded on the dispatch and does not throw.
+     *
+     * @param list<int> $learnerIds
+     */
+    public function enqueueInternalNotice(
+        int $staffId,
+        string $title,
+        string $body,
+        array $learnerIds,
+        string $resourceType,
+        int $resourceId,
+    ): void {
+        $this->assertStaff($staffId);
+        [$title, $body] = $this->validateContent($title, $body);
+        $learnerIds = $this->normalizeRecipientIds($learnerIds);
+        if ($learnerIds === []) {
+            return;
+        }
+        $now = date('Y-m-d H:i:s');
+        $dispatchId = (int) Db::name('notification_dispatches')->insertGetId([
+            'type' => self::TYPE_INTERNAL,
+            'title' => $title,
+            'body' => $body,
+            'resource_type' => $resourceType,
+            'resource_id' => $resourceId,
+            'sender_staff_id' => $staffId,
+            'recipient_mode' => 'selected',
+            'recipient_count' => count($learnerIds),
+            'fan_out_status' => 'pending',
+            'fan_out_done_count' => 0,
+            'created_at' => $now,
+        ]);
+        Db::name('notification_dispatch_recipients')->insertAll(array_map(
+            static fn (int $learnerId): array => ['dispatch_id' => $dispatchId, 'learner_id' => $learnerId],
+            $learnerIds,
+        ));
+        try {
+            $this->enqueueFanOut($dispatchId);
+        } catch (BusinessException $e) {
+            Logger::warning('notification.internal_notice.enqueue_failed', [
+                'dispatch_id' => $dispatchId,
+                'err' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * System-generated dispatch emitted when a course actually enters
      * `published` (first publish or re-publish after unpublish). Enqueue
      * failures are swallowed here: FR-008 forbids rolling the course

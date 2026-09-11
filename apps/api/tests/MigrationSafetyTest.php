@@ -52,9 +52,34 @@ final class MigrationSafetyTest extends TestCase
         self::assertStringContainsString('sha256', $source);
     }
 
+    public function testContentTodoMigrationKeepsSourceIdentityAndProtectsRollback(): void
+    {
+        $source = $this->readProjectFile('database/migrations/20260910000001_content_todo_feedback_loop.php');
+
+        foreach ([
+            "table('content_todos'",
+            "table('content_todo_candidates'",
+            "['source_type', 'source_key']",
+            "['content_todo_id', 'version']",
+            'question_pending',
+            'feedback_pending',
+            'awaiting_approval',
+            'closed_no_change',
+            'SET_NULL',
+            'business workflow data exists',
+            'function down',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $source);
+        }
+
+        self::assertStringContainsString('content_todo_candidates', $source);
+        self::assertStringContainsString('content_todos', $source);
+        self::assertStringContainsString('drop()->save()', $source);
+    }
+
     private function readProjectFile(string $relativePath): string
     {
-        foreach ([dirname(__DIR__, 3), '/workspace'] as $root) {
+        foreach ([dirname(__DIR__), dirname(__DIR__, 3), '/workspace'] as $root) {
             $path = $root . '/' . $relativePath;
             if (is_file($path)) {
                 return (string) file_get_contents($path);

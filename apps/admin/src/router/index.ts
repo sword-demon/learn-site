@@ -24,6 +24,10 @@ import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
 import PaymentConfigView from '@/views/site/PaymentConfigView.vue';
 import PaymentWhitelistView from '@/views/site/PaymentWhitelistView.vue';
+import DistributionConfigView from '@/views/distribution/DistributionConfigView.vue';
+import DistributionCourseOverridesView from '@/views/distribution/DistributionCourseOverridesView.vue';
+import DistributionReconcileView from '@/views/distribution/DistributionReconcileView.vue';
+import DistributionAuditView from '@/views/distribution/DistributionAuditView.vue';
 import NotificationListView from '@/views/notifications/NotificationListView.vue';
 import CheckinListView from '@/views/checkins/CheckinListView.vue';
 import ScheduledTaskListView from '@/views/scheduled-tasks/ScheduledTaskListView.vue';
@@ -184,6 +188,30 @@ const routes: RouteRecordRaw[] = [
         name: 'orders',
         component: OrderListView,
         meta: { title: '订单管理', permission: 'order.view' },
+      },
+      {
+        path: 'distribution/config',
+        name: 'distribution-config',
+        component: DistributionConfigView,
+        meta: { title: '分销配置', permission: 'distribution.config' },
+      },
+      {
+        path: 'distribution/overrides',
+        name: 'distribution-overrides',
+        component: DistributionCourseOverridesView,
+        meta: { title: '课程分销覆盖', permission: 'distribution.config' },
+      },
+      {
+        path: 'distribution/reconcile',
+        name: 'distribution-reconcile',
+        component: DistributionReconcileView,
+        meta: { title: '分销对账', permission: 'distribution.reconcile' },
+      },
+      {
+        path: 'distribution/audit',
+        name: 'distribution-audit',
+        component: DistributionAuditView,
+        meta: { title: '分销审计', permission: 'distribution.audit' },
       },
       {
         path: 'learners',

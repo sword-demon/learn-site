@@ -12,7 +12,17 @@ const api = vi.hoisted(() => ({
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 
 vi.mock('@/api/opsInbox', () => api);
-vi.mock('vue-router', () => ({ useRouter: () => router }));
+vi.mock('@/views/ops-inbox/ContentTodoDrawer.vue', () => ({
+  default: {
+    name: 'ContentTodoDrawer',
+    props: ['visible', 'todoId'],
+    template: '<div class="content-todo-drawer-stub" />',
+  },
+}));
+vi.mock('vue-router', () => ({
+  useRouter: () => router,
+  useRoute: () => ({ query: {}, path: '/ops-inbox' }),
+}));
 
 import OpsInboxView from '@/views/ops-inbox/OpsInboxView.vue';
 
@@ -79,6 +89,67 @@ describe('OpsInboxView', () => {
 
     expect(api.transitionOpsInbox).toHaveBeenCalledWith(row.id, { to_state: 'resolved' });
     expect(wrapper.text()).not.toContain(row.title);
+    wrapper.unmount();
+  });
+
+  it('does not resolve a content source without a content todo', async () => {
+    api.fetchOpsInbox.mockResolvedValue({
+      items: [
+        {
+          ...row,
+          id: 'question_pending:77',
+          source_type: 'question_pending',
+          source_key: '77',
+          title: '待回答问题：为什么没有例子？',
+          content_todo_id: null,
+          deep_link: { name: 'questions' },
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+      counts_by_source: { question_pending: 1 },
+    });
+    const wrapper = mount(OpsInboxView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('.el-dropdown .el-button').trigger('click');
+    await flushPromises();
+    const action = document.body.querySelector('.el-dropdown-menu__item');
+    expect(action).not.toBeNull();
+    await (action as HTMLElement).click();
+    await flushPromises();
+    expect(api.transitionOpsInbox).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('opens the content todo drawer instead of the original deep link', async () => {
+    api.fetchOpsInbox.mockResolvedValue({
+      items: [
+        {
+          ...row,
+          id: 'question_pending:77',
+          source_type: 'question_pending',
+          source_key: '77',
+          title: '待回答问题：为什么没有例子？',
+          content_todo_id: 21,
+          content_workflow_status: 'untriaged',
+          deep_link: { name: 'ops-inbox', query: { content_todo_id: 21 } },
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+      counts_by_source: { question_pending: 1 },
+    });
+    const wrapper = mount(OpsInboxView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('button').trigger('click');
+    expect(router.push).not.toHaveBeenCalled();
+    expect(wrapper.find('.content-todo-drawer-stub').exists()).toBe(true);
     wrapper.unmount();
   });
 

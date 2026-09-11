@@ -27,6 +27,8 @@ final class OpsInboxController
                 'sort_dir' => $this->enum($request->get('sort_dir', 'desc'), ['asc', 'desc'], 'OPS_SORT_INVALID'),
                 'page' => $this->positiveInt($request->get('page', 1), 'OPS_PAGE_INVALID'),
                 'limit' => $this->limit($request->get('limit', 20)),
+                'content_only' => $this->optionalBool($request->get('content_only')),
+                'workflow_status' => $this->optionalEnum($request->get('workflow_status'), ['untriaged', 'triaged', 'awaiting_approval', 'resolved', 'closed'], 'CONTENT_TODO_STATUS_INVALID'),
             ]);
         });
     }
@@ -90,6 +92,14 @@ final class OpsInboxController
         $value = (int) $value;
         if ($value < $min || $value > $max) throw new BusinessException('VALIDATION_FAILED', $error);
         return $value;
+    }
+
+    private function optionalBool(mixed $value): bool
+    {
+        if ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'yes') {
+            return true;
+        }
+        return false;
     }
 
     private function limit(mixed $value): int
