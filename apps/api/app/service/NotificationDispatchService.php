@@ -9,6 +9,8 @@ use App\support\Logger;
 use App\support\queue\JobDispatcher;
 use support\think\Db;
 
+use function nowDatetime;
+
 /**
  * Admin-authored announcements and internal messages.
  */
@@ -112,7 +114,7 @@ final class NotificationDispatchService
         if ($learnerIds === []) {
             return;
         }
-        $now = date('Y-m-d H:i:s');
+        $now = nowDatetime();
         $dispatchId = (int) Db::name('notification_dispatches')->insertGetId([
             'type' => self::TYPE_INTERNAL,
             'title' => $title,
