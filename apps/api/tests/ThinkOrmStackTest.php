@@ -14,6 +14,7 @@ use App\model\Permission;
 use App\model\Role;
 use App\model\StaffPermissionOverride;
 use App\model\StaffUser;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use support\think\Model;
 
@@ -53,9 +54,7 @@ final class ThinkOrmStackTest extends TestCase
         $this->assertArrayNotHasKey('connections', $config);
     }
 
-    /**
-     * @dataProvider modelClasses
-     */
+    #[DataProvider('modelClasses')]
     public function testModelsExtendThinkOrm(string $class): void
     {
         $this->assertTrue(is_subclass_of($class, Model::class), $class . ' must extend support\\think\\Model');
