@@ -148,6 +148,10 @@ final class ContentTodoController
     /** @return array<string,mixed> */
     private function readJson(Request $request): array
     {
+        $posted = $request->post();
+        if (is_array($posted) && $posted !== []) {
+            return $posted;
+        }
         $raw = (string) $request->rawBody();
         if ($raw === '') {
             return [];

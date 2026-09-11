@@ -15,8 +15,6 @@ Route::group($learnerV1, function () {
     Route::post('/auth/refresh', [\App\controller\learner\AuthController::class, 'refresh']);
     Route::get('/auth/captcha', [\App\controller\learner\AuthController::class, 'captcha']);
     Route::get('/home', [\App\controller\learner\HomeController::class, 'home']);
-    // 016-course-distribution — public share landing
-    Route::get('/r/{code}', [\App\controller\public\ShareLandingController::class, 'show']);
 })->middleware([\App\middleware\RateLimit::class]);
 
 Route::group('/api/public', function () {
@@ -102,9 +100,6 @@ Route::group($learnerV1, function () {
     Route::get('/checkins/{id}', [\App\controller\learner\CheckinController::class, 'show']);
 
     // 016-course-distribution — learner-owned share entries
-    Route::get('/me/share-entries', [\App\controller\learner\ShareEntryController::class, 'index']);
-    Route::post('/me/share-entries', [\App\controller\learner\ShareEntryController::class, 'store']);
-    Route::delete('/me/share-entries/{id}', [\App\controller\learner\ShareEntryController::class, 'revoke']);
     Route::get('/distribution/status', [\App\controller\learner\DistributionController::class, 'status']);
     Route::get('/distribution/share-entries', [\App\controller\learner\DistributionController::class, 'shareEntries']);
     Route::post('/distribution/share-entries', [\App\controller\learner\DistributionController::class, 'createShareEntry']);
@@ -362,4 +357,13 @@ Route::group($adminV1, function () {
 })->middleware([
     \App\middleware\AdminAuth::class,
     \App\middleware\Authorize::class,
+]);
+
+Route::disableDefaultRoute();
+
+Route::fallback(static function () {
+    return \App\support\ApiResponse::fail(\App\support\ApiResponse::NOT_FOUND, 'NOT_FOUND');
+})->middleware([
+    \App\middleware\RequestLogger::class,
+    \App\middleware\Cors::class,
 ]);

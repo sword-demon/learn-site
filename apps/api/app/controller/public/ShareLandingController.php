@@ -12,7 +12,8 @@ use support\Request;
 use support\Response;
 
 /**
- * Public landing endpoint hit when a visitor follows a /r/{code} URL.
+ * Public landing endpoint for GET /api/public/s/{code}.
+ * Visitor-facing /r/{code} URLs are proxied here by docker/web/nginx.conf.
  * Always allowed without auth; logs the visit, sets the visitor cookie
  * (so a later registration can link back), and 302s to the matching web
  * page (course detail for scope=course, homepage for scope=site).
@@ -36,7 +37,7 @@ final class ShareLandingController
             $result = $this->service->recordVisit(
                 $code,
                 $token !== '' ? $token : null,
-                $request->getRealIp(),
+                $request->getRemoteIp(),
                 (string) ($request->header('user-agent', '') ?? ''),
             );
         } catch (BusinessException $e) {

@@ -14,7 +14,7 @@ use Webman\ThinkOrm\ThinkOrm;
 
 /**
  * Spec: 016-course-distribution/T020 + T025.
- *   - GET /r/{code} writes share_visits and seeds the visitor cookie
+ *   - GET /api/public/s/{code} writes share_visits and seeds the visitor cookie
  *   - No referrer / visitor_token leaks in the response body
  *   - scope=course → 302 to LEARN_SITE_PUBLIC_BASE/courses/{course_id}
  *   - scope=site   → 302 to LEARN_SITE_PUBLIC_BASE/
@@ -28,6 +28,8 @@ final class ShareLandingControllerTest extends TestCase
 {
     private const PUBLIC_BASE = 'https://learn.example.test';
     private int $learnerId;
+    /** course 作用域入口只能指向已发布课程，测试统一复用这门课程。 */
+    private int $courseId;
     private ShareEntryService $service;
     private ShareLandingController $controller;
 
@@ -65,6 +67,9 @@ final class ShareLandingControllerTest extends TestCase
             'updated_at' => $now,
         ]);
         $this->learnerId = $accountId;
+        // ShareEntryService::create() 会校验课程存在且已发布，
+        // 这里插入真实课程，避免用例依赖不存在的课程 ID 而抛 COURSE_NOT_FOUND。
+        $this->courseId = $this->insertPublishedCourse();
         $this->service = new ShareEntryService();
         $this->controller = new ShareLandingController($this->service);
     }
@@ -76,13 +81,16 @@ final class ShareLandingControllerTest extends TestCase
 
     public function testCourseScopeRedirectsToCourseDetail(): void
     {
-        $entry = $this->service->create($this->learnerId, 'course', 7777);
+        $entry = $this->service->create($this->learnerId, 'course', $this->courseId);
         $response = $this->controller->show(
             new LandingRequest($entry['plaintext_code'], ''),
             $entry['plaintext_code'],
         );
         self::assertSame(302, $response->getStatusCode());
-        self::assertSame(self::PUBLIC_BASE . '/courses/7777', $response->getHeader('Location'));
+        self::assertSame(
+            self::PUBLIC_BASE . '/courses/' . $this->courseId,
+            $response->getHeader('Location'),
+        );
         self::assertSame('', (string) $response->rawBody(), 'redirect body must be empty');
     }
 
@@ -123,7 +131,7 @@ final class ShareLandingControllerTest extends TestCase
 
     public function testResponseBodyDoesNotLeakReferrerOrVisitorToken(): void
     {
-        $entry = $this->service->create($this->learnerId, 'course', 42);
+        $entry = $this->service->create($this->learnerId, 'course', $this->courseId);
         $response = $this->controller->show(
             new LandingRequest($entry['plaintext_code'], ''),
             $entry['plaintext_code'],
@@ -172,7 +180,7 @@ final class ShareLandingControllerTest extends TestCase
 
     public function testValidHitWritesDistributionAuditLog(): void
     {
-        $entry = $this->service->create($this->learnerId, 'course', 4242);
+        $entry = $this->service->create($this->learnerId, 'course', $this->courseId);
         $this->controller->show(
             new LandingRequest($entry['plaintext_code'], ''),
             $entry['plaintext_code'],
@@ -203,6 +211,45 @@ final class ShareLandingControllerTest extends TestCase
         self::assertSame(0, $count);
     }
 
+    /**
+     * 插入一门已发布课程，供 course 作用域分享入口使用。
+     *
+     * ShareEntryService::create() 只接受存在且 status=published 的课程，
+     * 因此不能用裸 ID 构造 course 入口。
+     */
+    private function insertPublishedCourse(): int
+    {
+        $now = date('Y-m-d H:i:s');
+        $categoryId = (int) Db::name('categories')->insertGetId([
+            'parent_id' => 0,
+            'name' => 'landing-cat-' . bin2hex(random_bytes(2)),
+            'path' => '/',
+            'depth' => 1,
+            'sort' => 0,
+            'status' => 'enabled',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        return (int) Db::name('courses')->insertGetId([
+            'department_id' => null,
+            'category_id' => $categoryId,
+            'title' => 'Share Landing Course',
+            'cover_url' => null,
+            'teacher_name' => 'T',
+            'summary' => null,
+            'intro_rich_text' => null,
+            'status' => 'published',
+            'price_mode' => 'free',
+            'list_price' => 0,
+            'sale_price' => 0,
+            'sale_start_at' => null,
+            'sale_end_at' => null,
+            'created_by_staff_id' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
     private function extractCookieValue(string $setCookie): string
     {
         // ponytail: first segment of Set-Cookie is "name=value"; the rest
@@ -226,7 +273,7 @@ final class ShareLandingControllerTest extends TestCase
 /**
  * Minimal Webman\Request subclass for in-memory landing tests. Carries the
  * inbound visitor cookie (when present) and pins the request method / URL
- * to what route.php matches (`GET /r/{code}`).
+ * to what route.php matches (`GET /api/public/s/{code}`).
  */
 final class LandingRequest extends Request
 {
@@ -235,11 +282,11 @@ final class LandingRequest extends Request
         $cookieHeader = $visitorToken !== ''
             ? "Cookie: distribution_visitor_token={$visitorToken}\r\n"
             : '';
-        $raw = "GET /r/{$code} HTTP/1.1\r\nHost: test\r\nUser-Agent: phpunit\r\n{$cookieHeader}\r\n";
+        $raw = "GET /api/public/s/{$code} HTTP/1.1\r\nHost: test\r\nUser-Agent: phpunit\r\n{$cookieHeader}\r\n";
         parent::__construct($raw);
     }
 
-    public function getRealIp(bool $safeMode = true): string
+    public function getRemoteIp(): string
     {
         return '203.0.113.42';
     }
