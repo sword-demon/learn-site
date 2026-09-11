@@ -58,7 +58,29 @@ final class DistributionMigrationTest extends TestCase
         self::assertStringContainsString('chk_distribution_level_cap', $this->migrationSource);
         self::assertStringContainsString("`key` <> 'distribution_config'", $this->migrationSource);
         self::assertStringContainsString("'$.level_cap'", $this->migrationSource);
-        self::assertStringContainsString('BETWEEN 1 AND 3', $this->migrationSource);
+        self::assertStringContainsString('<= 3', $this->migrationSource);
+        self::assertStringNotContainsString('UNSIGNED) BETWEEN 1 AND 3)', $this->migrationSource);
+    }
+
+    public function testShippedSeedUsesOriginalSettlementLiteral(): void
+    {
+        self::assertStringContainsString("'settlement', 'order_settled'", $this->migrationSource);
+        self::assertStringNotContainsString(
+            "'settlement', 'order_settled_after_refund_window'",
+            $this->migrationSource,
+        );
+    }
+
+    public function testForwardMigrationTightensLevelCapAndSettlement(): void
+    {
+        $path = dirname(__DIR__) . '/database/migrations/20260911000001_distribution_settlement_and_level_cap.php';
+        self::assertFileExists($path, 'schema changes after a shipped migration must be a new forward file');
+        $source = (string) file_get_contents($path);
+        self::assertStringContainsString('chk_distribution_level_cap', $source);
+        self::assertStringContainsString('BETWEEN 1 AND 3', $source);
+        self::assertStringNotContainsString('UNSIGNED) BETWEEN 1 AND 3)', $source);
+        self::assertStringContainsString('order_settled_after_refund_window', $source);
+        self::assertStringContainsString('DROP CHECK chk_distribution_level_cap', $source);
     }
 
     public function testReferrerImmutableTriggerBlocksUpdateAndDelete(): void
