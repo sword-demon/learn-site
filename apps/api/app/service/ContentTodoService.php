@@ -330,11 +330,13 @@ final class ContentTodoService
 
         $targetKind = (string) ($input['target_kind'] ?? '');
         if ($targetKind === '') {
-            $targetKind = (string) $todo['label'] === ContentTodo::LABEL_RESOURCE_PROBLEM
-                ? ContentTodoCandidate::TARGET_HELP_CENTER
-                : ($todo['target_lesson_id'] !== null
-                    ? ContentTodoCandidate::TARGET_LESSON_MARKDOWN
-                    : ContentTodoCandidate::TARGET_COURSE_INTRO);
+            if ((string) $todo['label'] === ContentTodo::LABEL_RESOURCE_PROBLEM) {
+                $targetKind = ContentTodoCandidate::TARGET_HELP_CENTER;
+            } elseif ($todo['target_lesson_id'] !== null) {
+                $targetKind = ContentTodoCandidate::TARGET_LESSON_MARKDOWN;
+            } else {
+                $targetKind = ContentTodoCandidate::TARGET_COURSE_INTRO;
+            }
         }
         if (!in_array($targetKind, [
             ContentTodoCandidate::TARGET_COURSE_INTRO,
