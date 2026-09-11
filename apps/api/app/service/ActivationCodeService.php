@@ -8,6 +8,7 @@ use App\model\ActivationCode;
 use App\model\ActivationCodeBatch;
 use App\service\DataScopeService;
 use App\support\Logger;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 /**
@@ -63,7 +64,7 @@ final class ActivationCodeService
         }
         $expires = $this->normalizeExpiresAt($expiresAt);
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $drafts = [];
         for ($i = 0; $i < $quantity; $i++) {
             $drafts[] = $this->generateCodeText();
@@ -131,9 +132,9 @@ final class ActivationCodeService
         if ($status === 'expired') {
             $query->where('status', ActivationCode::STATUS_UNUSED)
                 ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', $this->nowDatetime());
+                ->where('expires_at', '<=', ShanghaiTime::nowDatetime());
         } elseif ($status === 'unused') {
-            $now = $this->nowDatetime();
+            $now = ShanghaiTime::nowDatetime();
             $query->where('status', ActivationCode::STATUS_UNUSED)
                 ->where(function ($where) use ($now): void {
                     $where->whereNull('expires_at')->whereOr('expires_at', '>', $now);
@@ -168,7 +169,7 @@ final class ActivationCodeService
             throw new BusinessException('CONFLICT', 'ACTIVATION_CODE_NOT_VOIDABLE');
         }
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         Db::transaction(function () use ($codeId, $staffId, $now): void {
             $updated = Db::name('activation_codes')
                 ->where('id', $codeId)
@@ -218,7 +219,7 @@ final class ActivationCodeService
             if (!is_array($code)) {
                 throw new BusinessException('VALIDATION_FAILED', 'ACTIVATION_CODE_INVALID');
             }
-            $nowTs = $this->nowTimestamp();
+            $nowTs = ShanghaiTime::nowTimestamp();
             if ((string) $code['status'] === ActivationCode::STATUS_REDEEMED) {
                 throw new BusinessException('CONFLICT', 'ACTIVATION_CODE_REDEEMED');
             }
@@ -226,7 +227,7 @@ final class ActivationCodeService
                 throw new BusinessException('CONFLICT', 'ACTIVATION_CODE_VOID');
             }
             if ($code['expires_at'] !== null
-                && $nowTs >= $this->sqlDatetimeTimestamp((string) $code['expires_at'])) {
+                && $nowTs >= ShanghaiTime::timestamp((string) $code['expires_at'])) {
                 throw new BusinessException('CONFLICT', 'ACTIVATION_CODE_EXPIRED');
             }
             $course = Db::name('courses')
@@ -245,7 +246,7 @@ final class ActivationCodeService
                 throw $this->alreadyActive($course);
             }
 
-            $now = $this->nowDatetime();
+            $now = ShanghaiTime::nowDatetime();
             try {
                 $entitlement = (new EntitlementService())->grant(
                     $learnerId,
@@ -388,7 +389,7 @@ final class ActivationCodeService
         if ($ts === false) {
             throw new BusinessException('VALIDATION_FAILED', 'ACTIVATION_CODE_EXPIRES_INVALID');
         }
-        if ($ts <= $this->nowTimestamp()) {
+        if ($ts <= ShanghaiTime::nowTimestamp()) {
             throw new BusinessException('VALIDATION_FAILED', 'ACTIVATION_CODE_EXPIRES_INVALID');
         }
         return $this->formatShanghai($ts);
@@ -447,7 +448,7 @@ final class ActivationCodeService
         $status = (string) $row['status'];
         $expired = $status === ActivationCode::STATUS_UNUSED
             && $row['expires_at'] !== null
-            && $this->nowTimestamp() >= $this->sqlDatetimeTimestamp((string) $row['expires_at']);
+            && ShanghaiTime::nowTimestamp() >= ShanghaiTime::timestamp((string) $row['expires_at']);
 
         $redeemedBy = null;
         if ($status === ActivationCode::STATUS_REDEEMED && $row['redeemed_by_learner_id'] !== null) {
@@ -497,24 +498,8 @@ final class ActivationCodeService
             'target_type' => 'activation_code',
             'target_id' => $targetId,
             'payload_json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            'created_at' => $this->nowDatetime(),
+            'created_at' => ShanghaiTime::nowDatetime(),
         ]);
-    }
-
-    private function nowDatetime(): string
-    {
-        return $this->formatShanghai(time());
-    }
-
-    private function nowTimestamp(): int
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->getTimestamp();
-    }
-
-    /** Parse SQL DATETIME as an Asia/Shanghai wall-clock value. */
-    private function sqlDatetimeTimestamp(string $datetime): int
-    {
-        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))->getTimestamp();
     }
 
     private function formatShanghai(int $timestamp): string

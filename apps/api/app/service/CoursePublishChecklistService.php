@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\service;
 
 use App\support\HtmlSanitizer;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 final class CoursePublishChecklistService
 {
-    private const TIMEZONE = 'Asia/Shanghai';
     private const MESSAGES = [
         'CATEGORY_NOT_FOUND' => '课程分类不存在', 'CATEGORY_DISABLED' => '课程分类已停用',
         'INTRO_REQUIRED' => '课程简介不能为空', 'SALE_WINDOW_EXPIRED' => '优惠价格不在有效时间内',
@@ -172,7 +172,7 @@ final class CoursePublishChecklistService
         $hardCount = count(array_filter($findings, static fn(array $f): bool => $f['severity'] === 'hard'));
         return [
             'course_id' => $courseId, 'course_title' => (string) $course['title'], 'course_status' => (string) $course['status'],
-            'generated_at' => (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format(DATE_ATOM),
+            'generated_at' => ShanghaiTime::now()->format(DATE_ATOM),
             'content_fingerprint' => hash('sha256', json_encode($catalog, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)),
             'hard_error_count' => $hardCount,
             'warning_count' => count(array_filter($findings, static fn(array $f): bool => $f['severity'] === 'warning')),

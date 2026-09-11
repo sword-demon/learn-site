@@ -8,6 +8,7 @@ use App\model\CourseFeedback;
 use App\service\DataScopeService;
 use App\support\HtmlSanitizer;
 use App\support\Logger;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 /**
@@ -23,7 +24,6 @@ use support\think\Db;
  */
 final class CourseFeedbackService
 {
-    private const TIMEZONE = 'Asia/Shanghai';
     private const BODY_MAX = 20_000;
     private const EXCERPT_MAX = 80;
     private const MAX_PAGE_LIMIT = 100;
@@ -72,7 +72,7 @@ final class CourseFeedbackService
             throw new BusinessException('VALIDATION_FAILED', 'FEEDBACK_BODY_REQUIRED');
         }
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $feedbackId = (int) CourseFeedback::create([
             'course_id' => $courseId,
             'learner_id' => $learnerId,
@@ -178,7 +178,7 @@ final class CourseFeedbackService
             return $this->getFeedback($staffId, $courseId, $feedbackId);
         }
 
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
         $processedAt = $status === CourseFeedback::STATUS_PROCESSED ? $now : null;
         $processedBy = $status === CourseFeedback::STATUS_PROCESSED ? $staffId : null;
         Db::transaction(function () use ($feedbackId, $status, $processedAt, $processedBy, $now): void {
@@ -287,12 +287,7 @@ final class CourseFeedbackService
             'target_type' => 'course_feedback',
             'target_id' => $targetId,
             'payload_json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            'created_at' => $this->nowDatetime(),
+            'created_at' => ShanghaiTime::nowDatetime(),
         ]);
-    }
-
-    private function nowDatetime(): string
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format('Y-m-d H:i:s');
     }
 }

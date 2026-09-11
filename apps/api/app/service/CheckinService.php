@@ -6,6 +6,7 @@ namespace App\service;
 
 use App\support\ApiResponse;
 use App\support\HtmlSanitizer;
+use App\support\ShanghaiTime;
 use support\think\Db;
 use think\db\exception\PDOException as ThinkPdoException;
 
@@ -15,7 +16,6 @@ use think\db\exception\PDOException as ThinkPdoException;
 final class CheckinService
 {
     private const MAX_PLAN_LENGTH = 10_000;
-    private const TIMEZONE = 'Asia/Shanghai';
 
     /**
      * @return array<string, mixed>
@@ -24,8 +24,8 @@ final class CheckinService
     {
         $this->assertActiveLearner($learnerId);
         $sanitized = $this->sanitizePlan($planHtml);
-        $today = $this->todayDate();
-        $now = $this->nowDatetime();
+        $today = ShanghaiTime::now()->format('Y-m-d');
+        $now = ShanghaiTime::nowDatetime();
 
         try {
             $id = (int) Db::transaction(function () use ($learnerId, $today, $sanitized, $now): int {
@@ -77,7 +77,7 @@ final class CheckinService
      */
     public function getTodayStatus(int $learnerId): array
     {
-        $today = $this->todayDate();
+        $today = ShanghaiTime::now()->format('Y-m-d');
         $row = Db::name('learner_daily_checkins')
             ->where('learner_id', $learnerId)
             ->where('checkin_date', $today)
@@ -204,7 +204,7 @@ final class CheckinService
                     'learner_id' => (int) $row['learner_id'],
                     'checkin_date' => (string) $row['checkin_date'],
                 ],
-                $this->nowDatetime(),
+                ShanghaiTime::nowDatetime(),
             );
         });
     }
@@ -266,7 +266,7 @@ final class CheckinService
             'id' => (int) $row['id'],
             'checkin_date' => (string) $row['checkin_date'],
             'plan_html' => (string) $row['plan_html'],
-            'checked_in_at' => $this->toDatetime((string) $row['checked_in_at']),
+            'checked_in_at' => ShanghaiTime::toDatetime((string) $row['checked_in_at']),
         ];
     }
 
@@ -286,7 +286,7 @@ final class CheckinService
             'learner_phone_masked' => $this->maskPhone((string) ($row['login'] ?? '')),
             'checkin_date' => (string) $row['checkin_date'],
             'plan_summary' => $this->summarizePlan($planHtml),
-            'checked_in_at' => $this->toIso8601((string) $row['checked_in_at']),
+            'checked_in_at' => ShanghaiTime::toIso8601((string) $row['checked_in_at']),
         ];
     }
 
@@ -331,27 +331,6 @@ final class CheckinService
         $page = max(1, (int) ($filters['page'] ?? 1));
         $limit = max(1, min(100, (int) ($filters['limit'] ?? 20)));
         return [$page, $limit];
-    }
-
-    private function todayDate(): string
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format('Y-m-d');
-    }
-
-    private function nowDatetime(): string
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format('Y-m-d H:i:s');
-    }
-
-    private function toDatetime(string $datetime): string
-    {
-        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))
-            ->format('Y-m-d H:i:s');
-    }
-
-    private function toIso8601(string $datetime): string
-    {
-        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))->format(DATE_ATOM);
     }
 
     /** @param array<string, int|string> $payload */

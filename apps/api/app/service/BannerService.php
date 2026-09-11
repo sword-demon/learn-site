@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\service;
 
 use App\support\cache\HomeCache;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 final class BannerService
@@ -28,7 +29,7 @@ final class BannerService
         $isEnabled = array_key_exists('is_enabled', $input)
             ? $this->validateBoolean($input['is_enabled'], 'BANNER_STATUS_INVALID')
             : true;
-        $now = $this->nowDatetime();
+        $now = ShanghaiTime::nowDatetime();
 
         $id = (int) Db::name('banners')->insertGetId([
             'image_url' => $imageUrl,
@@ -86,7 +87,7 @@ final class BannerService
             throw new BusinessException('VALIDATION_FAILED', 'EMPTY_UPDATE');
         }
 
-        $updates['updated_at'] = $this->nextUpdatedAt((string) $row['updated_at']);
+        $updates['updated_at'] = ShanghaiTime::nextAfter((string) $row['updated_at']);
         $updated = Db::name('banners')
             ->where('id', $id)
             ->whereNull('deleted_at')
@@ -161,7 +162,7 @@ final class BannerService
             return;
         }
 
-        $deletedAt = $this->nowDatetime();
+        $deletedAt = ShanghaiTime::nowDatetime();
         $updated = Db::name('banners')->where('id', $id)->whereNull('deleted_at')->update([
             'deleted_at' => $deletedAt,
             'updated_at' => $deletedAt,
@@ -281,22 +282,6 @@ final class BannerService
         }
     }
 
-    private function nextUpdatedAt(string $current): string
-    {
-        $timezone = new \DateTimeZone(self::TIMEZONE);
-        $now = new \DateTimeImmutable('now', $timezone);
-        $currentTime = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $current, $timezone);
-        // ponytail: optimistic lock requires updated_at (stored as DATETIME second
-        // precision) to strictly increase each write — otherwise two writes inside the
-        // same wall-clock second produce an identical stored value and the WHERE clause
-        // matches a stale expected_updated_at. Always advance past currentTime + 1s.
-        $candidate = $now;
-        if ($currentTime instanceof \DateTimeImmutable) {
-            $candidate = max($candidate, $currentTime->modify('+1 second'));
-        }
-        return $candidate->format('Y-m-d H:i:s');
-    }
-
     /**
      * @param array<string,mixed> $filters
      * @return array{0:int,1:int}
@@ -328,8 +313,8 @@ final class BannerService
             'link_url' => $row['link_url'] !== null ? (string) $row['link_url'] : null,
             'sort_order' => (int) $row['sort_order'],
             'is_enabled' => (int) $row['is_enabled'] === 1,
-            'created_at' => $this->toIso8601((string) $row['created_at']),
-            'updated_at' => $this->toIso8601((string) $row['updated_at']),
+            'created_at' => ShanghaiTime::toIso8601((string) $row['created_at']),
+            'updated_at' => ShanghaiTime::toIso8601((string) $row['updated_at']),
         ];
     }
 
@@ -363,17 +348,7 @@ final class BannerService
             'target_type' => 'banners',
             'target_id' => $targetId,
             'payload_json' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'created_at' => $this->nowDatetime(),
+            'created_at' => ShanghaiTime::nowDatetime(),
         ]);
-    }
-
-    private function nowDatetime(): string
-    {
-        return (new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->format('Y-m-d H:i:s');
-    }
-
-    private function toIso8601(string $datetime): string
-    {
-        return (new \DateTimeImmutable($datetime, new \DateTimeZone(self::TIMEZONE)))->format(DATE_ATOM);
     }
 }

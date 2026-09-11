@@ -11,6 +11,7 @@ use App\model\Lesson;
 use App\service\DataScopeService;
 use App\support\HtmlSanitizer;
 use App\support\Logger;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 /**
@@ -215,7 +216,7 @@ final class CourseService
                 'will_dispatch' => $dto['impact']['notification']['will_dispatch'],
                 'recipient_count' => $dto['impact']['notification']['recipient_count'], 'acknowledge_warnings' => $acknowledged,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-            'created_at' => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai')))->format('Y-m-d H:i:s'),
+            'created_at' => ShanghaiTime::nowDatetime(),
         ]);
     }
 

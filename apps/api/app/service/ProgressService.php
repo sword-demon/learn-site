@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\service;
 
 use App\support\Logger;
+use App\support\ShanghaiTime;
 use support\think\Db;
 
 /**
@@ -48,7 +49,7 @@ final class ProgressService
     {
         $ids = $this->effectiveLessonIds($courseId);
         $total = count($ids);
-        $now = (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai')))->format('Y-m-d H:i:s');
+        $now = ShanghaiTime::nowDatetime();
         Db::transaction(function () use ($courseId, $ids, $total, $now) {
             Db::name('course_enrollments')->where('course_id', $courseId)->chunk(100, function ($rows) use ($ids, $total, $now) {
                 foreach ($rows as $row) {
