@@ -60,7 +60,14 @@ final class LearnerNotificationResourceTest extends TestCase
         Db::name('courses')->where('id', $courseId)->update(['price_mode' => 'paid']);
         $categoryId = (int) Db::name('courses')->where('id', $courseId)->value('category_id');
         $campaignId = LearningActionLoopFixtures::couponCampaign($staffId, $categoryId);
-        $couponId = LearningActionLoopFixtures::coupon($learnerId, $campaignId);
+        // NotificationController 的券可用性判断走真实时钟（gmdate），
+        // 而 fixtures 的 now() 是冻结时间，所以这里显式给一个远期到期时间，
+        // 避免用例随真实日期推移而失效（默认值 2026-09-07 已过期）。
+        $couponId = LearningActionLoopFixtures::coupon(
+            $learnerId,
+            $campaignId,
+            gmdate('Y-m-d H:i:s', time() + 30 * 86400),
+        );
         (new MessageService())->emit('learning_reminder', $learnerId, '优惠券提醒', null, [], 'coupon', $couponId, 'resource:coupon');
 
         $item = $this->listFor($learnerId)[0];
