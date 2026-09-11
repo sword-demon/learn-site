@@ -94,6 +94,6 @@ final class DashboardTest extends TestCase
         );
         $this->assertStringContainsString("->where('m.status', 'published')", $source);
         $this->assertStringContainsString("->where('c.status', '<>', 'published')", $source);
-        $this->assertStringContainsString("->whereIn('c.status', ['draft', 'unpublished'])", $source);
+        $this->assertStringContainsString("\$inventory['draft'] + \$inventory['unpublished']", $source);
     }
 }

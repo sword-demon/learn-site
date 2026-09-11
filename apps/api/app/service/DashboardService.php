@@ -63,13 +63,16 @@ final class DashboardService
         $visible = self::visibleSections($permissionCodes);
         $scope = $this->scope->resolveForCourses($staffAccountId);
         $window = $this->rangeWindow(self::normalizeRangeDays($rangeDays));
+        $inventory = $this->courseInventory($scope, $staffAccountId, $visible['published_courses'] || $visible['unpublished_courses']);
+        $orderStats = ($visible['succeeded_orders'] || $visible['paid_amount'])
+            ? $this->succeededOrderStats($scope, $staffAccountId, $window)
+            : ['count' => 0, 'amount' => 0.0];
         $operations = [
             'unanswered_questions' => $visible['unanswered_questions'] ? $this->unansweredQuestionCount($scope, $staffAccountId) : null,
             'pending_reviews' => $visible['pending_reviews'] ? $this->pendingReviewCount($scope, $staffAccountId) : null,
             'abnormal_learning_maps' => $visible['abnormal_learning_maps'] ? $this->abnormalLearningMapCount($scope, $staffAccountId) : null,
-            'unpublished_courses' => $visible['unpublished_courses'] ? $this->unpublishedCourseCount($scope, $staffAccountId) : null,
+            'unpublished_courses' => $visible['unpublished_courses'] ? $inventory['draft'] + $inventory['unpublished'] : null,
         ];
-        $inventory = $this->courseInventory($scope, $staffAccountId, $visible['published_courses'] || $visible['unpublished_courses']);
 
         return [
             'scope' => $scope['all'] ? 'all' : 'restricted',
@@ -78,8 +81,8 @@ final class DashboardService
             'counts' => [
                 ...$operations,
                 'pending_orders' => $visible['pending_orders'] ? $this->pendingOrderCount($scope, $staffAccountId) : null,
-                'succeeded_orders' => $visible['succeeded_orders'] ? $this->succeededOrderCount($scope, $staffAccountId, $window) : null,
-                'paid_amount' => $visible['paid_amount'] ? $this->paidAmount($scope, $staffAccountId, $window) : null,
+                'succeeded_orders' => $visible['succeeded_orders'] ? $orderStats['count'] : null,
+                'paid_amount' => $visible['paid_amount'] ? $orderStats['amount'] : null,
                 'published_courses' => $visible['published_courses'] ? $inventory['published'] : null,
             ],
             'order_trend' => $visible['order_trend'] ? $this->orderTrend($scope, $staffAccountId, $window) : null,
@@ -117,13 +120,6 @@ final class DashboardService
     }
 
     /** @param ScopeShape $scope */
-    private function unpublishedCourseCount(array $scope, int $staffAccountId): int
-    {
-        $query = Db::name('courses')->alias('c')->whereIn('c.status', ['draft', 'unpublished']);
-        return (int) $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id')->count();
-    }
-
-    /** @param ScopeShape $scope */
     private function pendingOrderCount(array $scope, int $staffAccountId): int
     {
         $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->where('o.status', 'pending');
@@ -133,22 +129,20 @@ final class DashboardService
     /**
      * @param ScopeShape $scope
      * @param DashboardWindow $window
+     * @return array{count: int, amount: float}
      */
-    private function succeededOrderCount(array $scope, int $staffAccountId, array $window): int
+    private function succeededOrderStats(array $scope, int $staffAccountId, array $window): array
     {
-        $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->where('o.status', 'succeeded')->where('o.succeeded_at', '>=', $window['start'])->where('o.succeeded_at', '<', $window['end']);
-        return (int) $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id')->count();
-    }
-
-    /**
-     * @param ScopeShape $scope
-     * @param DashboardWindow $window
-     */
-    private function paidAmount(array $scope, int $staffAccountId, array $window): float
-    {
-        $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')->where('o.status', 'succeeded')->where('o.succeeded_at', '>=', $window['start'])->where('o.succeeded_at', '<', $window['end']);
-        $value = $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id')->sum('o.paid_amount');
-        return round((float) $value, 2);
+        $query = Db::name('orders')->alias('o')->join('courses c', 'c.id = o.course_id')
+            ->where('o.status', 'succeeded')
+            ->where('o.succeeded_at', '>=', $window['start'])
+            ->where('o.succeeded_at', '<', $window['end'])
+            ->field('COUNT(*) AS total, COALESCE(SUM(o.paid_amount), 0) AS amount');
+        $row = $this->applyScope($query, $scope, $staffAccountId, 'c.department_id', 'c.created_by_staff_id')->find();
+        return [
+            'count' => is_array($row) ? (int) ($row['total'] ?? 0) : 0,
+            'amount' => round(is_array($row) ? (float) ($row['amount'] ?? 0) : 0.0, 2),
+        ];
     }
 
     /**
