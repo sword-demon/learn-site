@@ -142,7 +142,11 @@ final class ScheduledTaskService
         $params = null;
         if ($row['params_json'] !== null && $row['params_json'] !== '') {
             $decoded = json_decode((string) $row['params_json'], true);
-            $params = is_array($decoded) ? $decoded : null;
+            // 关联数组（含空对象 '{}' / 空数组 []）才算合法；list 形态一律当 null。
+            // 历史 seed 曾把空 params 误存为 '[]'，前端 DTO 是 record<string, unknown>，不接受 list。
+            $params = is_array($decoded) && (count($decoded) === 0 || array_keys($decoded) !== range(0, count($decoded) - 1))
+                ? $decoded
+                : null;
         }
 
         return [

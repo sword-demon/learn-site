@@ -307,6 +307,7 @@ Route::group($adminV1, function () {
     Route::get('/site', [\App\controller\admin\SiteController::class, 'show']);
     Route::patch('/site', [\App\controller\admin\SiteController::class, 'update']);
     Route::get('/moderation-logs', [\App\controller\admin\AuditController::class, 'index']);
+    Route::get('/audit-logs', [\App\controller\admin\ApiRequestAuditController::class, 'index']);
 
     // 003-admin-notifications — dispatch announcements and internal messages
     Route::get('/notifications', [\App\controller\admin\NotificationController::class, 'index']);

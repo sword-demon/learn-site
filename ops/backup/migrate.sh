@@ -52,7 +52,7 @@ check_disk
 check_database
 
 set +e
-run_compose exec -T api php vendor/bin/phinx status > "$BACKUP_DIR/pre-migration-status.txt" 2>> "$LOG_FILE"
+run_compose exec -T api php vendor/bin/phinx status -e runtime > "$BACKUP_DIR/pre-migration-status.txt" 2>> "$LOG_FILE"
 status_code="$?"
 set -e
 if [[ "$status_code" -ne 0 && "$status_code" -ne 3 ]]; then
@@ -76,7 +76,7 @@ if [[ ! -s "$BACKUP_DIR/manifest.json" || ! -s "$BACKUP_DIR/SHA256SUMS" ]]; then
 fi
 
 set +e
-run_compose exec -T api php vendor/bin/phinx migrate 2>&1 | tee "$LOG_FILE.migration"
+run_compose exec -T api php vendor/bin/phinx migrate -e runtime 2>&1 | tee "$LOG_FILE.migration"
 migration_status="${PIPESTATUS[0]}"
 set -e
 cat "$LOG_FILE.migration" >> "$LOG_FILE"
@@ -87,7 +87,7 @@ if [[ "$migration_status" -ne 0 ]]; then
     exit "$migration_status"
 fi
 
-run_compose exec -T api php vendor/bin/phinx status > "$BACKUP_DIR/post-migration-status.txt" 2>> "$LOG_FILE"
+run_compose exec -T api php vendor/bin/phinx status -e runtime > "$BACKUP_DIR/post-migration-status.txt" 2>> "$LOG_FILE"
 [[ -s "$BACKUP_DIR/post-migration-status.txt" ]] || {
     log 'cannot read post-migration status'
     exit 1

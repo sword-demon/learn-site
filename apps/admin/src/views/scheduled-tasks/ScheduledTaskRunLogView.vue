@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import type { AdminScheduledTaskRunListItemDTO } from '@learn-site/contracts';
+import { computed, onMounted, ref } from 'vue';
+import type {
+  AdminScheduledTaskRunDetailDTO,
+  AdminScheduledTaskRunListItemDTO,
+} from '@learn-site/contracts';
 import {
   getScheduledTaskRun,
   listScheduledTasks,
@@ -11,14 +14,26 @@ import AdminListPager from '@/components/AdminListPager.vue';
 
 defineOptions({ name: 'ScheduledTaskRunLogView' });
 
+const CONTEXT_LABELS: Record<string, string> = {
+  deleted: '删除条数',
+  count: '扫描条数',
+  cancelled: '取消订单数',
+  refund_windows_closed: '关闭退款窗口数',
+  processed: '处理条数',
+  sent: '发送条数',
+  failed: '失败条数',
+  batch_size: '批处理大小',
+  skipped: '已跳过',
+};
+
 const items = ref<AdminScheduledTaskRunListItemDTO[]>([]);
 const tasks = ref<AdminScheduledTask[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const errorMessage = ref('');
 const detailOpen = ref(false);
-const detailBody = ref('');
-const detailMeta = ref('');
+const detailLoading = ref(false);
+const detail = ref<AdminScheduledTaskRunDetailDTO | null>(null);
 
 const filters = ref({
   task_id: '' as number | '',
@@ -30,14 +45,68 @@ const filters = ref({
   per_page: 20,
 });
 
+const contextEntries = computed(() => {
+  const ctx = detail.value?.context;
+  if (!ctx) return [];
+  return Object.entries(ctx).map(([key, value]) => ({
+    key,
+    label: CONTEXT_LABELS[key] ?? key,
+    display: formatContextValue(value),
+    complex: isComplexContextValue(value),
+  }));
+});
+
+const dialogTitle = computed(() =>
+  detail.value?.task_name ? `执行详情 · ${detail.value.task_name}` : '执行详情',
+);
+
 function triggerLabel(value: AdminScheduledTaskRunListItemDTO['trigger_type']): string {
   return value === 'manual' ? '手动' : '自动';
+}
+
+function triggerTagType(
+  value: AdminScheduledTaskRunListItemDTO['trigger_type'],
+): 'warning' | 'info' {
+  return value === 'manual' ? 'warning' : 'info';
 }
 
 function statusLabel(value: AdminScheduledTaskRunListItemDTO['status']): string {
   if (value === 'success') return '成功';
   if (value === 'failed') return '失败';
   return '已跳过';
+}
+
+function statusTagType(
+  value: AdminScheduledTaskRunListItemDTO['status'],
+): 'success' | 'danger' | 'warning' {
+  if (value === 'success') return 'success';
+  if (value === 'failed') return 'danger';
+  return 'warning';
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms === null) return '—';
+  if (ms < 1000) return `${ms} ms`;
+  const seconds = ms / 1000;
+  const secondsLabel = Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1);
+  return `${secondsLabel} 秒（${ms} ms）`;
+}
+
+function actorLabel(row: AdminScheduledTaskRunDetailDTO): string {
+  if (row.actor_login) return row.actor_login;
+  if (row.actor_staff_id !== null) return `#${row.actor_staff_id}`;
+  return row.trigger_type === 'schedule' ? '系统' : '—';
+}
+
+function isComplexContextValue(value: unknown): boolean {
+  return value !== null && typeof value === 'object';
+}
+
+function formatContextValue(value: unknown): string {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (typeof value === 'number' || typeof value === 'string') return String(value);
+  return JSON.stringify(value, null, 2);
 }
 
 async function reload(): Promise<void> {
@@ -73,19 +142,22 @@ async function reload(): Promise<void> {
 }
 
 async function openDetail(row: AdminScheduledTaskRunListItemDTO): Promise<void> {
+  detail.value = null;
+  detailOpen.value = true;
+  detailLoading.value = true;
+  errorMessage.value = '';
   try {
-    const detail = await getScheduledTaskRun(row.id);
-    detailBody.value = [
-      detail.error_message ? `错误：${detail.error_message}` : '执行成功',
-      detail.context ? `上下文：${JSON.stringify(detail.context)}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
-    detailMeta.value = `${detail.task_name} · ${triggerLabel(detail.trigger_type)} · ${statusLabel(detail.status)} · ${detail.started_at}`;
-    detailOpen.value = true;
+    detail.value = await getScheduledTaskRun(row.id);
   } catch (err) {
+    detailOpen.value = false;
     errorMessage.value = (err as Error).message || '加载详情失败';
+  } finally {
+    detailLoading.value = false;
   }
+}
+
+function onDetailClosed(): void {
+  detail.value = null;
 }
 
 onMounted(async () => {
@@ -155,7 +227,9 @@ onMounted(async () => {
         <el-table-column prop="duration_ms" label="耗时(ms)" width="110" />
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+            <el-button link type="primary" data-action="detail" @click="openDetail(row)"
+              >详情</el-button
+            >
           </template>
         </el-table-column>
       </el-table>
@@ -168,9 +242,74 @@ onMounted(async () => {
       />
     </el-card>
 
-    <el-dialog v-model="detailOpen" title="执行详情" width="560px">
-      <p class="meta">{{ detailMeta }}</p>
-      <pre class="detail-body">{{ detailBody }}</pre>
+    <el-dialog
+      v-model="detailOpen"
+      :title="dialogTitle"
+      width="min(640px, calc(100vw - 32px))"
+      :append-to-body="false"
+      destroy-on-close
+      @closed="onDetailClosed"
+    >
+      <el-skeleton v-if="detailLoading" :rows="6" animated />
+      <div v-else-if="detail" class="run-detail" data-role="run-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="任务" :span="2">{{ detail.task_name }}</el-descriptions-item>
+          <el-descriptions-item label="结果">
+            <el-tag :type="statusTagType(detail.status)" effect="light" size="small">
+              {{ statusLabel(detail.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="触发方式">
+            <el-tag :type="triggerTagType(detail.trigger_type)" effect="light" size="small">
+              {{ triggerLabel(detail.trigger_type) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="操作人">{{ actorLabel(detail) }}</el-descriptions-item>
+          <el-descriptions-item label="耗时">{{
+            formatDuration(detail.duration_ms)
+          }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{ detail.started_at }}</el-descriptions-item>
+          <el-descriptions-item label="结束时间">{{
+            detail.finished_at ?? '—'
+          }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-alert
+          v-if="detail.status === 'failed'"
+          class="detail-alert"
+          type="error"
+          :title="detail.error_message || '执行失败'"
+          show-icon
+          :closable="false"
+        />
+        <el-alert
+          v-else-if="detail.status === 'skipped'"
+          class="detail-alert"
+          type="info"
+          title="本次执行已跳过，未进行实际处理。"
+          show-icon
+          :closable="false"
+        />
+
+        <section v-if="contextEntries.length > 0" class="context-section" data-role="run-context">
+          <h3>执行结果</h3>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item
+              v-for="entry in contextEntries"
+              :key="entry.key"
+              :label="entry.label"
+              :span="entry.complex ? 2 : 1"
+            >
+              <pre v-if="entry.complex" class="context-json">{{ entry.display }}</pre>
+              <span v-else>{{ entry.display }}</span>
+            </el-descriptions-item>
+          </el-descriptions>
+        </section>
+      </div>
+
+      <template #footer>
+        <el-button @click="detailOpen = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -178,6 +317,13 @@ onMounted(async () => {
 <style scoped>
 .page-head {
   margin-bottom: 16px;
+}
+.page-head h1 {
+  margin: 0 0 4px;
+}
+.page-head p {
+  margin: 0;
+  color: var(--el-text-color-secondary);
 }
 .filters {
   display: flex;
@@ -191,17 +337,28 @@ onMounted(async () => {
 .mt-4 {
   margin-top: 16px;
 }
-.pager {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
+.run-detail {
+  display: grid;
+  gap: 16px;
 }
-.meta {
-  margin-bottom: 12px;
-  color: var(--el-text-color-secondary);
+.detail-alert {
+  margin: 0;
 }
-.detail-body {
+.context-section h3 {
+  margin: 0 0 8px;
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  font-weight: 600;
+}
+.context-json {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+  font-size: 12px;
+  line-height: 1.6;
   white-space: pre-wrap;
-  font-family: inherit;
+  overflow-wrap: anywhere;
 }
 </style>
