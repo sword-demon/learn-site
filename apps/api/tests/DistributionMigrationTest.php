@@ -105,12 +105,12 @@ final class DistributionMigrationTest extends TestCase
     public function testConfigLevelCapCheckIsIdempotentAndDroppedInDown(): void
     {
         // The ALTER TABLE … ADD CONSTRAINT chk_distribution_level_cap must
-        // guard with hasCheckConstraint so re-running the migration does not
-        // trip MySQL 1061 "Duplicate key name". down() must drop it back out.
-        // ponytail: pin the guard pattern, not a string match on "if not
-        // exists" (Phinx uses hasCheckConstraint, not IF NOT EXISTS).
+        // guard before adding so re-running the migration does not trip MySQL
+        // 1061 "Duplicate key name". Phinx 0.16 has no Table::hasCheckConstraint,
+        // so the guard queries information_schema. down() must drop it back out.
         self::assertStringContainsString('chk_distribution_level_cap', $this->migrationSource);
-        self::assertStringContainsString("hasCheckConstraint('chk_distribution_level_cap')", $this->migrationSource);
+        self::assertStringContainsString('hasNamedCheckConstraint', $this->migrationSource);
+        self::assertStringContainsString('information_schema.TABLE_CONSTRAINTS', $this->migrationSource);
         self::assertStringContainsString('DROP CONSTRAINT IF EXISTS chk_distribution_level_cap', $this->migrationSource);
     }
 

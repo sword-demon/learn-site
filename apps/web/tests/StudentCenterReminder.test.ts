@@ -116,4 +116,45 @@ describe('StudentCenterView learning reminders', () => {
     expect(notificationsApi.markNotificationRead).toHaveBeenCalledWith(8);
     expect(routerApi.push).toHaveBeenCalledWith('/me/coupons');
   });
+
+  it('renders a single start-learning action for a course startup reminder', async () => {
+    notificationsApi.listNotifications.mockResolvedValue({
+      items: [
+        {
+          id: 9,
+          kind: 'learning_reminder',
+          title: '开始学习「启动队列课程」',
+          body: '你的课程访问权已经生效。点击开始学习进入本课程的学习入口。',
+          resource_type: 'course',
+          resource_id: 42,
+          resource_path: '/courses/42',
+          resource_available: true,
+          resource_unavailable_reason: null,
+          payload: null,
+          read: false,
+          created_at: '2026-09-12T10:00:00+08:00',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useLoginFamilyStore().signIn(tokenPair);
+    const wrapper = mount(StudentCenterView, {
+      global: {
+        plugins: [pinia],
+        stubs: { RouterLink: { template: '<a><slot /></a>' } },
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('开始学习');
+    expect(wrapper.text()).not.toContain('查看关联内容');
+    await wrapper.get('button[data-resource-id="9"]').trigger('click');
+    await flushPromises();
+    expect(routerApi.push).toHaveBeenCalledWith('/courses/42');
+    wrapper.unmount();
+  });
 });

@@ -121,6 +121,9 @@ export class TestMapper implements CatalogDataMapper, TestableCatalogDataMapper 
         sale_price: mockTree.sale_price,
         sale_start_at: mockTree.sale_start_at,
         sale_end_at: mockTree.sale_end_at,
+        idle_threshold_hours: mockTree.idle_threshold_hours,
+        reminder_frequency_hours: mockTree.reminder_frequency_hours,
+        reminder_cap: mockTree.reminder_cap,
         created_by_staff_id: mockTree.created_by_staff_id,
         chapters: mockTree.chapters.map((chapter) => ({
           id: chapter.id,

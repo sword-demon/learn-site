@@ -44,6 +44,10 @@ use support\think\Db;
  */
 final class CourseService
 {
+    public const DEFAULT_IDLE_THRESHOLD_HOURS = 72;
+    public const DEFAULT_REMINDER_FREQUENCY_HOURS = 72;
+    public const DEFAULT_REMINDER_CAP = 3;
+
     public function __construct(private readonly CoursePublishChecklistService $checklist = new CoursePublishChecklistService()) {}
 
     /** @return array<string, mixed> */
@@ -77,6 +81,15 @@ final class CourseService
                 'sale_price'           => (float) ($input['sale_price'] ?? 0),
                 'sale_start_at'        => $this->datetimeOrNull($input['sale_start_at'] ?? null),
                 'sale_end_at'          => $this->datetimeOrNull($input['sale_end_at'] ?? null),
+                'idle_threshold_hours' => array_key_exists('idle_threshold_hours', $input)
+                    ? (int) $input['idle_threshold_hours']
+                    : self::DEFAULT_IDLE_THRESHOLD_HOURS,
+                'reminder_frequency_hours' => array_key_exists('reminder_frequency_hours', $input)
+                    ? (int) $input['reminder_frequency_hours']
+                    : self::DEFAULT_REMINDER_FREQUENCY_HOURS,
+                'reminder_cap'         => array_key_exists('reminder_cap', $input)
+                    ? (int) $input['reminder_cap']
+                    : self::DEFAULT_REMINDER_CAP,
                 'created_by_staff_id'  => $actorStaffAccountId,
                 'created_at'           => $now,
                 'updated_at'           => $now,
@@ -150,6 +163,11 @@ final class CourseService
             }
             if ($introHtml !== null) {
                 $patch['intro_rich_text'] = $introHtml;
+            }
+            foreach (['idle_threshold_hours', 'reminder_frequency_hours', 'reminder_cap'] as $key) {
+                if (array_key_exists($key, $input)) {
+                    $patch[$key] = (int) $input[$key];
+                }
             }
             Course::where('id', $course->id)->update($patch);
         });
@@ -549,11 +567,14 @@ final class CourseService
     }
 
     /** @return array<string, mixed> */
-    public function getCourseTree(int $id): array
+    public function getCourseTree(int $id, ?int $actorStaffAccountId = null): array
     {
         $course = Course::find($id);
         if (!$course) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
+        }
+        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+            $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $chapterRows = Db::name('chapters')->where('course_id', $id)
             ->order('sort', 'asc')->order('id', 'asc')->select()->toArray();
@@ -658,6 +679,51 @@ final class CourseService
                 throw new BusinessException('VALIDATION_FAILED', 'INTRO_REQUIRED');
             }
         }
+
+        $this->assertStartupPolicyInput($input, $isUpdate);
+    }
+
+    /** @param array<string, mixed> $input */
+    private function assertStartupPolicyInput(array $input, bool $isUpdate): void
+    {
+        if (
+            !$isUpdate
+            && !array_key_exists('idle_threshold_hours', $input)
+            && !array_key_exists('reminder_frequency_hours', $input)
+            && !array_key_exists('reminder_cap', $input)
+        ) {
+            return;
+        }
+        $idle = $this->positivePolicyInt(
+            $input['idle_threshold_hours'] ?? self::DEFAULT_IDLE_THRESHOLD_HOURS,
+            'IDLE_THRESHOLD_INVALID',
+        );
+        $frequency = $this->positivePolicyInt(
+            $input['reminder_frequency_hours'] ?? self::DEFAULT_REMINDER_FREQUENCY_HOURS,
+            'REMINDER_FREQUENCY_INVALID',
+        );
+        $this->positivePolicyInt(
+            $input['reminder_cap'] ?? self::DEFAULT_REMINDER_CAP,
+            'REMINDER_CAP_INVALID',
+        );
+        if ($frequency > $idle) {
+            throw new BusinessException('VALIDATION_FAILED', 'REMINDER_FREQUENCY_EXCEEDS_THRESHOLD');
+        }
+    }
+
+    private function positivePolicyInt(mixed $value, string $code): int
+    {
+        if (is_bool($value) || is_array($value) || $value === null || $value === '') {
+            throw new BusinessException('VALIDATION_FAILED', $code);
+        }
+        if (!is_numeric($value) || (string) (int) $value !== trim((string) $value)) {
+            throw new BusinessException('VALIDATION_FAILED', $code);
+        }
+        $int = (int) $value;
+        if ($int < 1) {
+            throw new BusinessException('VALIDATION_FAILED', $code);
+        }
+        return $int;
     }
 
 
@@ -752,6 +818,9 @@ final class CourseService
             'sale_price'           => (float) $row['sale_price'],
             'sale_start_at'        => $row['sale_start_at'] ?? null,
             'sale_end_at'          => $row['sale_end_at'] ?? null,
+            'idle_threshold_hours' => (int) ($row['idle_threshold_hours'] ?? self::DEFAULT_IDLE_THRESHOLD_HOURS),
+            'reminder_frequency_hours' => (int) ($row['reminder_frequency_hours'] ?? self::DEFAULT_REMINDER_FREQUENCY_HOURS),
+            'reminder_cap'         => (int) ($row['reminder_cap'] ?? self::DEFAULT_REMINDER_CAP),
             'created_by_staff_id'  => (int) $row['created_by_staff_id'],
             'created_at'           => (string) $row['created_at'],
             'updated_at'           => (string) $row['updated_at'],
@@ -820,6 +889,9 @@ final class CourseService
             'sale_price'    => (float) $course->sale_price,
             'sale_start_at' => $course->sale_start_at,
             'sale_end_at'   => $course->sale_end_at,
+            'idle_threshold_hours' => (int) ($course->idle_threshold_hours ?? self::DEFAULT_IDLE_THRESHOLD_HOURS),
+            'reminder_frequency_hours' => (int) ($course->reminder_frequency_hours ?? self::DEFAULT_REMINDER_FREQUENCY_HOURS),
+            'reminder_cap' => (int) ($course->reminder_cap ?? self::DEFAULT_REMINDER_CAP),
         ];
     }
 

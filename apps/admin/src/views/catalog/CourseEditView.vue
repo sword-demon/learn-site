@@ -105,6 +105,18 @@
               style="width: 100%"
             />
           </el-form-item>
+          <el-form-item label="闲置阈值（小时）">
+            <el-input-number v-model="form.idle_threshold_hours" :min="1" :precision="0" />
+          </el-form-item>
+          <el-form-item label="触达频率（小时）">
+            <el-input-number v-model="form.reminder_frequency_hours" :min="1" :precision="0" />
+          </el-form-item>
+          <el-form-item label="触达次数上限">
+            <el-input-number v-model="form.reminder_cap" :min="1" :precision="0" />
+          </el-form-item>
+          <p class="field-hint span-2">
+            闲置时长从访问权生效后起算。触达频率不得大于闲置阈值。发送启动提醒不会改变访问权或学习事实。
+          </p>
         </el-form>
       </el-tab-pane>
 
@@ -316,7 +328,11 @@
         </el-button>
       </template>
     </el-dialog>
-    <CoursePublishChecklistDialog v-model="publishing" :course-id="courseId ?? 0" @published="reload" />
+    <CoursePublishChecklistDialog
+      v-model="publishing"
+      :course-id="courseId ?? 0"
+      @published="reload"
+    />
   </section>
 </template>
 
@@ -408,6 +424,9 @@ const form = reactive({
   sale_price: 0,
   sale_start_at: '',
   sale_end_at: '',
+  idle_threshold_hours: 72,
+  reminder_frequency_hours: 72,
+  reminder_cap: 3,
 });
 
 const categoryOptions = ref<CategoryNode[]>([]);
@@ -460,7 +479,9 @@ function applyStructureQuery(): void {
     activeTab.value = 'structure';
   }
   if (lessonId === null) return;
-  const chapter = tree.chapters.find((item) => item.lessons.some((lesson) => lesson.id === lessonId));
+  const chapter = tree.chapters.find((item) =>
+    item.lessons.some((lesson) => lesson.id === lessonId),
+  );
   if (!chapter) return;
   selectedChapterId.value = chapter.id;
   selectedLessonId.value = lessonId;
@@ -513,6 +534,9 @@ function applyCourse(dto: CourseDTO): void {
   form.sale_price = Number(dto.sale_price ?? 0);
   form.sale_start_at = dto.sale_start_at ?? '';
   form.sale_end_at = dto.sale_end_at ?? '';
+  form.idle_threshold_hours = dto.idle_threshold_hours;
+  form.reminder_frequency_hours = dto.reminder_frequency_hours;
+  form.reminder_cap = dto.reminder_cap;
   saleRange.value =
     dto.sale_start_at && dto.sale_end_at ? [dto.sale_start_at, dto.sale_end_at] : null;
   Object.assign(tree, dto);
@@ -598,6 +622,9 @@ async function saveDraft(): Promise<void> {
       sale_price: Number(form.sale_price),
       sale_start_at: form.sale_start_at || undefined,
       sale_end_at: form.sale_end_at || undefined,
+      idle_threshold_hours: Number(form.idle_threshold_hours),
+      reminder_frequency_hours: Number(form.reminder_frequency_hours),
+      reminder_cap: Number(form.reminder_cap),
     };
     if (isNew.value) {
       const dto = await createCourse(payload);

@@ -378,11 +378,6 @@ final class OpsInboxService
             'retry_count' => $nextAttempt,
             'retry_at' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))->modify('+' . $backoff . ' seconds')->format('Y-m-d H:i:s'),
         ]);
-        try {
-            $this->dispatch->retryFanOut($dispatchId);
-        } catch (\Throwable $e) {
-            Logger::warning('ops_inbox.auto_retry_enqueue_failed', ['dispatch_id' => $dispatchId, 'err' => $e->getMessage()]);
-        }
         return 'scheduled';
     }
 
@@ -413,6 +408,14 @@ final class OpsInboxService
                 continue;
             }
             try {
+                $claimed = Db::name('notification_dispatches')
+                    ->where('id', $dispatchId)
+                    ->where('fan_out_status', 'failed')
+                    ->where('retry_at', '<=', $now)
+                    ->update(['retry_at' => null]);
+                if ($claimed !== 1) {
+                    continue;
+                }
                 $this->dispatch->retryFanOut($dispatchId);
                 $processed++;
             } catch (\Throwable $e) {

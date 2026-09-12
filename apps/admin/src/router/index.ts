@@ -20,6 +20,7 @@ import LearnerListView from '@/views/students/LearnerListView.vue';
 import LearnerProgressView from '@/views/students/LearnerProgressView.vue';
 import LearnerLearningRecordsView from '@/views/students/LearnerLearningRecordsView.vue';
 import CourseStudentView from '@/views/students/CourseStudentView.vue';
+import CourseStartQueueView from '@/views/students/CourseStartQueueView.vue';
 import LearningFactFunnelView from '@/views/catalog/LearningFactFunnelView.vue';
 import SiteProfileView from '@/views/site/SiteProfileView.vue';
 import AuditLogView from '@/views/site/AuditLogView.vue';
@@ -251,6 +252,17 @@ const routes: RouteRecordRaw[] = [
           title: '课程学员',
           permission: 'course_student.view',
           breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '课程学员' }],
+        },
+      },
+      {
+        path: 'courses/:id/start-queue',
+        name: 'course-start-queue',
+        component: CourseStartQueueView,
+        props: true,
+        meta: {
+          title: '启动队列',
+          permission: 'course_student.view',
+          breadcrumb: [{ title: '课程管理', path: '/courses' }, { title: '启动队列' }],
         },
       },
       {

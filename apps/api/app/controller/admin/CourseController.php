@@ -38,7 +38,10 @@ final class CourseController
 
     public function show(Request $request, string $id): \support\Response
     {
-        return $this->wrap(fn() => $this->service->getCourseTree($this->id($id)));
+        return $this->wrap(fn() => $this->service->getCourseTree(
+            $this->id($id),
+            (int) ($request->account_id ?? 0),
+        ));
     }
 
     public function create(Request $request): \support\Response
@@ -98,8 +101,8 @@ final class CourseController
 
     public function listChapters(Request $request, string $id): \support\Response
     {
-        return $this->wrap(function () use ($id) {
-            $tree = $this->service->getCourseTree($this->id($id));
+        return $this->wrap(function () use ($request, $id) {
+            $tree = $this->service->getCourseTree($this->id($id), (int) ($request->account_id ?? 0));
             return ['items' => $tree['chapters'] ?? []];
         });
     }
@@ -127,7 +130,7 @@ final class CourseController
     public function listLessons(Request $request, string $id): \support\Response
     {
         return $this->wrap(function () use ($request, $id) {
-            $tree = $this->service->getCourseTree($this->id($id));
+            $tree = $this->service->getCourseTree($this->id($id), (int) ($request->account_id ?? 0));
             $chapterId = (int) $request->get('chapter_id', 0);
             $all = [];
             foreach ($tree['chapters'] ?? [] as $ch) {

@@ -14,7 +14,7 @@ import { http } from '@/api/http';
 export type { AdminNotificationDetail, AdminNotificationList, AdminNotificationListItem };
 
 export interface NotificationListParams {
-  type?: 'announcement' | 'internal_message' | 'course_published' | '';
+  type?: 'announcement' | 'internal_message' | 'course_published' | 'learning_reminder' | '';
   from?: string;
   to?: string;
   page?: number;

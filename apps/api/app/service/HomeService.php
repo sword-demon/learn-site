@@ -19,7 +19,7 @@ final class HomeService
      * Public site profile. Returns a default shape when the table is
      * missing (first boot) so the home payload contract is stable.
      *
-     * @return array{title:string,subtitle:string,body_html:string,contact_email:string,updated_at:?string}
+     * @return array{title:string,subtitle:string,body_html:string,contact_email:string,icp_number:string,geo_content:string,updated_at:?string}
      */
     public function siteIntro(): array
     {
@@ -38,6 +38,8 @@ final class HomeService
                         'subtitle' => '选课、学习、交流',
                         'body_html' => '',
                         'contact_email' => '',
+                        'icp_number' => '',
+                        'geo_content' => '',
                         'updated_at' => null,
                     ];
                 }
@@ -46,6 +48,8 @@ final class HomeService
                     'subtitle' => (string) ($row['subtitle'] ?? ''),
                     'body_html' => (string) ($row['body_html'] ?? ''),
                     'contact_email' => (string) ($row['contact_email'] ?? ''),
+                    'icp_number' => (string) ($row['icp_number'] ?? ''),
+                    'geo_content' => (string) ($row['geo_content'] ?? ''),
                     'updated_at' => isset($row['updated_at']) && $row['updated_at'] !== null
                         ? (string) $row['updated_at']
                         : null,

@@ -20,6 +20,9 @@ use support\think\Model;
  * @property float $sale_price
  * @property string|null $sale_start_at
  * @property string|null $sale_end_at
+ * @property int $idle_threshold_hours
+ * @property int $reminder_frequency_hours
+ * @property int $reminder_cap
  * @property int $created_by_staff_id
  * @property string $created_at
  * @property string $updated_at

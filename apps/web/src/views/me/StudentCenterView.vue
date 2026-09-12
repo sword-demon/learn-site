@@ -826,7 +826,11 @@ onBeforeUnmount(() => {
               :loading="readingId === message.id"
               @click="openMessageResource(message)"
             >
-              查看关联内容
+              {{
+                message.kind === 'learning_reminder' && message.resource_type === 'course'
+                  ? '开始学习'
+                  : '查看关联内容'
+              }}
             </el-button>
             <span v-else-if="message.resource_type" class="small muted">
               {{ message.resource_unavailable_reason ?? '关联内容已不可用' }}

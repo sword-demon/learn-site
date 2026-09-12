@@ -20,7 +20,7 @@ const detailMeta = ref('');
 const retryingId = ref<number | null>(null);
 
 const filters = ref({
-  type: '' as '' | 'announcement' | 'internal_message' | 'course_published',
+  type: '' as '' | 'announcement' | 'internal_message' | 'course_published' | 'learning_reminder',
   from: '',
   to: '',
   page: 1,
@@ -30,6 +30,7 @@ const filters = ref({
 function typeLabel(type: AdminNotificationListItemDTO['type']): string {
   if (type === 'announcement') return '公告';
   if (type === 'course_published') return '课程发布';
+  if (type === 'learning_reminder') return '启动提醒';
   return '站内信';
 }
 
@@ -64,7 +65,7 @@ async function reload(): Promise<void> {
     const params: {
       page: number;
       limit: number;
-      type?: 'announcement' | 'internal_message' | 'course_published';
+      type?: 'announcement' | 'internal_message' | 'course_published' | 'learning_reminder';
       from?: string;
       to?: string;
     } = { page: filters.value.page, limit: filters.value.limit };
@@ -132,6 +133,7 @@ onMounted(() => {
           <el-option label="公告" value="announcement" />
           <el-option label="站内信" value="internal_message" />
           <el-option label="课程发布" value="course_published" />
+          <el-option label="启动提醒" value="learning_reminder" />
         </el-select>
         <el-date-picker
           v-model="filters.from"

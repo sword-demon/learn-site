@@ -43,6 +43,42 @@ final class CourseStudentController
         });
     }
 
+    public function startQueue(Request $request, string $courseId): \support\Response
+    {
+        return $this->wrap(function () use ($request, $courseId) {
+            if (!ctype_digit($courseId)) {
+                throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
+            }
+            return $this->service->listStartQueue($this->staffId($request), (int) $courseId, [
+                'source' => $request->get('source'),
+                'startup_state' => $request->get('startup_state'),
+                'sort' => $request->get('sort'),
+                'order' => $request->get('order'),
+                'page' => $request->get('page', 1),
+                'limit' => $request->get('limit', 20),
+            ]);
+        });
+    }
+
+    public function sendStartReminders(Request $request, string $courseId): \support\Response
+    {
+        return $this->wrap(function () use ($request, $courseId) {
+            if (!ctype_digit($courseId)) {
+                throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
+            }
+            $body = self::readJson($request);
+            $learnerIds = $body['learner_ids'] ?? [];
+            if (!is_array($learnerIds)) {
+                $learnerIds = [];
+            }
+            return $this->service->sendStartReminders(
+                $this->staffId($request),
+                (int) $courseId,
+                array_map('intval', $learnerIds),
+            );
+        });
+    }
+
     /**
      * Phase 21 / US18 — revoke a free entitlement (T102).
      *

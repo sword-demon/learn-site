@@ -104,6 +104,52 @@ final class LearnerNotificationResourceTest extends TestCase
         self::assertSame('/courses/' . $courseId, $item['resource_path']);
     }
 
+    public function testCourseStartupReminderRequiresActiveAccessAndEffectiveLessons(): void
+    {
+        $entitledId = LearningActionLoopFixtures::learner('13900000021');
+        $outsiderId = LearningActionLoopFixtures::learner('13900000022');
+        $staffId = LearningActionLoopFixtures::staff('fixture-course-start-resource');
+        $courseId = LearningActionLoopFixtures::course($staffId);
+        LearningActionLoopFixtures::lesson($courseId);
+        LearningActionLoopFixtures::grant($entitledId, $courseId);
+        $service = new MessageService();
+        $service->emit(
+            'learning_reminder',
+            $entitledId,
+            '开始学习',
+            null,
+            [],
+            'course',
+            $courseId,
+            'resource:course-start-owner',
+        );
+        $service->emit(
+            'learning_reminder',
+            $outsiderId,
+            '开始学习',
+            null,
+            [],
+            'course',
+            $courseId,
+            'resource:course-start-other',
+        );
+
+        $owner = $this->listFor($entitledId)[0];
+        $other = $this->listFor($outsiderId)[0];
+        self::assertTrue($owner['resource_available']);
+        self::assertSame('/courses/' . $courseId, $owner['resource_path']);
+        self::assertFalse($other['resource_available']);
+        self::assertSame('/', $other['resource_path']);
+        self::assertSame('课程或课节已不可学习', $other['resource_unavailable_reason']);
+
+        Db::name('lessons')->where('chapter_id', 'in', function ($chapters) use ($courseId): void {
+            $chapters->name('chapters')->where('course_id', $courseId)->field('id');
+        })->update(['status' => 'disabled']);
+        $empty = $this->listFor($entitledId)[0];
+        self::assertFalse($empty['resource_available']);
+        self::assertSame('/', $empty['resource_path']);
+    }
+
     public function testListResourceUsesItsServerConfirmedFallbackPathWithoutAnId(): void
     {
         $learnerId = LearningActionLoopFixtures::learner('13900000015');

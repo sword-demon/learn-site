@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const CategoryStatus = z.enum(['enabled', 'disabled']);
+export const CategoryStatus = z.enum(["enabled", "disabled"]);
 export type CategoryStatus = z.infer<typeof CategoryStatus>;
 
 export const CategoryDTO = z.object({
@@ -16,16 +16,16 @@ export const CategoryDTO = z.object({
 });
 export type CategoryDTO = z.infer<typeof CategoryDTO>;
 
-export const CourseStatus = z.enum(['draft', 'published', 'unpublished']);
+export const CourseStatus = z.enum(["draft", "published", "unpublished"]);
 export type CourseStatus = z.infer<typeof CourseStatus>;
 
-export const PriceMode = z.enum(['free', 'paid']);
+export const PriceMode = z.enum(["free", "paid"]);
 export type PriceMode = z.infer<typeof PriceMode>;
 
-export const LessonContentType = z.enum(['markdown', 'pdf', 'video']);
+export const LessonContentType = z.enum(["markdown", "pdf", "video"]);
 export type LessonContentType = z.infer<typeof LessonContentType>;
 
-export const LessonStatus = z.enum(['enabled', 'disabled']);
+export const LessonStatus = z.enum(["enabled", "disabled"]);
 export type LessonStatus = z.infer<typeof LessonStatus>;
 
 export const CourseDTO = z.object({
@@ -43,6 +43,9 @@ export const CourseDTO = z.object({
   sale_price: z.number().nonnegative(),
   sale_start_at: z.string().nullable(),
   sale_end_at: z.string().nullable(),
+  idle_threshold_hours: z.number().int().positive(),
+  reminder_frequency_hours: z.number().int().positive(),
+  reminder_cap: z.number().int().positive(),
   created_by_staff_id: z.number().int().positive(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -89,11 +92,11 @@ export type CourseDeletionResult = z.infer<typeof CourseDeletionResult>;
 
 export const AssetDTO = z.object({
   id: z.number().int().positive(),
-  kind: z.enum(['pdf', 'video']),
+  kind: z.enum(["pdf", "video"]),
   storage_path: z.string(),
   mime_type: z.string(),
   size_bytes: z.number().int().nonnegative(),
-  status: z.enum(['processing', 'ready', 'missing', 'broken']),
+  status: z.enum(["processing", "ready", "missing", "broken"]),
 });
 export type AssetDTO = z.infer<typeof AssetDTO>;
 
@@ -129,7 +132,9 @@ export type UpdateCategoryInput = z.infer<typeof UpdateCategoryInput>;
 export const UpdateCategoryStatusInput = z.object({
   status: CategoryStatus,
 });
-export type UpdateCategoryStatusInput = z.infer<typeof UpdateCategoryStatusInput>;
+export type UpdateCategoryStatusInput = z.infer<
+  typeof UpdateCategoryStatusInput
+>;
 
 export const CreateCourseInput = z.object({
   department_id: z.number().int().positive(),
@@ -144,6 +149,9 @@ export const CreateCourseInput = z.object({
   sale_price: z.number().nonnegative().optional(),
   sale_start_at: z.string().optional(),
   sale_end_at: z.string().optional(),
+  idle_threshold_hours: z.number().int().positive().optional(),
+  reminder_frequency_hours: z.number().int().positive().optional(),
+  reminder_cap: z.number().int().positive().optional(),
 });
 export type CreateCourseInput = z.infer<typeof CreateCourseInput>;
 
@@ -240,7 +248,9 @@ export const ChapterWithLessonSummariesDTO = z.object({
   sort: z.number().int().min(0),
   lessons: z.array(LessonSummaryDTO),
 });
-export type ChapterWithLessonSummariesDTO = z.infer<typeof ChapterWithLessonSummariesDTO>;
+export type ChapterWithLessonSummariesDTO = z.infer<
+  typeof ChapterWithLessonSummariesDTO
+>;
 
 export const PublicCourseDTO = z.object({
   id: z.number().int().positive(),
@@ -257,8 +267,14 @@ export const PublicCourseDTO = z.object({
   sale_start_at: z.string().nullable(),
   sale_end_at: z.string().nullable(),
   viewer_authorized: z.boolean(),
-  viewer_entitlement_status: z.enum(['active', 'revoked']).nullable().default(null),
-  viewer_entitlement_source: z.enum(['free', 'purchase', 'activation_code']).nullable().default(null),
+  viewer_entitlement_status: z
+    .enum(["active", "revoked"])
+    .nullable()
+    .default(null),
+  viewer_entitlement_source: z
+    .enum(["free", "purchase", "activation_code"])
+    .nullable()
+    .default(null),
   viewer_revoked_reason: z.string().nullable().default(null),
   viewer_can_rejoin: z.boolean().default(false),
   learner_count: z.number().int().nonnegative(),
@@ -276,25 +292,29 @@ export const CategoryCoursesEnvelopeDTO = z.object({
   category: CategoryBreadcrumbDTO,
   list: PublicCourseList,
 });
-export type CategoryCoursesEnvelopeDTO = z.infer<typeof CategoryCoursesEnvelopeDTO>;
+export type CategoryCoursesEnvelopeDTO = z.infer<
+  typeof CategoryCoursesEnvelopeDTO
+>;
 
 export const LessonDeliveryMarkdownDTO = z.object({
-  kind: z.literal('markdown'),
+  kind: z.literal("markdown"),
   html: z.string(),
 });
-export type LessonDeliveryMarkdownDTO = z.infer<typeof LessonDeliveryMarkdownDTO>;
+export type LessonDeliveryMarkdownDTO = z.infer<
+  typeof LessonDeliveryMarkdownDTO
+>;
 
 export const LessonDeliveryAssetDTO = z.object({
-  kind: z.enum(['pdf', 'video']),
+  kind: z.enum(["pdf", "video"]),
   asset_id: z.number().int().positive(),
-  media_url: z.string().startsWith('/api/media/assets/'),
+  media_url: z.string().startsWith("/api/media/assets/"),
   mime_type: z.string(),
   size_bytes: z.number().int().nonnegative(),
-  status: z.enum(['processing', 'ready', 'missing', 'broken']),
+  status: z.enum(["processing", "ready", "missing", "broken"]),
 });
 export type LessonDeliveryAssetDTO = z.infer<typeof LessonDeliveryAssetDTO>;
 
-export const LessonDeliveryDTO = z.discriminatedUnion('kind', [
+export const LessonDeliveryDTO = z.discriminatedUnion("kind", [
   LessonDeliveryMarkdownDTO,
   LessonDeliveryAssetDTO,
 ]);

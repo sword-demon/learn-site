@@ -45,6 +45,11 @@ function openFunnel(): void {
   void router.push({ name: 'course-learning-funnel', params: { id: String(courseId.value) } });
 }
 
+function openStartQueue(): void {
+  if (courseId.value === null) return;
+  void router.push({ name: 'course-start-queue', params: { id: String(courseId.value) } });
+}
+
 async function reload(): Promise<void> {
   if (courseId.value === null) return;
   loading.value = true;
@@ -177,6 +182,15 @@ function revokeErrorMessage(error: unknown): string {
         @click="openFunnel"
       >
         学习事实漏斗
+      </el-button>
+      <el-button
+        type="primary"
+        link
+        data-action="open-start-queue"
+        :disabled="courseId === null"
+        @click="openStartQueue"
+      >
+        启动队列
       </el-button>
     </header>
 

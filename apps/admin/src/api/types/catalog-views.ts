@@ -69,6 +69,9 @@ export interface CourseTableView {
   sale_price?: number;
   sale_start_at?: string | null;
   sale_end_at?: string | null;
+  idle_threshold_hours: number;
+  reminder_frequency_hours: number;
+  reminder_cap: number;
   created_by_staff_id: number;
   created_at: string;
   updated_at: string;
@@ -93,6 +96,9 @@ export interface CourseEditorForm {
   sale_price?: number;
   sale_start_at?: string | null;
   sale_end_at?: string | null;
+  idle_threshold_hours: number;
+  reminder_frequency_hours: number;
+  reminder_cap: number;
   created_by_staff_id?: number; // Only set on update
 
   // Children guarantees (F3: arrays never undefined)

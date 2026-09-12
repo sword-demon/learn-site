@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ideation: 这个课站下一步长什么</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,500;0,8..60,600;1,8..60,500&amp;display=swap">
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d9d0c2;
+      --card: #fffdf8;
+      --accent: #9a3b24;
+      --accent-soft: #f3e4dc;
+      --accent-text: #7a2e1c;
+      --ok-soft: #e7efe4;
+      --ok-text: #2d4a28;
+      --warn-soft: #f6ead6;
+      --warn-text: #6a4a12;
+      --chip: #efe8dc;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "PingFang SC", "Noto Sans SC", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1, h2, h3 {
+      font-family: "Source Serif 4", "Songti SC", "Noto Serif SC", serif;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    h1 { font-size: 2rem; margin: 0.4rem 0 0.75rem; }
+    h2 { font-size: 1.45rem; margin: 2.4rem 0 0.8rem; }
+    h3 { font-size: 1.2rem; margin: 0 0 0.6rem; }
+    p { max-width: 70ch; }
+    strong { color: inherit; font-weight: 600; }
+    a { color: var(--accent); }
+    code {
+      font-family: ui-monospace, "IBM Plex Mono", Menlo, monospace;
+      font-size: 0.88em;
+      background: var(--chip);
+      padding: 0.08em 0.35em;
+      border-radius: 4px;
+    }
+    .eyebrow {
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-text);
+      font-weight: 600;
+    }
+    header.meta {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 1.4rem;
+      margin-bottom: 1.8rem;
+    }
+    header.meta dl {
+      display: grid;
+      grid-template-columns: 7rem 1fr;
+      gap: 0.35rem 0.8rem;
+      margin: 1rem 0 0;
+      max-width: none;
+    }
+    header.meta dt {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    header.meta dd { margin: 0; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+      margin: 1.2rem 0 0;
+    }
+    .stats div {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+    }
+    .stats b { display: block; font-size: 1.15rem; }
+    .stats span { color: var(--muted); font-size: 0.78rem; }
+    .chip {
+      display: inline-block;
+      background: var(--chip);
+      border-radius: 999px;
+      padding: 0.12rem 0.55rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+    .chip.high { background: var(--ok-soft); color: var(--ok-text); }
+    .chip.med { background: var(--warn-soft); color: var(--warn-text); }
+    .chip.low { background: var(--accent-soft); color: var(--accent-text); }
+    .jump {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.8rem;
+      margin: 0 0 1.2rem;
+      padding: 0;
+      list-style: none;
+    }
+    .jump a { text-decoration: none; font-size: 0.92rem; }
+    article.idea {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.2rem 1.25rem 1.3rem;
+      margin: 0 0 1.1rem;
+    }
+    article.idea .idchip {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      border-radius: 999px;
+      padding: 0.12rem 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 0.45rem;
+    }
+    article.idea dl.fields {
+      display: grid;
+      grid-template-columns: 7.2rem 1fr;
+      gap: 0.45rem 0.9rem;
+      margin: 0.9rem 0 0;
+    }
+    article.idea dt {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    article.idea dd { margin: 0; }
+    .diagram {
+      margin: 1rem 0 0.4rem;
+      background: #fbf7f0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.7rem;
+      overflow-x: auto;
+    }
+    .diagram figcaption {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+    }
+    table.cut {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    table.cut th, table.cut td {
+      text-align: left;
+      vertical-align: top;
+      padding: 0.55rem 0.45rem;
+      border-bottom: 1px solid var(--line);
+    }
+    table.cut th { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+    footer.composition-signal {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    @media (max-width: 720px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      header.meta dl, article.idea dl.fields { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="meta">
+      <p class="eyebrow">Ideation</p>
+      <h1>这个课站下一步长什么</h1>
+      <p>不是再做一个播放器, 也不是改成社群 OS. 仓库已经把买断课权、公开问答、地图不授权钉死. 值得开的下一刀, 都长在这些钉子上, 而不是把钉子拔掉.</p>
+      <dl>
+        <dt>Date</dt><dd><time datetime="2026-09-11">2026-09-11</time></dd>
+        <dt>Topic</dt><dd>open</dd>
+        <dt>Focus</dt><dd>看看当前项目还有什么可以扩展的功能点</dd>
+        <dt>Mode</dt><dd>repo-grounded</dd>
+      </dl>
+      <div class="stats">
+        <div><b>48</b><span>raw ideas across 6 frames</span></div>
+        <div><b>27</b><span>after merge / 8 combos</span></div>
+        <div><b>7</b><span>survivors</span></div>
+        <div><b>0</b><span>axes — surprise-me skip</span></div>
+      </div>
+    </header>
+
+    <section id="grounding-context">
+      <h2>Grounding Context</h2>
+      <p>个人运营的单站点虚拟课: 学习端 SPA、管理端 SPA、Webman API. 学员用大陆手机号, 后台用户用后台账号, 永不合并. 商业闭环已经齐: 免费加入 / 支付成功 / 激活码兑换三种课程访问权, 付费与兑换不可撤销, 免费加入才可取消. 学习地图只推荐路径, 不发课权. 课节问答对已授权学员公开. 触达只有站内消息和可选浏览器 Push. 分销最多 3 级, 只记账不进钱包. 漏斗只报事实, 禁止伪因果.</p>
+      <p>已上线且不要再发明一遍的: 激活码、优惠券领取、ZPay、下一步行动、内容待办、3 级分销账本、发布核验. 本地 WIP 是 <code>017-learning-fact-funnel</code>, 尚未合入. 没有 <code>STRATEGY.md</code>. 增长口令从宪章和 001 读出来: 让已购学员把课学完, 让站长看见力气值不值. 不是多机构商城、不是讲师入驻、不是原生 App.</p>
+      <p>外部 2026 年独立课站在扩会员、教练门户、社群 OS、课内 AI 助教、训练营和学考练. 对本仓库, 那些大多是换公司. 空相邻格里能留下来的, 是买断之上的持续田、公开问答沉淀成教材、路径上的逐课结账、以及一人运营可缺席的站内节拍.</p>
+    </section>
+
+    <section id="topic-axes">
+      <h2>Topic Axes</h2>
+      <p>Decomposition skipped — surprise-me mode.</p>
+    </section>
+
+    <section id="ranked-ideas">
+      <h2>Ranked Ideas</h2>
+      <ul class="jump">
+        <li><a href="#idea-1">1. 买断田亩操作系统</a></li>
+        <li><a href="#idea-2">2. 公开答疑产线</a></li>
+        <li><a href="#idea-3">3. 路径店不是套餐</a></li>
+        <li><a href="#idea-4">4. 锁门外的双轨身份恢复</a></li>
+        <li><a href="#idea-5">5. 一人出版社安全网</a></li>
+        <li><a href="#idea-6">6. 场外银行与铸造宪法</a></li>
+        <li><a href="#idea-7">7. 活开关说明书</a></li>
+      </ul>
+
+      <article class="idea" id="idea-1">
+        <span class="idchip">1.</span>
+        <h3>买断田亩操作系统</h3>
+        <p>把「一次买断过时」翻过来: 已购课是学员名下一块只增不收的田, 不是 SKU 残骸. 登录后的默认页不再是分类树, 而是一条可解释的下一步 (未完成订单、可领的券、未学完的课、未读的持证勘误). 分类树降到 <code>/courses</code>, 首页上的「推荐学习地图」轨道拆掉, 因为它已经在用推荐位说话. 课程再版或课节勘误只投给此刻仍持有该课访问权的人, 文案只报事实, 不写「因为你喜欢」. 不做会员档, 不做可打印证书.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 840 220" width="100%" height="220" role="img" aria-label="访客看分类树, 登录学员进田头, 再版只通知持证人">
+            <rect x="12" y="28" width="250" height="150" rx="10" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="137" y="58" text-anchor="middle" fill="#7a2e1c" font-size="13" font-weight="600">访客</text>
+            <text x="137" y="88" text-anchor="middle" fill="#1c1915" font-size="14">分类树首页</text>
+            <text x="137" y="112" text-anchor="middle" fill="#5c564c" font-size="12">发现课, 不假装已在学</text>
+            <rect x="295" y="28" width="250" height="150" rx="10" fill="#f3e4dc" stroke="#d9d0c2"/>
+            <text x="420" y="58" text-anchor="middle" fill="#7a2e1c" font-size="13" font-weight="600">已登录学员</text>
+            <text x="420" y="88" text-anchor="middle" fill="#1c1915" font-size="14">田头 = 唯一下一步</text>
+            <text x="420" y="112" text-anchor="middle" fill="#5c564c" font-size="12">订单 / 续课 / 持证勘误</text>
+            <rect x="578" y="28" width="250" height="150" rx="10" fill="#e7efe4" stroke="#d9d0c2"/>
+            <text x="703" y="58" text-anchor="middle" fill="#2d4a28" font-size="13" font-weight="600">再版</text>
+            <text x="703" y="88" text-anchor="middle" fill="#1c1915" font-size="14">只通知现持证人</text>
+            <text x="703" y="112" text-anchor="middle" fill="#5c564c" font-size="12">不是全体在册广播</text>
+          </svg>
+          <figcaption>示意: 同一站点, 访客逛目录, 已购的人回田头, 改地块只通知地契持有人.</figcaption>
+        </figure>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>登录默认路由从分类树改成继续场; 发布/勘误的默认听众从全体在册改成相关访问权; 产品叙事从拉新改成养田. 可打印「学完证书」不在这个方向里.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> CONTEXT 把首页钉成分类树且避免推荐位; <code>HomeView.vue</code> 却同时放了 next-action、分类树和推荐地图轨. <code>LearningActionService</code> 已按 orders → coupons → learning_progress → notifications → learning_maps → favorites 算出一条可解释动作. CONTEXT 课程发布消息默认全体在册; 015 FR-034 禁止的是兴趣/分类筛选, 不是按访问权过滤. ADR-0002: 支付成功的访问权一律不可取消, 下架后付费学员默认仍能学.</dd>
+          <dt>Rationale</dt>
+          <dd>已购学员打开站点仍先看到逛店, 等于每天把「把课学完」让给「再买一门」. 买断制要有持续田, 才对得起不可撤销的课权, 而不必改成会员公司.</dd>
+          <dt>Downsides</dt>
+          <dd>改登录默认路由会动 CONTEXT / 001 的首页定义, 需要一次词表修订. 按访问权投递会让未购学员更少看到上新, 拉新要另找入口. 实现上要分清「该课持权」和「同地图邻步」——后者已经靠近推荐, 首版应只做持证人.</dd>
+          <dt>Confidence</dt>
+          <dd>82%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip med">High</span></dd>
+        </dl>
+      </article>
+
+      <article class="idea" id="idea-2">
+        <span class="idchip">2.</span>
+        <h3>公开答疑产线</h3>
+        <p>课节问答已经选择公开, 是为了少回答第三次. 现在缺的是闸门和出口. 提问前先碰撞同课节已回答的公开问答, 声明「这些都不能回答我」才创建新问题. 内容待办关闭后, 把问+答钉回该课节顶部做成勘误牌, 原问题标成已吸收. 若上 AI, 只允许它写 <code>content_todo_candidates</code> 的新版本, 人工批准才进课节. 不做课节聊天机器人, 不做私密辅导, 评价不进这条流水线.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 840 150" width="100%" height="150" role="img" aria-label="提问碰撞已答, 待办关闭钉回课节, AI 只写候选稿">
+            <rect x="16" y="40" width="170" height="70" rx="8" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="101" y="80" text-anchor="middle" fill="#1c1915" font-size="14">新提问</text>
+            <path d="M196 75 H236" stroke="#9a3b24" stroke-width="2"/>
+            <rect x="246" y="40" width="170" height="70" rx="8" fill="#f3e4dc" stroke="#d9d0c2"/>
+            <text x="331" y="80" text-anchor="middle" fill="#1c1915" font-size="14">已答碰撞</text>
+            <path d="M426 75 H466" stroke="#9a3b24" stroke-width="2"/>
+            <rect x="476" y="40" width="170" height="70" rx="8" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="561" y="80" text-anchor="middle" fill="#1c1915" font-size="14">内容待办</text>
+            <path d="M656 75 H696" stroke="#9a3b24" stroke-width="2"/>
+            <rect x="706" y="40" width="118" height="70" rx="8" fill="#e7efe4" stroke="#d9d0c2"/>
+            <text x="765" y="72" text-anchor="middle" fill="#1c1915" font-size="13">课节勘误牌</text>
+            <text x="765" y="92" text-anchor="middle" fill="#2d4a28" font-size="11">AI 只写候选</text>
+          </svg>
+          <figcaption>示意: 公开问答的杠杆不在多回一句, 而在答过一次就进目录.</figcaption>
+        </figure>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>提交闸门 + 关闭后写回课节 + AI 锁在候选稿. 漏斗「过阈自动开待办」不在这个方向里, 017 禁止把未转化叫做流失.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> ADR-0006: 答疑价值在于减少重复提问, 并把问题留在课节上下文; 一对一私密答疑不走本产品. 001 FR-042/FR-045 有权学员从课节提问且问答公开. 内容待办已能写回课节并维护候选版本. <code>external:</code> 工厂 Andon / 病区白板: 可见性本身就是产能. 小鹅通式课内助教对本产品应收缩成候选稿, 而不是会话产品.</dd>
+          <dt>Rationale</dt>
+          <dd>一人答疑的时间不线性可扩, 改一课却是永久资产. 这是外部「课内 AI」空位接到已有 content-todo 的唯一不换公司的接法.</dd>
+          <dt>Downsides</dt>
+          <dd>碰撞做不好会误伤真新问题. 写回课节会改变已购学员正在看的正文, 需要持证人勘误通知 (见想法 1) 才能不吓人. AI 候选稿仍要人审, 省不掉判断, 只省打字.</dd>
+          <dt>Confidence</dt>
+          <dd>86%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip med">Medium</span></dd>
+        </dl>
+      </article>
+
+      <article class="idea" id="idea-3">
+        <span class="idchip">3.</span>
+        <h3>路径店不是套餐</h3>
+        <p>学习地图永远不发课权. 每个节点分成两种动词: 「去办这一段的许可」(免费加入 / 结算 / 激活码) 和 「继续已许可路段」. 若要提高客单, 另售「一笔订单、多门课」: 逐门签发与单课支付相同的不可取消访问权, 成交后可选写入一张地图学习记录. 地图不是 SKU, 增课不追溯赠送, 减课不回收已授权利. 明确拒绝「买地图送全部课」.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 840 180" width="100%" height="180" role="img" aria-label="地图只指路, 订单才发权">
+            <rect x="40" y="30" width="320" height="120" rx="10" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="200" y="62" text-anchor="middle" fill="#7a2e1c" font-size="13" font-weight="600">地图 = 步道图</text>
+            <text x="200" y="90" text-anchor="middle" fill="#1c1915" font-size="14">顺序、缺口、建议下一步</text>
+            <text x="200" y="114" text-anchor="middle" fill="#5c564c" font-size="12">不锁步, 不发访问权</text>
+            <rect x="480" y="30" width="320" height="120" rx="10" fill="#f3e4dc" stroke="#d9d0c2"/>
+            <text x="640" y="62" text-anchor="middle" fill="#7a2e1c" font-size="13" font-weight="600">订单 = 许可证</text>
+            <text x="640" y="90" text-anchor="middle" fill="#1c1915" font-size="14">一单多课, 逐门铸造</text>
+            <text x="640" y="114" text-anchor="middle" fill="#5c564c" font-size="12">与单课支付同一不可撤销权</text>
+          </svg>
+          <figcaption>示意: 国家公园把步道图和入山许可分成两套物件. 套餐禁令绑的是「地图即商品」, 不是「访问权集合」.</figcaption>
+        </figure>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>地图交互先把「许可 / 继续」说清楚; 商业上新增多课访问权订单, 而不是地图通用券或会员桶.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> ADR-0004: 学习地图是推荐路径, 不是套餐或训练营售卖; 开始地图不得自动获得其中每门课的访问权; 同一课可出现在不同地图, 进度与访问权始终是两份记录. CONTEXT 避免「训练营, 专栏, 套餐」. 009 FR-015 首版不做地图/套餐通用券. 001 把套餐售卖列在范围外, 所以这是新规格, 不是 001 增量. <code>external:</code> Kajabi Backstage 把已有目录重绑成高客单服务, 结构可借, 门户私密性不可借.</dd>
+          <dt>Rationale</dt>
+          <dd>个人站点要卖「一条路」时, 这是唯一不拆毁买断规则的高客单缝. 地图已经有进度和下一步, 缺的是商业包装, 不是再做推荐首页.</dd>
+          <dt>Downsides</dt>
+          <dd>一单多课会逼问优惠券怎么摊、分销佣金按哪门课快照、发票要不要拆行. 地图 CTA 若只是把已有「无访问权」写得更响, 单独开会不够格, 必须和订单对象绑在一起才值得做. 与 001 范围外的套餐禁令需要一次明确的词表: 我们卖的是访问权集合, 不是套餐商品.</dd>
+          <dt>Confidence</dt>
+          <dd>80%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip med">High</span></dd>
+        </dl>
+      </article>
+
+      <article class="idea" id="idea-4">
+        <span class="idchip">4.</span>
+        <h3>锁门外的双轨身份恢复</h3>
+        <p>帮助页把登录异常推到「联系客服」, 规格又禁止邮箱和短信自助找回, 于是每一次忘密都是微信侦探. 主路径: 仍持有效登录态的设备, 用现会话设新密码. 全掉线: 学员用手机号 + 最近订单后四位或激活码后四位自证, 写入运营收件箱, 管理员核验后走已有密码重置并 <code>writeAudit()</code>. 帮助不再写联系客服, 改指向这条事故台. 不引入邮箱登录, 不把短信当主触达.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 840 160" width="100%" height="160" role="img" aria-label="登录态改密是主路, 全掉线才进事故台">
+            <rect x="30" y="36" width="360" height="96" rx="10" fill="#e7efe4" stroke="#d9d0c2"/>
+            <text x="210" y="74" text-anchor="middle" fill="#2d4a28" font-size="13" font-weight="600">仍持登录态</text>
+            <text x="210" y="100" text-anchor="middle" fill="#1c1915" font-size="14">设备内设新密 · 冷却 · 不作废课权</text>
+            <rect x="450" y="36" width="360" height="96" rx="10" fill="#f6ead6" stroke="#d9d0c2"/>
+            <text x="630" y="74" text-anchor="middle" fill="#6a4a12" font-size="13" font-weight="600">全掉线</text>
+            <text x="630" y="100" text-anchor="middle" fill="#1c1915" font-size="14">订单/激活码自证 → 收件箱 → 审计重置</text>
+          </svg>
+          <figcaption>示意: 无邮箱产品的身份恢复, 结构同类项是柜台, 不是 SMTP.</figcaption>
+        </figure>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>两级恢复, 都长在已有手机号、订单、激活码和管理员重置权限上. 日常改密不再占用站长下午.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> <code>apps/web/src/content/help.ts</code>: 「如遇登录异常…或联系客服协助处理」. 001 FR-003: 找回凭据由管理员重置, 不提供邮箱或短信自助找回. ADR-0001 禁止邮箱登录. CONTEXT 把学员自助找回避开首版. 管理端已有重置权限与踢下线. 付费访问权不可取消, 所以人锁在门外等于课也丢了.</dd>
+          <dt>Rationale</dt>
+          <dd>这是买断交付裂缝里最致命、也最小的一刀: 不改身份模型, 只把口头处理收成可审计手续.</dd>
+          <dt>Downsides</dt>
+          <dd>订单后四位不是强核身, 要防枚举和冷却. 运营收件箱今天是异常队列, 学员工单要小心不要和内容待办搅在一起. 登录态改密要处理多设备 refresh.</dd>
+          <dt>Confidence</dt>
+          <dd>88%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip high">Medium</span></dd>
+        </dl>
+      </article>
+
+      <article class="idea" id="idea-5">
+        <span class="idchip">5.</span>
+        <h3>一人出版社安全网</h3>
+        <p>发布核验已经能挡住硬错误, 但开同类第二门课仍从空表单重填, 误发一节视频也没有不伤害进度的撤回. 媒体还直接落 <code>status='ready'</code>, 删课不回收磁盘. 三件套: 新建课程改为 fork 上次通过的发布清单快照 (骨架与规则, 不含学员/订单/问答); 误发只回滚目录可见性, 不回退进度、订单、付费访问权; 未处理完的资源不得标 ready, 删除进入 GC. 不是历史版本浏览器, 不是讲师货架.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 840 150" width="100%" height="150" role="img" aria-label="fork 开新课, 可见性回滚, 非 ready 不准播">
+            <rect x="24" y="36" width="240" height="88" rx="10" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="144" y="74" text-anchor="middle" fill="#1c1915" font-size="14">fork 清单快照</text>
+            <text x="144" y="96" text-anchor="middle" fill="#5c564c" font-size="12">新草稿, 仍须核验为零</text>
+            <rect x="300" y="36" width="240" height="88" rx="10" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="420" y="74" text-anchor="middle" fill="#1c1915" font-size="14">只回滚可见性</text>
+            <text x="420" y="96" text-anchor="middle" fill="#5c564c" font-size="12">进度与课权不动</text>
+            <rect x="576" y="36" width="240" height="88" rx="10" fill="#fffdf8" stroke="#d9d0c2"/>
+            <text x="696" y="74" text-anchor="middle" fill="#1c1915" font-size="14">ready 才可播</text>
+            <text x="696" y="96" text-anchor="middle" fill="#5c564c" font-size="12">删除才 GC</text>
+          </svg>
+          <figcaption>示意: 发布按钮的真实成本是「错了也收不回学员」. 后悔药不能是退款.</figcaption>
+        </figure>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>目录劳动、误发、假播放器三处一人运营不敢点发布的根, 一次收成安全网.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> HANDOFF: 课程复制/模板不实现; Asset GC 删课不删盘; Asset 直接 <code>status='ready'</code>. 015 FR-034 不做可对照历史版本浏览与回滚到任意历史目录; FR-026 生成清单不得把已完成进度回退. ADR-0002 管理员不能取消支付成功产生的访问权.</dd>
+          <dt>Rationale</dt>
+          <dd>一人站点的增长往往是同一教法的下一门课. 没有后悔药, 内容迭代会停, 买断田也会荒.</dd>
+          <dt>Downsides</dt>
+          <dd>可见性回滚仍可能让正在看的学员迷路, 需要持证人通知. fork 会复制过期价格或试看标记, 清单必须再跑一遍. GC/转码是基础设施, 若单独做会滑成平台工程; 必须绑在「已购播放诚实」上才算产品方向.</dd>
+          <dt>Confidence</dt>
+          <dd>81%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip med">High</span></dd>
+        </dl>
+      </article>
+
+      <article class="idea" id="idea-6">
+        <span class="idchip">6.</span>
+        <h3>场外银行与铸造宪法</h3>
+        <p>分销已经有不可变推荐人和佣金快照, 但规格不做钱包、提现、到账通知, 却预留「过退款窗口再结算」. 收费闭环没有退款. 正确仪式: 按账期导出最多 3 级应发明细, 管理员标记已场外打款 (金额 / 渠道 / 凭证备注 / 审计), 学员只在「我的分销」看应发 / 已发. 系统永远不当支付机构. 同时把「铸造时快照」从分销特例升级成宪法: 凡生成学员权利或商业承诺的行, 插入时钉死当时的站点开关, 运行时只读快照, 关掉全局开关不得追溯杀死活承诺.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 840 170" width="100%" height="170" role="img" aria-label="账本核销对钱包, 铸造快照对事后改开关">
+            <rect x="36" y="28" width="360" height="118" rx="10" fill="#e7efe4" stroke="#d9d0c2"/>
+            <text x="216" y="64" text-anchor="middle" fill="#2d4a28" font-size="13" font-weight="600">做这个</text>
+            <text x="216" y="92" text-anchor="middle" fill="#1c1915" font-size="14">应发明细 + 场外核销</text>
+            <text x="216" y="116" text-anchor="middle" fill="#5c564c" font-size="12">mint 时钉死开关与佣金快照</text>
+            <rect x="444" y="28" width="360" height="118" rx="10" fill="#f3e4dc" stroke="#d9d0c2"/>
+            <text x="624" y="64" text-anchor="middle" fill="#7a2e1c" font-size="13" font-weight="600">不做这个</text>
+            <text x="624" y="92" text-anchor="middle" fill="#1c1915" font-size="14">钱包 / 提现 / 到账短信</text>
+            <text x="624" y="116" text-anchor="middle" fill="#5c564c" font-size="12">关开关追溯作废活链接</text>
+          </svg>
+          <figcaption>示意: 卡住增长的不是再开一级, 而是站长不敢结, 以及今天改设置昨天的承诺一起变.</figcaption>
+        </figure>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>结算是事实导出, 不是资金托管. 优惠券、Banner、激活码、白名单若要可关停, 必须先有 mint 快照列.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> 016 FR-026 排除提现、钱包、到账通知、工作台分销指标, 以及结算周期「订单成功即可 / 管理员手工结算」和退款撤销变体. ADR-0002: 收费闭环没有退款. <code>ShareEntryService</code> 已 snapshot <code>distribution_enabled_at_creation</code>. 测试教训点名 ActivationCode / Coupon / Banner / PaymentWhitelist 是同类可开关面.</dd>
+          <dt>Rationale</dt>
+          <dd>只记账则没人持续分享; 做钱包则个人课站变成资金盘. 无退款宪章下, 场外核销是唯一能做完的结算.</dd>
+          <dt>Downsides</dt>
+          <dd>场外打款仍要站长每周动手, 只是不再靠微信聊天记录当唯一凭证. 016 把「管理员手工结算」也写进了首版不提供, 核销页是新规格, 不是 016 增量. 快照宪法会让「立即关掉某能力」变慢, 这是故意的.</dd>
+          <dt>Confidence</dt>
+          <dd>84%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip high">Medium</span></dd>
+        </dl>
+      </article>
+
+      <article class="idea" id="idea-7">
+        <span class="idchip">7.</span>
+        <h3>活开关说明书</h3>
+        <p>帮助中心仍是 <code>help.ts</code> 里一份 2026-09-01 的静态 HTML, 改一句要重建学习端镜像, 文案还在教「联系客服」并指向退款说明. 把帮助收成与 <code>site_settings</code> 同命运的说明书: 关了的分销 / 优惠券 / 签到 / 激活码从页面消失; 宪章级句子 (付费即交付、地图不发权、无邮件主通道) 钉在结算、激活码、地图、签到这些动词发生处. 不是 Zendesk, 不是可检索帮助站.</p>
+        <dl class="fields">
+          <dt>Description</dt>
+          <dd>一份由开关快照生成的短安全卡, 加上现场铭牌. 事故台入口 (想法 4) 写在登录页, 不写在客服神话里.</dd>
+          <dt>Basis</dt>
+          <dd><code>direct:</code> <code>apps/web/src/content/help.ts</code> 的 <code>updatedAt: '2026年9月1日'</code>, 登录异常导向客服, 并含「退款规则请参阅《退款说明》」. 这与 ADR-0002 收费闭环没有退款直接打架. 功能开关已在分销等处 snapshot-at-mint. 内容待办计划也写过不把帮助中心当可编辑产品, 所以本方向是开关生成, 不是 CMS.</dd>
+          <dt>Rationale</dt>
+          <dd>静态帮助正在用另一套宪章说话. 口径变更成本若等于一次前端发版, 运营就不会改口径, 只会私聊解释.</dd>
+          <dt>Downsides</dt>
+          <dd>开关生成的文案容易生硬. 现场铭牌要控制数量, 否则结算页变成法律声明. 与「可运营帮助中心」的直觉方案不同, 需要忍住不上 CMS.</dd>
+          <dt>Confidence</dt>
+          <dd>77%</dd>
+          <dt>Complexity</dt>
+          <dd><span class="chip high">Low</span></dd>
+        </dl>
+      </article>
+    </section>
+
+    <section id="rejection-summary">
+      <h2>Rejection Summary</h2>
+      <table class="cut">
+        <thead>
+          <tr><th>#</th><th>Idea</th><th>Reason Rejected</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>买地图一口价自动授予全部课权</td><td>subject-replacement against ADR-0004; 形状并入「路径店不是套餐」的订单对象</td></tr>
+          <tr><td>2</td><td>会员订阅 / 社群 OS / 直播 / 教练门户</td><td>subject-replacement: 会变成另一家公司</td></tr>
+          <tr><td>3</td><td>邮箱或短信自助找回</td><td>identity break; 001 FR-003 与 ADR-0001 禁止</td></tr>
+          <tr><td>4</td><td>钱包 / 提现 / 到账短信</td><td>016 FR-026; 个人课站做成支付机构</td></tr>
+          <tr><td>5</td><td>可打印学完证书</td><td>001 证书范围外; 凭证换装, 已从田亩操作系统里剥掉</td></tr>
+          <tr><td>6</td><td>地图开营窗 + 签到挂营期</td><td>CONTEXT 避免训练营; 营期皮会滑向被禁品类</td></tr>
+          <tr><td>7</td><td>漏斗过阈自动开 content-todo</td><td>017 禁止把未转化叫流失; 外挂闭环, 依据偏弱</td></tr>
+          <tr><td>8</td><td>管理端一条运营 next-action</td><td>001 FR-064 与工作台瓦片已覆盖大半; 依据撑不起新产品会</td></tr>
+          <tr><td>9</td><td>地图缺口 CTA 单独成项</td><td>below ambition floor: 已是宪章里的交互, 不够单独开会</td></tr>
+          <tr><td>10</td><td>next-action 工程门禁 / 授权行 join 键</td><td>below ambition floor: 平台约定, 不是产品方向</td></tr>
+          <tr><td>11</td><td>当堂笔记代替标记完成 / 私人笔记</td><td>与公开答疑产线、买断田重叠更弱; 可作 brainstorm 变体</td></tr>
+          <tr><td>12</td><td>学习即签到、取消弹窗</td><td>成立但小于田亩操作系统; 习惯环不要另起炉灶</td></tr>
+          <tr><td>13</td><td>公告两分钟撤回窗</td><td>成立但小于安全网与活说明书, 第二轮未挤进 7</td></tr>
+          <tr><td>14</td><td>可缺席节拍 OS 大包</td><td>handler 复用成立, 但与营期窗打包后滑向训练营</td></tr>
+          <tr><td>15</td><td>站内搜索</td><td>001 明确排除; 分类树仍是发现模型</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="composition-signal">Composed 2026-09-11T10:55Z by ce-ideate from surprise-me ideation on learn-site (focus: 看看当前项目还有什么可以扩展的功能点)</footer>
+  </div>
+</body>
+</html>

@@ -10,12 +10,12 @@ const PAID_COURSE = 'E2E 收费课程';
 
 test('学员通过验证码注册，完成免费学习和 Fake 支付订单旅程', async ({ page }) => {
   await page.goto('/register');
-  await expect(page.getByRole('heading', { name: '领一张课室学号', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '创建学员账户', exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: '点击刷新验证码' })).toBeVisible();
 
-  await page.getByLabel('手机号').fill(LEARNER_PHONE);
+  await page.getByLabel('手机号码').fill(LEARNER_PHONE);
   await page.getByLabel('密码').fill(LEARNER_PASSWORD);
-  await page.getByLabel('图形验证码', { exact: true }).fill(CAPTCHA_ANSWER);
+  await page.getByTestId('captcha-input').fill(CAPTCHA_ANSWER);
 
   const registerResponse = page.waitForResponse((response) =>
     response.url().endsWith('/api/learner/v1/auth/register'),
@@ -23,15 +23,15 @@ test('学员通过验证码注册，完成免费学习和 Fake 支付订单旅�
   await page.getByRole('button', { name: '注册并进入', exact: true }).click();
   expect((await registerResponse).status()).toBe(200);
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('link', { name: '我的订单', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: '消息中心' })).toBeVisible();
   await page.getByRole('button', { name: '稍后再说', exact: true }).click();
 
-  await page.getByRole('link', { name: '消息', exact: true }).click();
+  await page.getByRole('link', { name: '消息中心' }).click();
   await expect(page).toHaveURL(/\/me\/messages$/);
   await expect(page.getByRole('heading', { name: '消息中心', exact: true })).toBeVisible();
   await page.getByRole('link', { name: '首页', exact: true }).click();
 
-  await page.getByRole('heading', { name: `《${FREE_COURSE}》`, exact: true }).click();
+  await page.getByText(FREE_COURSE, { exact: true }).click();
   await expect(
     page.getByRole('heading', { name: `《${FREE_COURSE}》`, exact: true }),
   ).toBeVisible();
@@ -42,7 +42,7 @@ test('学员通过验证码注册，完成免费学习和 Fake 支付订单旅�
   ).toBeVisible();
 
   await page.getByRole('link', { name: '首页', exact: true }).click();
-  await page.getByRole('heading', { name: `《${PAID_COURSE}》`, exact: true }).click();
+  await page.getByText(PAID_COURSE, { exact: true }).click();
   await page.getByRole('button', { name: '立即购买', exact: true }).click();
   await expect(page.getByRole('heading', { name: '确认课程订单', exact: true })).toBeVisible();
   await page.locator('.checkout-payment__agree .el-checkbox__inner').click();

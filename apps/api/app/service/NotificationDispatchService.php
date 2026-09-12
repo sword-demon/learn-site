@@ -19,9 +19,11 @@ final class NotificationDispatchService
     public const TYPE_ANNOUNCEMENT = 'announcement';
     public const TYPE_INTERNAL = 'internal_message';
     public const TYPE_COURSE_PUBLISHED = 'course_published';
+    public const TYPE_LEARNING_REMINDER = 'learning_reminder';
     public const KIND_ANNOUNCEMENT = 'announcement';
     public const KIND_INTERNAL = 'internal_message';
     public const KIND_COURSE_PUBLISHED = 'course_published';
+    public const KIND_LEARNING_REMINDER = 'learning_reminder';
 
     private const TITLE_MAX = 200;
     private const BODY_MAX = 10000;
@@ -92,6 +94,45 @@ final class NotificationDispatchService
         $this->auditSend($staffId, $dispatchId, self::TYPE_INTERNAL, $title, count($learnerIds));
 
         return $this->shapeDispatch($this->loadDispatch($dispatchId), true);
+    }
+
+    /**
+     * @param list<int> $learnerIds
+     */
+    public function sendCourseStartReminder(
+        int $staffId,
+        string $title,
+        string $body,
+        array $learnerIds,
+        int $courseId,
+    ): int {
+        $this->assertStaff($staffId);
+        [$title, $body] = $this->validateContent($title, $body);
+        $learnerIds = $this->normalizeRecipientIds($learnerIds);
+        if ($learnerIds === []) {
+            throw new BusinessException('VALIDATION_FAILED', 'INVALID_RECIPIENTS');
+        }
+        $now = nowDatetime();
+        $dispatchId = (int) Db::name('notification_dispatches')->insertGetId([
+            'type' => self::TYPE_LEARNING_REMINDER,
+            'title' => $title,
+            'body' => $body,
+            'resource_type' => 'course',
+            'resource_id' => $courseId,
+            'sender_staff_id' => $staffId,
+            'recipient_mode' => 'selected',
+            'recipient_count' => count($learnerIds),
+            'fan_out_status' => 'pending',
+            'fan_out_done_count' => 0,
+            'created_at' => $now,
+        ]);
+        Db::name('notification_dispatch_recipients')->insertAll(array_map(
+            static fn (int $learnerId): array => ['dispatch_id' => $dispatchId, 'learner_id' => $learnerId],
+            $learnerIds,
+        ));
+        $this->enqueueFanOut($dispatchId);
+        $this->auditSend($staffId, $dispatchId, self::TYPE_LEARNING_REMINDER, $title, count($learnerIds));
+        return $dispatchId;
     }
 
     /**
@@ -232,7 +273,7 @@ final class NotificationDispatchService
     public function list(array $filters): array
     {
         $type = (string) ($filters['type'] ?? '');
-        if ($type !== '' && !in_array($type, [self::TYPE_ANNOUNCEMENT, self::TYPE_INTERNAL, self::TYPE_COURSE_PUBLISHED], true)) {
+        if ($type !== '' && !in_array($type, [self::TYPE_ANNOUNCEMENT, self::TYPE_INTERNAL, self::TYPE_COURSE_PUBLISHED, self::TYPE_LEARNING_REMINDER], true)) {
             throw new BusinessException('VALIDATION_FAILED', 'INVALID_TYPE');
         }
         $from = $this->parseDateFilter((string) ($filters['from'] ?? ''), true);

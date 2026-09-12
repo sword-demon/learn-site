@@ -65,6 +65,9 @@
             <file>tests/RbacScopeTest.php</file>
             <file>tests/FavoriteShareTest.php</file>
             <file>tests/CourseStudentTest.php</file>
+            <file>tests/CourseStartupPolicyTest.php</file>
+            <file>tests/CourseStartupPolicyMigrationTest.php</file>
+            <file>tests/CourseStartQueueTest.php</file>
             <file>tests/NotificationContractTest.php</file>
             <file>tests/CoursePublishNotifyTest.php</file>
             <file>tests/CoursePublishChecklistServiceTest.php</file>

@@ -200,6 +200,7 @@ final class NotificationFanOutExecutor
             NotificationDispatchService::TYPE_ANNOUNCEMENT => NotificationDispatchService::KIND_ANNOUNCEMENT,
             NotificationDispatchService::TYPE_INTERNAL => NotificationDispatchService::KIND_INTERNAL,
             NotificationDispatchService::TYPE_COURSE_PUBLISHED => NotificationDispatchService::KIND_COURSE_PUBLISHED,
+            NotificationDispatchService::TYPE_LEARNING_REMINDER => NotificationDispatchService::KIND_LEARNING_REMINDER,
             default => $type,
         };
     }

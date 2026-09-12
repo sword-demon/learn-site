@@ -54,6 +54,8 @@ describe('SiteProfileView', () => {
     await wrapper.get('input[name="subtitle"]').setValue('持续学习');
     await wrapper.get('textarea[name="body_html"]').setValue('<p>待清理内容</p>');
     await wrapper.get('input[name="contact_email"]').setValue('hello@example.test');
+    await wrapper.get('input[name="icp_number"]').setValue('京ICP备20260001号');
+    await wrapper.get('textarea[name="geo_content"]').setValue('站点 GEO 内容');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
 
@@ -64,6 +66,8 @@ describe('SiteProfileView', () => {
       subtitle: '持续学习',
       body_html: '<p>待清理内容</p>',
       contact_email: 'hello@example.test',
+      icp_number: '京ICP备20260001号',
+      geo_content: '站点 GEO 内容',
     });
     expect((wrapper.get('textarea[name="body_html"]').element as HTMLTextAreaElement).value).toBe(
       '<p>已清理内容</p>',

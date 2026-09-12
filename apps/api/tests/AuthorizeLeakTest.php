@@ -73,6 +73,8 @@ final class AuthorizeLeakTest extends TestCase
         yield 'banner delete' => ['/api/admin/v1/banners/42', 'DELETE', 'banner.manage'];
         yield 'banner upload' => ['/api/admin/v1/banner-images', 'POST', 'banner.manage'];
         yield 'learning fact funnel' => ['/api/admin/v1/courses/42/learning-funnel', 'GET', 'course_student.view'];
+        yield 'course start queue' => ['/api/admin/v1/courses/42/start-queue', 'GET', 'course_student.view'];
+        yield 'course start reminders' => ['/api/admin/v1/courses/42/start-queue/reminders', 'POST', 'notification.manage'];
         yield 'distribution config get' => ['/api/admin/v1/distribution/config', 'GET', 'distribution.config'];
         yield 'distribution config' => ['/api/admin/v1/distribution/config', 'PUT', 'distribution.config'];
         yield 'distribution reconcile' => ['/api/admin/v1/distribution/reconcile/by-order/9', 'GET', 'distribution.reconcile'];

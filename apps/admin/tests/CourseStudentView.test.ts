@@ -160,6 +160,17 @@ describe('CourseStudentView', () => {
     wrapper.unmount();
   });
 
+  it('opens the course start queue for the current course', async () => {
+    const wrapper = mount(CourseStudentView, { global: { plugins: [installElementPlus] } });
+    await flushPromises();
+    await wrapper.get('[data-action="open-start-queue"]').trigger('click');
+    expect(routerApi.push).toHaveBeenCalledWith({
+      name: 'course-start-queue',
+      params: { id: '12' },
+    });
+    wrapper.unmount();
+  });
+
   it('does not call the API when the route has no valid course id', async () => {
     routerApi.route = { name: 'maps', params: {} };
     mount(CourseStudentView, { global: { plugins: [installElementPlus] } });

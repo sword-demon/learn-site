@@ -207,8 +207,8 @@ final class Distribution extends AbstractMigration
         }
         // Idempotent guard: re-running this migration must not trip MySQL
         // 1061 "Duplicate key name". down() drops the constraint symmetrically.
-        $siteSettings = $this->table('site_settings');
-        if (!$siteSettings->hasCheckConstraint('chk_distribution_level_cap')) {
+        // Phinx 0.16 has no Table::hasCheckConstraint(); query information_schema.
+        if (!$this->hasNamedCheckConstraint('site_settings', 'chk_distribution_level_cap')) {
             $this->execute(
                 "ALTER TABLE site_settings
                    ADD CONSTRAINT chk_distribution_level_cap
@@ -290,5 +290,19 @@ final class Distribution extends AbstractMigration
                 $learners->removeColumn('referrer_learner_id')->update();
             }
         }
+    }
+
+    private function hasNamedCheckConstraint(string $table, string $constraint): bool
+    {
+        $row = $this->fetchRow(
+            "SELECT 1
+               FROM information_schema.TABLE_CONSTRAINTS
+              WHERE CONSTRAINT_SCHEMA = DATABASE()
+                AND TABLE_NAME = '{$table}'
+                AND CONSTRAINT_NAME = '{$constraint}'
+                AND CONSTRAINT_TYPE = 'CHECK'
+              LIMIT 1"
+        );
+        return $row !== null && $row !== false;
     }
 }

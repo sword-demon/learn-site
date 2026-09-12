@@ -19,6 +19,8 @@ function edit(saved: SiteIntro): SiteProfileUpdateInput {
     subtitle: saved.subtitle,
     body_html: saved.body_html,
     contact_email: saved.contact_email,
+    icp_number: saved.icp_number ?? '',
+    geo_content: saved.geo_content ?? '',
   };
 }
 
@@ -75,10 +77,24 @@ onMounted(() => void reload());
       @submit.prevent="save"
     >
       <el-form-item label="标题" required>
-        <el-input v-model="draft.title" clearable name="title" type="text" maxlength="80" />
+        <el-input
+          v-model="draft.title"
+          clearable
+          name="title"
+          type="text"
+          maxlength="80"
+          placeholder="请输入站点首页展示的标题（最多 80 个字符）"
+        />
       </el-form-item>
       <el-form-item label="副标题">
-        <el-input v-model="draft.subtitle" clearable name="subtitle" type="text" maxlength="160" />
+        <el-input
+          v-model="draft.subtitle"
+          clearable
+          name="subtitle"
+          type="text"
+          maxlength="160"
+          placeholder="请输入站点首页展示的副标题（最多 160 个字符）"
+        />
       </el-form-item>
       <el-form-item label="富文本正文（HTML）" class="body-field">
         <ContentEditor
@@ -94,6 +110,27 @@ onMounted(() => void reload());
           name="contact_email"
           type="email"
           maxlength="120"
+          placeholder="请输入联系邮箱，用于用户咨询与反馈"
+        />
+      </el-form-item>
+      <el-form-item label="备案号">
+        <el-input
+          v-model="draft.icp_number"
+          clearable
+          name="icp_number"
+          maxlength="80"
+          placeholder="请输入网站 ICP 备案号（如：京 ICP 备 XXXXXXXX 号）"
+        />
+      </el-form-item>
+      <el-form-item label="GEO 内容维护信息">
+        <el-input
+          v-model="draft.geo_content"
+          name="geo_content"
+          type="textarea"
+          :rows="6"
+          maxlength="4000"
+          show-word-limit
+          placeholder="维护供搜索引擎与生成式引擎理解站点的内容信息"
         />
       </el-form-item>
       <p v-if="profile?.updated_at" class="muted">最近更新：{{ profile.updated_at }}</p>

@@ -217,6 +217,9 @@ export class StandardMapper implements CatalogDataMapper {
           sale_price: dto.sale_price ?? undefined,
           sale_start_at: dto.sale_start_at,
           sale_end_at: dto.sale_end_at,
+          idle_threshold_hours: dto.idle_threshold_hours,
+          reminder_frequency_hours: dto.reminder_frequency_hours,
+          reminder_cap: dto.reminder_cap,
           created_by_staff_id: dto.created_by_staff_id,
           created_at: dto.created_at,
           updated_at: dto.updated_at,
@@ -267,6 +270,9 @@ export class StandardMapper implements CatalogDataMapper {
       sale_price: tree.sale_price,
       sale_start_at: tree.sale_start_at,
       sale_end_at: tree.sale_end_at,
+      idle_threshold_hours: tree.idle_threshold_hours,
+      reminder_frequency_hours: tree.reminder_frequency_hours,
+      reminder_cap: tree.reminder_cap,
       created_by_staff_id: tree.created_by_staff_id,
 
       // Guarantee children arrays exist (I3)

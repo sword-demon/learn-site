@@ -11,7 +11,7 @@ use support\think\Db;
 
 final class SiteService
 {
-    /** @return array{title:string,subtitle:string,body_html:string,contact_email:string,updated_at:?string} */
+    /** @return array{title:string,subtitle:string,body_html:string,contact_email:string,icp_number:string,geo_content:string,updated_at:?string} */
     public function get(): array
     {
         $row = Db::name('site_profile')->where('id', 1)->find();
@@ -20,7 +20,7 @@ final class SiteService
 
     /**
      * @param array<string, mixed> $input
-     * @return array{title:string,subtitle:string,body_html:string,contact_email:string,updated_at:?string}
+     * @return array{title:string,subtitle:string,body_html:string,contact_email:string,icp_number:string,geo_content:string,updated_at:?string}
      */
     public function update(int $staffId, array $input): array
     {
@@ -31,6 +31,8 @@ final class SiteService
         $subtitle = trim((string) ($input['subtitle'] ?? ''));
         $bodyHtml = (string) ($input['body_html'] ?? '');
         $contactEmail = trim((string) ($input['contact_email'] ?? ''));
+        $icpNumber = trim((string) ($input['icp_number'] ?? ''));
+        $geoContent = (string) ($input['geo_content'] ?? '');
         $invalid = [];
         if ($title === '' || strlen($title) > 80) {
             $invalid[] = 'title';
@@ -40,6 +42,9 @@ final class SiteService
         }
         if (strlen($bodyHtml) > 4000) {
             $invalid[] = 'body_html';
+        }
+        if (strlen($icpNumber) > 80 || strlen($geoContent) > 4000) {
+            $invalid[] = strlen($icpNumber) > 80 ? 'icp_number' : 'geo_content';
         }
         if (
             $contactEmail !== ''
@@ -62,6 +67,8 @@ final class SiteService
             'subtitle' => $subtitle,
             'body_html' => $sanitized['html'],
             'contact_email' => $contactEmail,
+            'icp_number' => $icpNumber,
+            'geo_content' => $geoContent,
             'updated_by_staff_id' => $staffId,
             'updated_at' => $now,
         ];
@@ -77,7 +84,7 @@ final class SiteService
 
     /**
      * @param array<string, mixed> $row
-     * @return array{title:string,subtitle:string,body_html:string,contact_email:string,updated_at:?string}
+     * @return array{title:string,subtitle:string,body_html:string,contact_email:string,icp_number:string,geo_content:string,updated_at:?string}
      */
     private function shape(array $row): array
     {
@@ -86,6 +93,8 @@ final class SiteService
             'subtitle' => (string) ($row['subtitle'] ?? '选课、学习、交流'),
             'body_html' => (string) ($row['body_html'] ?? ''),
             'contact_email' => (string) ($row['contact_email'] ?? ''),
+            'icp_number' => (string) ($row['icp_number'] ?? ''),
+            'geo_content' => (string) ($row['geo_content'] ?? ''),
             'updated_at' => isset($row['updated_at']) && $row['updated_at'] !== null
                 ? (string) $row['updated_at']
                 : null,
