@@ -254,3 +254,29 @@ plan quality-gate commit 时三问：(1) 命令依赖的 binary 在目标 image 
 - 库版本换了之后，resolver 默认 CSS 路径必须现地 grep 确认；不要相信 docstring。
 - vitest 在 `environment: 'node'` 下不会加载 `.css`；CSS sideEffects 需要：`vite plugin 的 resolveId 拦截 import specifier` + `test.server.deps.inline: [/^<pkg>$/]`。
 - `import Xxx from '<lib>'` + `app.use(Xxx)` 是 entry gzip 的最大单点来源——只要 `<lib>` 用了 install() 全量注册，删了 app.use 没用，必须连 import 一起砍。
+
+---
+
+## Lesson 5 (016-course-distribution): MySQL 软删/防重表唯一约束 → 生成列思路同理钉死「单订单单接收人」
+
+**In the code:**
+`20260906000001_distribution.php` 的 `commission_records` 用 `UNIQUE (order_id, referrer_learner_id)` 保证同一订单对同一推荐人只有一条佣金记录；应用层在 `CommissionService::settleForOrder()` 先 `count() > 0` 幂等短路，再在插入循环里 catch UNIQUE 冲突写审计后抛出。并发双结算时输掉的一方靠 1062 兜底，靠 `CommissionReceiverUniquenessTest` 钉死。
+
+**The principle:**
+**数据库约束优先 + 幂等写路径**。「一笔订单一个接收人一条记录」这类不变量必须同时存在于应用层（提前 return + 显式抛错路径）与数据库（UNIQUE 索引），单靠应用层判断挡不住并发；反过来 UNIQUE 抛出的原始异常必须翻译成业务审计，不能裸泄给调用方。
+
+**Takeaway:**
+单订单单接收人唯一 → 与软删表 active 唯一同理，能下推到 DB 的不变量就下推；应用层只负责友好幂等与审计，不负责正确性兜底。
+
+---
+
+## Lesson 6 (016-course-distribution): 订单 succeeded / 退款窗口结束 / 退款是三个事件源, 钩子必须挂既有状态迁移, 不能 cron 兜底
+
+**In the code:**
+`OrderService` 的 `markSucceeded` / `markRefunded` / `closeExpiredRefundWindows` 三处状态迁移各自在回调链尾同步调用 `CommissionService::settleForOrder()` / `voidForOrder()` / `markSettledForOrder()`；`markSettledForOrder` 只把 pending 升 settled，pending_blocked 与 voided 不动。没有新增 cron、MQ 或定时器。
+
+**The principle:**
+**状态机迁移即事件源**。当一个业务状态只能在少数既有迁移点变化时，把派生逻辑挂在迁移点上比异步对账更正确：迁移点内的行锁 + 事务天然提供串行化与原子性，而 cron 兜底会引入「迁移后、扫描前」的不可观测窗口和重复处理问题。
+
+**Takeaway:**
+为既有状态机加派生数据时，先枚举该状态的所有迁移点（含批量迁移），逐一挂同步钩子；禁止引入新的定时任务做数据一致性兜底。

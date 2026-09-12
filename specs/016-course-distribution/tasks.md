@@ -38,20 +38,20 @@ description: "Task list for 016-course-distribution"
 
 **⚠️ CRITICAL**: 完成前不要开始任何 US
 
-- [ ] T004 在 `apps/api/database/migrations/20260906000001_distribution.php` 落 5 张表 + `learners.referrer_learner_id` 列扩展 + 自引用 FK + UNIQUE 索引 + CHECK (level BETWEEN 1 AND 3) + UNIQUE (order_id, referrer_learner_id) + DB 触发器 (禁止 UPDATE referrer_learner_id) + `site_settings.value` CHECK (`JSON_EXTRACT(value, '$.level_cap')` BETWEEN 1 AND 3); 表默认 charset=utf8mb4
-- [ ] T005 在 `apps/api/database/seeds/PermissionSeeder.php` 写实 3 行: `distribution.config` / `distribution.reconcile` (含撤销) / `distribution.audit` (module=`distribution`); 学员分享与查看不进 seeder
-- [ ] T006 [P] 在 `packages/contracts/src/distribution.ts` 落与 `specs/016-course-distribution/contracts/distribution.ts` 一致的 Zod schema: DistributionConfigDTO / CourseOverride / ShareEntry / ShareEntryCreateOutput / CommissionRecord / Downline / AdminReconcile / Audit / VoidInput; 金额 int cents; 时间 ISO-8601; `level_cap` 为 1|2|3; `settlement` / `payout_form` / `refund_void_rule` 首版字面量; phone 一律 `^1[3-9]\d\*{4}\d{4}$`
-- [ ] T007 在 `packages/contracts/src/index.ts` 追加 `export * from "./distribution";`
-- [ ] T008 [P] 在 `apps/api/app/support/DistributionConfigValidator.php` 实现 `assertValidConfig(array $cfg)`: 拒绝 level_cap ≤ 0 或 > 3 / 比例越界 / 总佣金超 per_order_cap_cents / payout_form 非 cash_record_only, 抛 BusinessException 含「合规硬约束」字样
-- [ ] T009 [P] 在 `apps/api/app/functions.php` (若无则新建) 增 `maskPhone(string $phone): string` / `maskShortCode(string $code): string` / `todayDate()` / `nowDatetime()` / `toIso8601()` (沿用既有风格)
-- [ ] T010 [P] 在 `apps/api/app/model/` 下新建 `ShareEntry.php` / `ShareVisit.php` / `DistributionCourseOverride.php` / `CommissionRecord.php` / `DistributionAuditLog.php` (think-orm Model), 仅含字段映射与表名, 不含业务
-- [ ] T011 在 `apps/api/app/model/Learner.php` 增 `referrer_learner_id` 字段映射, 不破坏既有字段
-- [ ] T012 [P] 在 `apps/api/tests/DistributionConfigValidatorTest.php` 写 validator 单测: level_cap=4 → 抛错; level_cap=0 → 抛错; level1+level2+level3 突破单笔封顶 → 抛错; 合法配置 (level_cap=1|2|3) → 通过
-- [ ] T013 [P] 在 `apps/api/tests/DistributionMigrationTest.php` 写 migration 集成测: 跑 up 后 5 张表存在, 列扩展存在, CHECK 拒绝 level_cap=4 与 level_cap=0, 触发器拒绝 UPDATE referrer_learner_id
-- [ ] T014 在 `apps/api/app/service/DistributionConfigService.php` 落 `getConfig()` / `updateConfig(input, actorId)` 私有 `writeAudit()`, 写 site_settings key=`distribution_config`
-- [ ] T015 [P] 在 `apps/api/app/service/DistributionAuditService.php` 落 `record(action, subjectType, subjectId, before, after, reason, actorType, actorId)`, 唯一写 audit_log 的入口
-- [ ] T016 在 `apps/api/tests/DistributionConfigServiceTest.php` 写 service 单测: 默认 enabled=false, 更新后从 site_settings 读回一致, 审计写入, level_cap>3 与 level_cap≤0 拒绝
-- [ ] T017 跑 `make test-api DistributionConfigServiceTest DistributionConfigValidatorTest DistributionMigrationTest` 全过
+- [X] T004 在 `apps/api/database/migrations/20260906000001_distribution.php` 落 5 张表 + `learners.referrer_learner_id` 列扩展 + 自引用 FK + UNIQUE 索引 + CHECK (level BETWEEN 1 AND 3) + UNIQUE (order_id, referrer_learner_id) + DB 触发器 (禁止 UPDATE referrer_learner_id) + `site_settings.value` CHECK (`JSON_EXTRACT(value, '$.level_cap')` BETWEEN 1 AND 3); 表默认 charset=utf8mb4
+- [X] T005 在 `apps/api/database/seeds/PermissionSeeder.php` 写实 3 行: `distribution.config` / `distribution.reconcile` (含撤销) / `distribution.audit` (module=`distribution`); 学员分享与查看不进 seeder
+- [X] T006 [P] 在 `packages/contracts/src/distribution.ts` 落与 `specs/016-course-distribution/contracts/distribution.ts` 一致的 Zod schema: DistributionConfigDTO / CourseOverride / ShareEntry / ShareEntryCreateOutput / CommissionRecord / Downline / AdminReconcile / Audit / VoidInput; 金额 int cents; 时间 ISO-8601; `level_cap` 为 1|2|3; `settlement` / `payout_form` / `refund_void_rule` 首版字面量; phone 一律 `^1[3-9]\d\*{4}\d{4}$`
+- [X] T007 在 `packages/contracts/src/index.ts` 追加 `export * from "./distribution";`
+- [X] T008 [P] 在 `apps/api/app/support/DistributionConfigValidator.php` 实现 `assertValidConfig(array $cfg)`: 拒绝 level_cap ≤ 0 或 > 3 / 比例越界 / 总佣金超 per_order_cap_cents / payout_form 非 cash_record_only, 抛 BusinessException 含「合规硬约束」字样
+- [X] T009 [P] 在 `apps/api/app/functions.php` (若无则新建) 增 `maskPhone(string $phone): string` / `maskShortCode(string $code): string` / `todayDate()` / `nowDatetime()` / `toIso8601()` (沿用既有风格)
+- [X] T010 [P] 在 `apps/api/app/model/` 下新建 `ShareEntry.php` / `ShareVisit.php` / `DistributionCourseOverride.php` / `CommissionRecord.php` / `DistributionAuditLog.php` (think-orm Model), 仅含字段映射与表名, 不含业务
+- [X] T011 在 `apps/api/app/model/Learner.php` 增 `referrer_learner_id` 字段映射, 不破坏既有字段
+- [X] T012 [P] 在 `apps/api/tests/DistributionConfigValidatorTest.php` 写 validator 单测: level_cap=4 → 抛错; level_cap=0 → 抛错; level1+level2+level3 突破单笔封顶 → 抛错; 合法配置 (level_cap=1|2|3) → 通过
+- [X] T013 [P] 在 `apps/api/tests/DistributionMigrationTest.php` 写 migration 集成测: 跑 up 后 5 张表存在, 列扩展存在, CHECK 拒绝 level_cap=4 与 level_cap=0, 触发器拒绝 UPDATE referrer_learner_id
+- [X] T014 在 `apps/api/app/service/DistributionConfigService.php` 落 `getConfig()` / `updateConfig(input, actorId)` 私有 `writeAudit()`, 写 site_settings key=`distribution_config`
+- [X] T015 [P] 在 `apps/api/app/service/DistributionAuditService.php` 落 `record(action, subjectType, subjectId, before, after, reason, actorType, actorId)`, 唯一写 audit_log 的入口
+- [X] T016 在 `apps/api/tests/DistributionConfigServiceTest.php` 写 service 单测: 默认 enabled=false, 更新后从 site_settings 读回一致, 审计写入, level_cap>3 与 level_cap≤0 拒绝
+- [X] T017 跑 `make test-api DistributionConfigServiceTest DistributionConfigValidatorTest DistributionMigrationTest` 全过
 
 **Checkpoint**: 5 张表已建, 站点配置可读写, schema 共享, 校验器就位 — 任何 US 可开始
 
@@ -65,20 +65,20 @@ description: "Task list for 016-course-distribution"
 
 ### Tests for User Story 1 ⚠️ 写在前, 跑红
 
-- [ ] T018 [P] [US1] 在 `apps/api/tests/ShareEntryServiceTest.php` 写单测: 生成 → 返回 plaintext 一次, 再查只有 masked; 撤销后访问不再记 visit; 一学员多入口互不干扰
-- [ ] T019 [P] [US1] 在 `apps/api/tests/ReferralBindingServiceTest.php` 写单测: 同一 visitor_token 多次注册只第一个获得 referrer; 同一入口已绑定后后续注册 referrer 为 NULL; 跨入口同一 visitor 取最后一次有效访问; 无 visit 时注册不得凭空绑推荐人; 老学员经链接不写 referrer
-- [ ] T020 [P] [US1] 在 `apps/api/tests/ShareLandingControllerTest.php` 写控制器测: GET `/s/{shortCode}` 写 share_visits + 种 cookie, 不暴露推荐人信息, scope=course 302 到课程详情; scope=site 302 到首页
+- [X] T018 [P] [US1] 在 `apps/api/tests/ShareEntryServiceTest.php` 写单测: 生成 → 返回 plaintext 一次, 再查只有 masked; 撤销后访问不再记 visit; 一学员多入口互不干扰
+- [X] T019 [P] [US1] 在 `apps/api/tests/ReferralBindingServiceTest.php` 写单测: 同一 visitor_token 多次注册只第一个获得 referrer; 同一入口已绑定后后续注册 referrer 为 NULL; 跨入口同一 visitor 取最后一次有效访问; 无 visit 时注册不得凭空绑推荐人; 老学员经链接不写 referrer
+- [X] T020 [P] [US1] 在 `apps/api/tests/ShareLandingControllerTest.php` 写控制器测: GET `/s/{shortCode}` 写 share_visits + 种 cookie, 不暴露推荐人信息, scope=course 302 到课程详情; scope=site 302 到首页
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] 在 `apps/api/app/service/ShareEntryService.php` 落 `create(learnerId, scope, courseId?)` 返回 plaintext_code + share_url (明文仅本次返回), `list(learnerId)` 仅返回 masked_code, `revoke(learnerId, entryId)` 写 revoked_at 与审计
-- [ ] T022 [P] [US1] 在 `apps/api/app/service/ShareVisitService.php` 落 `recordVisit(shareEntryId, visitorToken)` 与 `bindVisitorToLearner(visitorToken, learnerId)` (后置由 ReferralBindingService 调)
-- [ ] T023 [US1] 在 `apps/api/app/service/ReferralBindingService.php` 落 `bindFromVisitor(int $learnerId): void` — 注册事务内调, 按请求携带的 visitor_token 查 share_visits (无 token 或无 visit 则不绑定, 禁止凭空生成 token); 取该 token 最后一次有效访问; 若该 visitor_token 或该 share_entry 已有 bound_learner_id 则新注册 referrer 保持 NULL; 仅在新学员 `referrer_learner_id IS NULL` 且推荐人 ≠ $learnerId 时 UPDATE; 写 share_visits.bound_learner_id + bound_at
-- [ ] T024 [P] [US1] 在 `apps/api/app/controller/learner/DistributionController.php` 落路由 `GET /api/learner/distribution/share-entries` / `POST .../share-entries` / `DELETE .../share-entries/{id}`, 仅 JWT 学员身份
-- [ ] T025 [P] [US1] 在 `apps/api/app/controller/public/ShareLandingController.php` 落 `GET /api/public/s/{shortCode}` (写 share_visits, 种 HttpOnly cookie `distribution_visitor_token` 180 天, 302 到目标页) 与 `GET /api/public/s/{shortCode}/info` (只校验短码有效, 不暴露推荐人)
-- [ ] T026 [US1] 在 `apps/api/app/controller/learner/AuthController.php::register` 内, 注册事务第一行后调 `ReferralBindingService::bindFromVisitor($newLearnerId)`
-- [ ] T027 [US1] 在 `apps/api/tests/e2e/ShareEntryFlowE2ETest.php` 写端到端: 学员 A 生成 → 无痕注册 → 验证 referrer + bound_count + 审计
-- [ ] T028 跑 `make test-api ShareEntryServiceTest ReferralBindingServiceTest ShareLandingControllerTest` 全过
+- [X] T021 [P] [US1] 在 `apps/api/app/service/ShareEntryService.php` 落 `create(learnerId, scope, courseId?)` 返回 plaintext_code + share_url (明文仅本次返回), `list(learnerId)` 仅返回 masked_code, `revoke(learnerId, entryId)` 写 revoked_at 与审计
+- [X] T022 [P] [US1] 在 `apps/api/app/service/ShareVisitService.php` 落 `recordVisit(shareEntryId, visitorToken)` 与 `bindVisitorToLearner(visitorToken, learnerId)` (后置由 ReferralBindingService 调)
+- [X] T023 [US1] 在 `apps/api/app/service/ReferralBindingService.php` 落 `bindFromVisitor(int $learnerId): void` — 注册事务内调, 按请求携带的 visitor_token 查 share_visits (无 token 或无 visit 则不绑定, 禁止凭空生成 token); 取该 token 最后一次有效访问; 若该 visitor_token 或该 share_entry 已有 bound_learner_id 则新注册 referrer 保持 NULL; 仅在新学员 `referrer_learner_id IS NULL` 且推荐人 ≠ $learnerId 时 UPDATE; 写 share_visits.bound_learner_id + bound_at
+- [X] T024 [P] [US1] 在 `apps/api/app/controller/learner/DistributionController.php` 落路由 `GET /api/learner/distribution/share-entries` / `POST .../share-entries` / `DELETE .../share-entries/{id}`, 仅 JWT 学员身份
+- [X] T025 [P] [US1] 在 `apps/api/app/controller/public/ShareLandingController.php` 落 `GET /api/public/s/{shortCode}` (写 share_visits, 种 HttpOnly cookie `distribution_visitor_token` 180 天, 302 到目标页) 与 `GET /api/public/s/{shortCode}/info` (只校验短码有效, 不暴露推荐人)
+- [X] T026 [US1] 在 `apps/api/app/controller/learner/AuthController.php::register` 内, 注册事务第一行后调 `ReferralBindingService::bindFromVisitor($newLearnerId)`
+- [X] T027 [US1] 在 `apps/api/tests/e2e/ShareEntryFlowE2ETest.php` 写端到端: 学员 A 生成 → 无痕注册 → 验证 referrer + bound_count + 审计
+- [X] T028 跑 `make test-api ShareEntryServiceTest ReferralBindingServiceTest ShareLandingControllerTest` 全过
 
 **Checkpoint**: US1 独立可演示 — 学员可生成分享入口, 新注册学员获得推荐人, 老学员不污染
 
@@ -92,21 +92,21 @@ description: "Task list for 016-course-distribution"
 
 ### Tests for User Story 2 ⚠️ 写在前
 
-- [ ] T029 [P] [US2] 在 `apps/api/tests/DistributionConfigServiceTest.php` 扩展: updateConfig 后旧订单回放金额不变 (config_snapshot_json 写入); level_cap=4 → BusinessException「合规硬约束」
-- [ ] T030 [P] [US2] 在 `apps/api/tests/DistributionCourseOverrideServiceTest.php` 写单测: 单课开关 OFF 后新订单不产生佣金, ON 时按课程级比例算, 全局比例不叠加
-- [ ] T031 [P] [US2] 在 `apps/api/tests/LevelCapHardLimitTest.php` 写集成测: 应用层 API 拒绝 / DB CHECK 拒绝 / 单测覆盖三种入口都拒绝 level_cap>3
+- [X] T029 [P] [US2] 在 `apps/api/tests/DistributionConfigServiceTest.php` 扩展: updateConfig 后旧订单回放金额不变 (config_snapshot_json 写入); level_cap=4 → BusinessException「合规硬约束」
+- [X] T030 [P] [US2] 在 `apps/api/tests/DistributionCourseOverrideServiceTest.php` 写单测: 单课开关 OFF 后新订单不产生佣金, ON 时按课程级比例算, 全局比例不叠加
+- [X] T031 [P] [US2] 在 `apps/api/tests/LevelCapHardLimitTest.php` 写集成测: 应用层 API 拒绝 / DB CHECK 拒绝 / 单测覆盖三种入口都拒绝 level_cap>3
 
 ### Implementation for User Story 2
 
-- [ ] T032 [P] [US2] 在 `apps/api/app/service/DistributionCourseOverrideService.php` 落 `upsert(courseId, input, actorId)` / `list(page, limit)`, 写审计
-- [ ] T033 [US2] 在 `apps/api/app/controller/admin/DistributionController.php` 落 `GET /api/admin/distribution/config` / `PUT .../config` / `GET .../course-overrides` / `PUT .../course-overrides/{courseId}` (需 `distribution.config` 权限)
-- [ ] T034 [P] [US2] 在 `apps/admin/src/api/distribution.ts` 落 `fetchDistributionConfig` / `saveDistributionConfig` / `fetchCourseOverrides` / `saveCourseOverride`, 全部走 Zod 解析
-- [ ] T035 [P] [US2] 在 `apps/admin/src/views/distribution/DistributionConfigView.vue` 落配置页 (Element Plus 表单 + el-alert「合规硬约束」红色提示在 level_cap 输入框旁)
-- [ ] T036 [P] [US2] 在 `apps/admin/src/views/distribution/DistributionCourseOverridesView.vue` 落单课覆盖列表 + 行内编辑
-- [ ] T037 [P] [US2] 在 `apps/admin/src/router/index.ts` 注册 2 条路由 + 菜单权限点绑定
-- [ ] T038 [P] [US2] 在 `apps/admin/tests/DistributionConfigView.test.ts` 写组件测: level_cap 改为 4 提交 → 提示「合规硬约束」; 合法配置保存成功
-- [ ] T039 [P] [US2] 在 `apps/admin/tests/DistributionCourseOverridesView.test.ts` 写组件测: 关闭单课开关, 列表显示「OFF」徽标
-- [ ] T040 跑 `make test-admin DistributionConfigView DistributionCourseOverridesView` 与 `make test-api DistributionConfigServiceTest DistributionCourseOverrideServiceTest LevelCapHardLimitTest` 全过
+- [X] T032 [P] [US2] 在 `apps/api/app/service/DistributionCourseOverrideService.php` 落 `upsert(courseId, input, actorId)` / `list(page, limit)`, 写审计
+- [X] T033 [US2] 在 `apps/api/app/controller/admin/DistributionController.php` 落 `GET /api/admin/distribution/config` / `PUT .../config` / `GET .../course-overrides` / `PUT .../course-overrides/{courseId}` (需 `distribution.config` 权限)
+- [X] T034 [P] [US2] 在 `apps/admin/src/api/distribution.ts` 落 `fetchDistributionConfig` / `saveDistributionConfig` / `fetchCourseOverrides` / `saveCourseOverride`, 全部走 Zod 解析
+- [X] T035 [P] [US2] 在 `apps/admin/src/views/distribution/DistributionConfigView.vue` 落配置页 (Element Plus 表单 + el-alert「合规硬约束」红色提示在 level_cap 输入框旁)
+- [X] T036 [P] [US2] 在 `apps/admin/src/views/distribution/DistributionCourseOverridesView.vue` 落单课覆盖列表 + 行内编辑
+- [X] T037 [P] [US2] 在 `apps/admin/src/router/index.ts` 注册 2 条路由 + 菜单权限点绑定
+- [X] T038 [P] [US2] 在 `apps/admin/tests/DistributionConfigView.test.ts` 写组件测: level_cap 改为 4 提交 → 提示「合规硬约束」; 合法配置保存成功
+- [X] T039 [P] [US2] 在 `apps/admin/tests/DistributionCourseOverridesView.test.ts` 写组件测: 关闭单课开关, 列表显示「OFF」徽标
+- [X] T040 跑 `make test-admin DistributionConfigView DistributionCourseOverridesView` 与 `make test-api DistributionConfigServiceTest DistributionCourseOverrideServiceTest LevelCapHardLimitTest` 全过
 
 **Checkpoint**: US2 独立可演示 — 管理员可在 UI 配置并立即看到生效; 合规硬约束三层防护均验证
 
@@ -120,26 +120,26 @@ description: "Task list for 016-course-distribution"
 
 ### Tests for User Story 3 ⚠️ 写在前
 
-- [ ] T041 [P] [US3] 在 `apps/api/tests/CommissionSettleTest.php` 写单测: 5 级链路 E 结算 → 仅 3 条记录, 级别 1/2/3 对应 C/B/A; D 与更远无记录; 金额 = min(order_paid × level_pct, 单笔封顶对应份额)
-- [ ] T042 [P] [US3] 在 `apps/api/tests/CommissionCapTruncationTest.php` 写单测: 三级比例之和若超单笔封顶 → 按 3→2→1 截断, 截断部分记 audit, 不补发
-- [ ] T043 [P] [US3] 在 `apps/api/tests/OrderRefundVoidCommissionTest.php` 写集成测: 订单 succeeded → 退款 → 30 秒内 commission_records 全部 voided (source=system_refund_void), audit 写入 actor_type=system
-- [ ] T044 [P] [US3] 在 `apps/api/tests/BlockedReferrerNoUpgradeTest.php` 写单测: 推荐人 A 封禁 → E 结算 → A 的记录 status=pending_blocked, B 不升级, 不转赠
-- [ ] T045 [P] [US3] 在 `apps/api/tests/CommissionReceiverUniquenessTest.php` 写并发测: 同订单双结算请求 → UNIQUE 约束保证单一记录, 失败者写入 audit
+- [X] T041 [P] [US3] 在 `apps/api/tests/CommissionSettleTest.php` 写单测: 5 级链路 E 结算 → 仅 3 条记录, 级别 1/2/3 对应 C/B/A; D 与更远无记录; 金额 = min(order_paid × level_pct, 单笔封顶对应份额)
+- [X] T042 [P] [US3] 在 `apps/api/tests/CommissionCapTruncationTest.php` 写单测: 三级比例之和若超单笔封顶 → 按 3→2→1 截断, 截断部分记 audit, 不补发
+- [X] T043 [P] [US3] 在 `apps/api/tests/OrderRefundVoidCommissionTest.php` 写集成测: 订单 succeeded → 退款 → 30 秒内 commission_records 全部 voided (source=system_refund_void), audit 写入 actor_type=system
+- [X] T044 [P] [US3] 在 `apps/api/tests/BlockedReferrerNoUpgradeTest.php` 写单测: 推荐人 A 封禁 → E 结算 → A 的记录 status=pending_blocked, B 不升级, 不转赠
+- [X] T045 [P] [US3] 在 `apps/api/tests/CommissionReceiverUniquenessTest.php` 写并发测: 同订单双结算请求 → UNIQUE 约束保证单一记录, 失败者写入 audit
 
 ### Implementation for User Story 3
 
-- [ ] T046 [US3] 在 `apps/api/app/service/CommissionService.php` 落:
+- [X] T046 [US3] 在 `apps/api/app/service/CommissionService.php` 落:
   - `settleForOrder(int $orderId)`: 行锁 orders → 取 referee 链路 ≤ 3 → 算金额 → 写 commission_records (pending 或 pending_blocked) → 写 config_snapshot_json 与 order_paid_cents_snapshot. 此方法不把状态写成 settled
   - `markSettledForOrder(int $orderId)`: 行锁 orders, 仅当退款窗口已结束且未退款时把该订单 pending → settled; pending_blocked 与 voided 不升为 settled
   - `voidForOrder(int $orderId, string $reason)`: 行锁 orders → 全部相关 records 置 voided → 写审计
   - `voidByAdmin(int $commissionId, int $actorId, string $reason)`: 校验 reason ≥ 5 字符 → 写 audit + void
-- [ ] T047 [US3] 在 `apps/api/app/service/OrderService.php::markSucceeded` 回调链尾追加 `$this->commission->settleForOrder($orderId)` (沿用现有 payment success handler 链, 只写 pending)
-- [ ] T048 [US3] 在 `apps/api/app/service/OrderService.php::markRefunded` 回调链尾追加 `$this->commission->voidForOrder($orderId, 'order_refund')`
-- [ ] T094 [US3] 在既有订单退款窗口关闭 / 「退款期结束且未退款」状态迁移处追加 `$this->commission->markSettledForOrder($orderId)` (禁止新 cron / MQ). 测试: 窗口未结束保持 pending; 窗口结束无退款 → settled; 窗口内退款 → voided 且不会再 settled
-- [ ] T049 [P] [US3] 在 `apps/api/tests/CommissionReplayTest.php` 写回放测: 取历史 order, 用 snapshot 重算 → 与 commission_records 实际写入金额逐一相等 (SC-011)
-- [ ] T050 [US3] 在 `apps/api/app/service/CommissionReplayService.php` 落 `replay(int $orderId): array` 用于 SC-011 验收
-- [ ] T051 [P] [US3] 在 `apps/api/tests/e2e/DistributionE2ETest.php` 写 Playwright+PHP 集成: A→B→C→D→E 链路构造 + E 下单 + 退款 + 断言
-- [ ] T052 跑 `make test-api CommissionSettleTest CommissionCapTruncationTest OrderRefundVoidCommissionTest BlockedReferrerNoUpgradeTest CommissionReceiverUniquenessTest CommissionReplayTest` 与 T094 窗口结束转 settled 测试, 以及 `make test-e2e` 全过
+- [X] T047 [US3] 在 `apps/api/app/service/OrderService.php::markSucceeded` 回调链尾追加 `$this->commission->settleForOrder($orderId)` (沿用现有 payment success handler 链, 只写 pending)
+- [X] T048 [US3] 在 `apps/api/app/service/OrderService.php::markRefunded` 回调链尾追加 `$this->commission->voidForOrder($orderId, 'order_refund')`
+- [X] T094 [US3] 在既有订单退款窗口关闭 / 「退款期结束且未退款」状态迁移处追加 `$this->commission->markSettledForOrder($orderId)` (禁止新 cron / MQ). 测试: 窗口未结束保持 pending; 窗口结束无退款 → settled; 窗口内退款 → voided 且不会再 settled
+- [X] T049 [P] [US3] 在 `apps/api/tests/CommissionReplayTest.php` 写回放测: 取历史 order, 用 snapshot 重算 → 与 commission_records 实际写入金额逐一相等 (SC-011)
+- [X] T050 [US3] 在 `apps/api/app/service/CommissionReplayService.php` 落 `replay(int $orderId): array` 用于 SC-011 验收
+- [X] T051 [P] [US3] 在 `apps/api/tests/e2e/DistributionE2ETest.php` 写 Playwright+PHP 集成: A→B→C→D→E 链路构造 + E 下单 + 退款 + 断言
+- [X] T052 跑 `make test-api CommissionSettleTest CommissionCapTruncationTest OrderRefundVoidCommissionTest BlockedReferrerNoUpgradeTest CommissionReceiverUniquenessTest CommissionReplayTest` 与 T094 窗口结束转 settled 测试, 以及 `make test-e2e` 全过
 
 **Checkpoint**: US3 独立可演示 — 合规主链 (≤ 3 级 / 单笔 ≤ 3 接收人 / 退款撤销 / 不升级) 全部验证
 
@@ -153,21 +153,21 @@ description: "Task list for 016-course-distribution"
 
 ### Tests for User Story 4 ⚠️ 写在前
 
-- [ ] T053 [P] [US4] 在 `apps/web/tests/DistributionView.test.ts` 写组件测: 列表/总览/记录分页/下级切换正常, 任何位置不出现明文手机号
-- [ ] T054 [P] [US4] 在 `apps/web/tests/LearnerPlaintextLeak.test.ts` 写接口层测: 抓取所有 `/api/learner/distribution/*` 响应, 11 位连续手机号匹配数 = 0
-- [ ] T055 [P] [US4] 在 `apps/api/tests/LearnerCommissionViewTest.php` 写 service 单测: 学员只能看到与自己 referrer_learner_id = self 的记录; status 过滤生效
-- [ ] T056 [P] [US4] 在 `apps/api/tests/LearnerDownlineViewTest.php` 写 service 单测: 按 referrer_learner_id = self 的学员, 沿链路上溯一次 (一级) / 两次 (二级) / 三次 (三级), 第四级与更远不返回
+- [X] T053 [P] [US4] 在 `apps/web/tests/DistributionView.test.ts` 写组件测: 列表/总览/记录分页/下级切换正常, 任何位置不出现明文手机号
+- [X] T054 [P] [US4] 在 `apps/web/tests/LearnerPlaintextLeak.test.ts` 写接口层测: 抓取所有 `/api/learner/distribution/*` 响应, 11 位连续手机号匹配数 = 0
+- [X] T055 [P] [US4] 在 `apps/api/tests/LearnerCommissionViewTest.php` 写 service 单测: 学员只能看到与自己 referrer_learner_id = self 的记录; status 过滤生效
+- [X] T056 [P] [US4] 在 `apps/api/tests/LearnerDownlineViewTest.php` 写 service 单测: 按 referrer_learner_id = self 的学员, 沿链路上溯一次 (一级) / 两次 (二级) / 三次 (三级), 第四级与更远不返回
 
 ### Implementation for User Story 4
 
-- [ ] T057 [P] [US4] 在 `apps/api/app/controller/learner/DistributionController.php` 增路由 `GET .../commissions` (分页 + 状态过滤) / `GET .../downline` (按 level 过滤)
-- [ ] T058 [P] [US4] 在 `apps/web/src/api/distribution.ts` 落 `fetchMyShareEntries` / `createShareEntry` / `revokeShareEntry` / `fetchMyCommissions` / `fetchMyDownline`
-- [ ] T059 [US4] 在 `apps/web/src/composables/useDistribution.ts` 落会话状态 composable: 挂载建立 / 卸载撤销, 监听 route.path 变化重拉数据 (符合 CLAUDE.md 多 tab 视图规则)
-- [ ] T060 [P] [US4] 在 `apps/web/src/views/DistributionView.vue` 落 4 个区块: 链接列表 / 总览 / 记录分页 / 下级视图, 手机号一律 `{{ mask(phone) }}` 不走原始字符串
-- [ ] T061 [P] [US4] 在 `apps/web/src/router/index.ts` 注册 `/distribution` 路由, 守卫: 未登录跳登录; `distribution.enabled` 配置关站时隐藏入口
-- [ ] T095 [P] [US4] 落实 `learner_can_view_detail`: false 时学习端整页只显示开关说明, `GET /api/learner/distribution/commissions` 与 `/downline` 不返回金额与下级; 在 `LearnerCommissionViewTest` / `DistributionView.test.ts` 覆盖 true/false
-- [ ] T062 [P] [US4] 在 `apps/web/tests/DistributionApi.test.ts` 写 fetch* 单测: 入参出参严格走 Zod, 任何错误响应不抛白
-- [ ] T063 跑 `make test-web DistributionView DistributionApi LearnerPlaintextLeak` 与 `make test-api LearnerCommissionViewTest LearnerDownlineViewTest` 全过 (含 T095 `learner_can_view_detail=false`)
+- [X] T057 [P] [US4] 在 `apps/api/app/controller/learner/DistributionController.php` 增路由 `GET .../commissions` (分页 + 状态过滤) / `GET .../downline` (按 level 过滤)
+- [X] T058 [P] [US4] 在 `apps/web/src/api/distribution.ts` 落 `fetchMyShareEntries` / `createShareEntry` / `revokeShareEntry` / `fetchMyCommissions` / `fetchMyDownline`
+- [X] T059 [US4] 在 `apps/web/src/composables/useDistribution.ts` 落会话状态 composable: 挂载建立 / 卸载撤销, 监听 route.path 变化重拉数据 (符合 CLAUDE.md 多 tab 视图规则)
+- [X] T060 [P] [US4] 在 `apps/web/src/views/DistributionView.vue` 落 4 个区块: 链接列表 / 总览 / 记录分页 / 下级视图, 手机号一律 `{{ mask(phone) }}` 不走原始字符串
+- [X] T061 [P] [US4] 在 `apps/web/src/router/index.ts` 注册 `/distribution` 路由, 守卫: 未登录跳登录; `distribution.enabled` 配置关站时隐藏入口
+- [X] T095 [P] [US4] 落实 `learner_can_view_detail`: false 时学习端整页只显示开关说明, `GET /api/learner/distribution/commissions` 与 `/downline` 不返回金额与下级; 在 `LearnerCommissionViewTest` / `DistributionView.test.ts` 覆盖 true/false
+- [X] T062 [P] [US4] 在 `apps/web/tests/DistributionApi.test.ts` 写 fetch* 单测: 入参出参严格走 Zod, 任何错误响应不抛白
+- [X] T063 跑 `make test-web DistributionView DistributionApi LearnerPlaintextLeak` 与 `make test-api LearnerCommissionViewTest LearnerDownlineViewTest` 全过 (含 T095 `learner_can_view_detail=false`)
 
 **Checkpoint**: US4 独立可演示 — 学员可看到自己的分销全貌, 全链路零明文
 
@@ -181,21 +181,21 @@ description: "Task list for 016-course-distribution"
 
 ### Tests for User Story 5 ⚠️ 写在前
 
-- [ ] T064 [P] [US5] 在 `apps/admin/tests/DistributionReconcileView.test.ts` 写组件测: 输入订单号 → 显示 receivers 列表; 4 个接收人异常 → 红字提示「数据完整性硬约束」且撤销按钮置灰
-- [ ] T065 [P] [US5] 在 `apps/admin/tests/DistributionAuditView.test.ts` 写组件测: 按时间/动作筛选生效; 每条带 actor 与 reason
-- [ ] T066 [P] [US5] 在 `apps/api/tests/AdminVoidRequiresReasonTest.php` 写单测: reason < 5 字符 → 抛 BusinessException; void 后状态不可再改 (终态)
-- [ ] T067 [P] [US5] 在 `apps/api/tests/DistributionAuditCoverageTest.php` 写全链路测: 所有写路径 (config / override / settle / void / refund_void) 必须产生 audit 记录, 缺一即 fail
+- [X] T064 [P] [US5] 在 `apps/admin/tests/DistributionReconcileView.test.ts` 写组件测: 输入订单号 → 显示 receivers 列表; 4 个接收人异常 → 红字提示「数据完整性硬约束」且撤销按钮置灰
+- [X] T065 [P] [US5] 在 `apps/admin/tests/DistributionAuditView.test.ts` 写组件测: 按时间/动作筛选生效; 每条带 actor 与 reason
+- [X] T066 [P] [US5] 在 `apps/api/tests/AdminVoidRequiresReasonTest.php` 写单测: reason < 5 字符 → 抛 BusinessException; void 后状态不可再改 (终态)
+- [X] T067 [P] [US5] 在 `apps/api/tests/DistributionAuditCoverageTest.php` 写全链路测: 所有写路径 (config / override / settle / void / refund_void) 必须产生 audit 记录, 缺一即 fail
 
 ### Implementation for User Story 5
 
-- [ ] T068 [US5] 在 `apps/api/app/controller/admin/DistributionController.php` 增路由 `GET .../reconcile/by-order/{orderId}` / `GET .../commissions` (分页 + 筛选) / `POST .../commissions/{id}/void` (`distribution.reconcile`) / `GET .../audit` / `GET .../commissions/export` (csv, 契约须同步该路由)
-- [ ] T069 [P] [US5] 在 `apps/api/app/service/CommissionService.php` 增 `listForAdmin(filter, page, limit)` / `getByOrder(orderId)` / `exportCsv(filter): string` (csv 内手机号全部脱敏, SC-009)
-- [ ] T070 [P] [US5] 在 `apps/admin/src/api/distribution.ts` 落 `fetchReconcileByOrder` / `fetchCommissions` / `voidCommission` / `fetchAudit` / `exportCommissionsCsv` (走 Zod)
-- [ ] T071 [P] [US5] 在 `apps/admin/src/views/distribution/DistributionReconcileView.vue` 落对账页: 订单号输入 → receivers 表格 + 4 人异常硬提示 + 撤销按钮 (ElMessageBox.confirm type=warning 收集 reason ≥ 5 字符)
-- [ ] T072 [P] [US5] 在 `apps/admin/src/views/distribution/DistributionAuditView.vue` 落审计页: 按时间/动作/对象筛选 + el-pagination 分页 + 表格展示 actor/before/after/reason
-- [ ] T073 [P] [US5] 在 `apps/admin/src/router/index.ts` 注册 2 条路由
-- [ ] T074 [P] [US5] 在 `apps/admin/tests/AdminDistributionApi.test.ts` 写 fetch* 单测
-- [ ] T075 跑 `make test-admin DistributionReconcileView DistributionAuditView AdminDistributionApi` 与 `make test-api AdminVoidRequiresReasonTest DistributionAuditCoverageTest` 全过
+- [X] T068 [US5] 在 `apps/api/app/controller/admin/DistributionController.php` 增路由 `GET .../reconcile/by-order/{orderId}` / `GET .../commissions` (分页 + 筛选) / `POST .../commissions/{id}/void` (`distribution.reconcile`) / `GET .../audit` / `GET .../commissions/export` (csv, 契约须同步该路由)
+- [X] T069 [P] [US5] 在 `apps/api/app/service/CommissionService.php` 增 `listForAdmin(filter, page, limit)` / `getByOrder(orderId)` / `exportCsv(filter): string` (csv 内手机号全部脱敏, SC-009)
+- [X] T070 [P] [US5] 在 `apps/admin/src/api/distribution.ts` 落 `fetchReconcileByOrder` / `fetchCommissions` / `voidCommission` / `fetchAudit` / `exportCommissionsCsv` (走 Zod)
+- [X] T071 [P] [US5] 在 `apps/admin/src/views/distribution/DistributionReconcileView.vue` 落对账页: 订单号输入 → receivers 表格 + 4 人异常硬提示 + 撤销按钮 (ElMessageBox.confirm type=warning 收集 reason ≥ 5 字符)
+- [X] T072 [P] [US5] 在 `apps/admin/src/views/distribution/DistributionAuditView.vue` 落审计页: 按时间/动作/对象筛选 + el-pagination 分页 + 表格展示 actor/before/after/reason
+- [X] T073 [P] [US5] 在 `apps/admin/src/router/index.ts` 注册 2 条路由
+- [X] T074 [P] [US5] 在 `apps/admin/tests/AdminDistributionApi.test.ts` 写 fetch* 单测
+- [X] T075 跑 `make test-admin DistributionReconcileView DistributionAuditView AdminDistributionApi` 与 `make test-api AdminVoidRequiresReasonTest DistributionAuditCoverageTest` 全过
 
 **Checkpoint**: US5 独立可演示 — 对账 / 撤销 / 审计三件套闭环, 4 级异常硬拒
 
@@ -209,17 +209,17 @@ description: "Task list for 016-course-distribution"
 
 ### Tests for User Story 6 ⚠️ 写在前
 
-- [ ] T076 [P] [US6] 在 `apps/api/tests/DistributionDisableFlowTest.php` 写集成测: enabled=true 产生 pending → enabled=false → 记录不动; 前端分享入口路由 404
-- [ ] T077 [P] [US6] 在 `apps/api/tests/ShareEntryCreationGateTest.php` 写单测: enabled=false 时学员 POST /share-entries → 409, 不写 DB; enabled=true 后恢复
-- [ ] T078 [P] [US6] 在 `apps/web/tests/DistributionRouteGuard.test.ts` 写组件测: distribution.enabled=false 时 /distribution 路由跳 404
+- [X] T076 [P] [US6] 在 `apps/api/tests/DistributionDisableFlowTest.php` 写集成测: enabled=true 产生 pending → enabled=false → 记录不动; 前端分享入口路由 404
+- [X] T077 [P] [US6] 在 `apps/api/tests/ShareEntryCreationGateTest.php` 写单测: enabled=false 时学员 POST /share-entries → 409, 不写 DB; enabled=true 后恢复
+- [X] T078 [P] [US6] 在 `apps/web/tests/DistributionRouteGuard.test.ts` 写组件测: distribution.enabled=false 时 /distribution 路由跳 404
 
 ### Implementation for User Story 6
 
-- [ ] T079 [US6] 在 `apps/api/app/service/ShareEntryService.php::create` 加业务闸门: `DistributionConfigService::getConfig()->enabled === false` 时抛 BusinessException, 不写 DB
-- [ ] T080 [US6] 在 `apps/api/app/service/CommissionService.php::settleForOrder` 加业务闸门: 全局 enabled=false 且课程级 override 不存在时直接 return, 不写 commission_records; 课程级 override.enabled=false 时同样跳过
-- [ ] T081 [US6] 在 `apps/web/src/router/index.ts` 增加 enabled 守卫: 站点 enabled=false 时学习端 `/distribution` → 404. 管理端分销路由保持可访问 (FR-014), 不得对 admin 做同样 404
-- [ ] T082 [P] [US6] 在 `apps/api/app/service/ShareVisitService.php::recordVisit` 保持「按 share_entry 当时的 distribution_enabled_at_creation 处理」, 即生成时 enabled=true 则继续记, 生成时 enabled=false 则不记 (与 spec Edge Cases 一致)
-- [ ] T083 跑 `make test-api DistributionDisableFlowTest ShareEntryCreationGateTest` 与 `make test-web DistributionRouteGuard` 全过
+- [X] T079 [US6] 在 `apps/api/app/service/ShareEntryService.php::create` 加业务闸门: `DistributionConfigService::getConfig()->enabled === false` 时抛 BusinessException, 不写 DB
+- [X] T080 [US6] 在 `apps/api/app/service/CommissionService.php::settleForOrder` 加业务闸门: 全局 enabled=false 且课程级 override 不存在时直接 return, 不写 commission_records; 课程级 override.enabled=false 时同样跳过
+- [X] T081 [US6] 在 `apps/web/src/router/index.ts` 增加 enabled 守卫: 站点 enabled=false 时学习端 `/distribution` → 404. 管理端分销路由保持可访问 (FR-014), 不得对 admin 做同样 404
+- [X] T082 [P] [US6] 在 `apps/api/app/service/ShareVisitService.php::recordVisit` 保持「按 share_entry 当时的 distribution_enabled_at_creation 处理」, 即生成时 enabled=true 则继续记, 生成时 enabled=false 则不记 (与 spec Edge Cases 一致)
+- [X] T083 跑 `make test-api DistributionDisableFlowTest ShareEntryCreationGateTest` 与 `make test-web DistributionRouteGuard` 全过
 
 **Checkpoint**: US6 独立可演示 — 关闭 / 重启 / 课程级开关三种状态切换都不破坏历史
 
@@ -229,16 +229,16 @@ description: "Task list for 016-course-distribution"
 
 **Purpose**: 跨多个用户故事的收尾
 
-- [ ] T084 [P] 在 `apps/api/app/service/DistributionConfigService.php` 顶部增 private const (`const LEVEL_CAP_HARD_LIMIT = 3`, `const COMMISSION_VOID_MIN_REASON_LEN = 5`, `const TIMEZONE = 'Asia/Shanghai'`)
-- [ ] T085 [P] 在 `apps/api/app/service/CommissionService.php` 顶部增 private const (状态枚举, 金额分单位声明)
-- [ ] T086 [P] 在 `packages/contracts/src/distribution.ts` 顶部加注释: 「本文件受 SC-003 合规硬约束保护, level_cap 不得修改为 4」
-- [ ] T087 在 `CONTEXT.md` 末尾追加「分销」段: 推荐人 / 分享入口 / 访问痕迹 / 佣金记录 / 分销审计 / 课程分销开关 / 级别 等术语与 Avoid
-- [ ] T088 在 `tasks/lessons.md` 追加: 「MySQL 软删表唯一约束 → 同理用生成列保证 commission_records 单订单单接收人唯一」「订单 succeeded / 退款窗口结束 / 退款是三个事件源, 钩子必须挂既有订单状态迁移, 不能 cron 兜底」
-- [ ] T089 跑 `make test` (api+web+admin) 全过; 跑 `make test-e2e` 端到端套件全过
-- [ ] T090 跑 `make lint` `make typecheck` `make phpstan` 全过
+- [X] T084 [P] 在 `apps/api/app/service/DistributionConfigService.php` 顶部增 private const (`const LEVEL_CAP_HARD_LIMIT = 3`, `const COMMISSION_VOID_MIN_REASON_LEN = 5`, `const TIMEZONE = 'Asia/Shanghai'`)
+- [X] T085 [P] 在 `apps/api/app/service/CommissionService.php` 顶部增 private const (状态枚举, 金额分单位声明)
+- [X] T086 [P] 在 `packages/contracts/src/distribution.ts` 顶部加注释: 「本文件受 SC-003 合规硬约束保护, level_cap 不得修改为 4」
+- [X] T087 在 `CONTEXT.md` 末尾追加「分销」段: 推荐人 / 分享入口 / 访问痕迹 / 佣金记录 / 分销审计 / 课程分销开关 / 级别 等术语与 Avoid
+- [X] T088 在 `tasks/lessons.md` 追加: 「MySQL 软删表唯一约束 → 同理用生成列保证 commission_records 单订单单接收人唯一」「订单 succeeded / 退款窗口结束 / 退款是三个事件源, 钩子必须挂既有订单状态迁移, 不能 cron 兜底」
+- [X] T089 跑 `make test` (api+web+admin) 全过; 跑 `make test-e2e` 端到端套件全过
+- [X] T090 跑 `make lint` `make typecheck` `make phpstan` 全过
 - [ ] T091 跑 quickstart.md 全 12 条 SC 场景, 手工记录结果; SC-003 / SC-007 / SC-009 / SC-010 / SC-011 必须全过
-- [ ] T092 [P] 在 `apps/api/tests/ExportCsvMaskingTest.php` (从 quickstart 矩阵提前为正式测试) 落 csv 导出脱敏单测, 覆盖所有导出字段
-- [ ] T093 跑 `make rebuild-all` (因 packages/contracts 改了), 验证 api / admin / web 生产容器可启动
+- [X] T092 [P] 在 `apps/api/tests/ExportCsvMaskingTest.php` (从 quickstart 矩阵提前为正式测试) 落 csv 导出脱敏单测, 覆盖所有导出字段
+- [X] T093 跑 `make rebuild-all` (因 packages/contracts 改了), 验证 api / admin / web 生产容器可启动
 
 **Checkpoint**: 全量验收完成, 可合并
 
