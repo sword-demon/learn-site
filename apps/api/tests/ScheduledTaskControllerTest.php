@@ -65,6 +65,10 @@ final class ScheduledTaskControllerTest extends TestCase
 
     public function testManualRunCreatesLogAndAudit(): void
     {
+        // Shared dev database may hold committed scheduled_task.run audit
+        // rows; drop them inside the transaction (rollback restores them)
+        // so the assertion counts only this run's row.
+        Db::name('audit_log')->where('action', 'scheduled_task.run')->delete();
         $service = new ScheduledTaskService();
         $result = $service->runNow($this->taskId, $this->staffId);
         self::assertSame('manual', $result['trigger_type']);

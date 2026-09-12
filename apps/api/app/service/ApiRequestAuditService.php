@@ -8,6 +8,9 @@ use support\think\Db;
 
 final class ApiRequestAuditService
 {
+    /**
+     * @return array{items: list<array<string, mixed>>, total: int, page: int, limit: int}
+     */
     public function list(int $page = 1, int $limit = 20): array
     {
         $page = max(1, $page);
