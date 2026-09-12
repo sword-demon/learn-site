@@ -21,11 +21,6 @@ use App\service\DistributionConfigService;
  */
 final class DistributionConfigValidator
 {
-    // Single source of truth for the compliance constants lives on
-    // DistributionConfigService (T084); the validator mirrors it.
-    public const LEVEL_CAP_HARD_LIMIT = DistributionConfigService::LEVEL_CAP_HARD_LIMIT;
-    public const COMMISSION_VOID_MIN_REASON_LEN = DistributionConfigService::COMMISSION_VOID_MIN_REASON_LEN;
-    public const TIMEZONE = DistributionConfigService::TIMEZONE;
 
     /**
      * @param array<string, mixed> $cfg
@@ -33,11 +28,11 @@ final class DistributionConfigValidator
     public static function assertValidConfig(array $cfg): void
     {
         $levelCap = (int) ($cfg['level_cap'] ?? 0);
-        if ($levelCap < 1 || $levelCap > self::LEVEL_CAP_HARD_LIMIT) {
+        if ($levelCap < 1 || $levelCap > DistributionConfigService::LEVEL_CAP_HARD_LIMIT) {
             // Use 「合规硬约束」 wording so tests / UI can grep for it.
             throw new BusinessException(
                 'VALIDATION_FAILED',
-                'LEVEL_CAP_EXCEEDS_HARD_LIMIT:合规硬约束,level_cap 不得大于 ' . self::LEVEL_CAP_HARD_LIMIT,
+                'LEVEL_CAP_EXCEEDS_HARD_LIMIT:合规硬约束,level_cap 不得大于 ' . DistributionConfigService::LEVEL_CAP_HARD_LIMIT,
             );
         }
 

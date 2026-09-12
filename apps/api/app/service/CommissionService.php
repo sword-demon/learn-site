@@ -58,7 +58,7 @@ final class CommissionService
                 throw new BusinessException('VALIDATION_FAILED', 'RECEIVER_COUNT_EXCEEDS_HARD_LIMIT');
             }
 
-            $amounts = $this->allocate($paidCents, $effective, count($chain));
+            $amounts = $this->allocate($orderId, $paidCents, $effective, count($chain));
             $now = nowDatetime();
             $snapshot = json_encode($effective, JSON_UNESCAPED_UNICODE);
             $receivers = [];
@@ -165,8 +165,7 @@ final class CommissionService
             ]);
             $after = Db::name('commission_records')->where('id', $commissionId)->find();
             $this->audit->record('admin', $actorId, 'commission.void_admin', 'commission', $commissionId, $row, is_array($after) ? $after : null, $reason);
-            $this->writeAudit($actorId, 'commission.void_admin', $commissionId, ['reason' => $reason]);
-            return $this->shapeRecord($after ?? $row);
+            return $this->shapeRecords([$after ?? $row])[0];
         });
     }
 
@@ -212,7 +211,7 @@ final class CommissionService
             $summary['total_cents'] += $cents;
         }
         return [
-            'items' => array_map([$this, 'shapeRecord'], $rows),
+            'items' => $this->shapeRecords($rows),
             'total' => $total,
             'page' => $page,
             'limit' => $limit,
@@ -304,7 +303,7 @@ final class CommissionService
         $total = (int) $apply(Db::name('commission_records'))->count();
         $rows = $apply(Db::name('commission_records'))->order('id', 'desc')->page($page, $limit)->select()->toArray();
         return [
-            'items' => array_map([$this, 'shapeRecord'], $rows),
+            'items' => $this->shapeRecords($rows),
             'total' => $total,
             'page' => $page,
             'limit' => $limit,
@@ -370,7 +369,7 @@ final class CommissionService
      * @param array<string, mixed> $cfg
      * @return array<int, int>
      */
-    private function allocate(int $paidCents, array $cfg, int $levels): array
+    private function allocate(int $orderId, int $paidCents, array $cfg, int $levels): array
     {
         $cap = (int) ($cfg['per_order_cap_cents'] ?? 0);
         $raw = [];
@@ -389,7 +388,7 @@ final class CommissionService
                 $cut = min($raw[$level], $overflow);
                 $raw[$level] -= $cut;
                 $overflow -= $cut;
-                $this->audit->record('system', null, 'commission.settle', 'commission', null, null, [
+                $this->audit->record('system', null, 'commission.settle', 'commission', $orderId, null, [
                     'truncated_level' => $level,
                     'cut_cents' => $cut,
                 ], '已截断');
@@ -427,19 +426,6 @@ final class CommissionService
         return $amount;
     }
 
-    /** @param array<string, mixed> $payload */
-    private function writeAudit(int $actorId, string $action, int $targetId, array $payload): void
-    {
-        Db::name('audit_log')->insert([
-            'actor_id' => $actorId > 0 ? $actorId : null,
-            'action' => $action,
-            'target_type' => 'distribution',
-            'target_id' => $targetId > 0 ? $targetId : null,
-            'payload_json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            'created_at' => nowDatetime(),
-        ]);
-    }
-
     private function referrerStatus(int $referrerId): string
     {
         $account = Db::name('accounts')->where('id', $referrerId)->find();
@@ -456,13 +442,44 @@ final class CommissionService
     }
 
     /**
+     * Shape a batch of rows with two batched lookups instead of two queries
+     * per row — list pages can carry up to 200 records.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function shapeRecords(array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+        $refereeIds = array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['referee_learner_id'],
+            $rows,
+        )));
+        $courseIds = array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['course_id'],
+            $rows,
+        )));
+        $phones = Db::name('accounts')->whereIn('id', $refereeIds)->column('login', 'id');
+        $titles = Db::name('courses')->whereIn('id', $courseIds)->column('title', 'id');
+        $shaped = [];
+        foreach ($rows as $row) {
+            $shaped[] = $this->shapeRecord($row, is_array($phones) ? $phones : [], is_array($titles) ? $titles : []);
+        }
+        return $shaped;
+    }
+
+    /**
      * @param array<string, mixed> $row
+     * @param array<int, string> $phones account_id → login
+     * @param array<int, string> $titles course_id → title
      * @return array<string, mixed>
      */
-    private function shapeRecord(array $row): array
+    private function shapeRecord(array $row, array $phones, array $titles): array
     {
-        $phone = $this->learnerPhone((int) $row['referee_learner_id']);
-        $courseTitle = (string) (Db::name('courses')->where('id', (int) $row['course_id'])->value('title') ?? '课程');
+        $phone = (string) ($phones[(int) $row['referee_learner_id']] ?? '');
+        $courseTitle = (string) ($titles[(int) $row['course_id']] ?? '');
         return [
             'id' => (int) $row['id'],
             'order_id' => (int) $row['order_id'],

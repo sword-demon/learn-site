@@ -48,6 +48,10 @@ function httpErrorPayload(error: unknown): unknown {
   return response?.data;
 }
 
+function errorCode(error: unknown): string | undefined {
+  return error instanceof Error ? (error as Error & { code?: string }).code : undefined;
+}
+
 function rethrowHttp(error: unknown): never {
   const payload = httpErrorPayload(error);
   if (payload !== undefined) {
@@ -123,13 +127,11 @@ export async function fetchReconcileByOrder(
     if (!parsed.ok) throw Object.assign(new Error(parsed.error.code), { code: parsed.error.code });
     return parsed.data;
   } catch (error) {
-    const code = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
-    if (code === 'NOT_FOUND') return null;
+    if (errorCode(error) === 'NOT_FOUND') return null;
     try {
       rethrowHttp(error);
     } catch (next) {
-      const nextCode = next instanceof Error ? (next as Error & { code?: string }).code : undefined;
-      if (nextCode === 'NOT_FOUND') return null;
+      if (errorCode(next) === 'NOT_FOUND') return null;
       throw next;
     }
   }

@@ -141,20 +141,24 @@ final class DistributionCourseOverrideService
             ->where('course_id', '>', 0)
             ->count();
 
+        // One batched title lookup instead of a Course::find() per row.
+        $courseIds = array_map(static fn (array $row): int => (int) $row['course_id'], $rows);
+        $titles = $courseIds === []
+            ? []
+            : Db::name('courses')->whereIn('id', array_values(array_unique($courseIds)))->column('title', 'id');
+        $titles = is_array($titles) ? $titles : [];
+
         $result = [];
         foreach ($rows as $row) {
-            // Fetch course details for display
-            $course = \App\model\Course::find((int) $row['course_id']);
-
             $result[] = [
                 'course_id' => (int) $row['course_id'],
-                'course_name' => $course?->title ?? 'Deleted Course',
+                'course_name' => (string) ($titles[(int) $row['course_id']] ?? 'Deleted Course'),
                 'enabled' => (bool) $row['enabled'],
                 'level1_pct' => $row['level1_pct'] ?? 'Use global',
                 'level2_pct' => $row['level2_pct'] ?? 'Use global',
                 'level3_pct' => $row['level3_pct'] ?? 'Use global',
                 'per_order_cap_cents' => $row['per_order_cap_cents'] ?? 'Use global',
-                'updated_by' => isset($row['updated_by_staff_id']) ? (int) $row['updated_by_staff_id'] : null,
+                'updated_by' => $row['updated_by_staff_id'],
                 'updated_at' => $row['updated_at'],
             ];
         }
