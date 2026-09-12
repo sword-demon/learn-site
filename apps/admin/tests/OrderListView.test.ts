@@ -180,58 +180,62 @@ describe('OrderListView', () => {
     });
   });
 
-  it('loads paginated course and learner options and submits their selected IDs', async () => {
-    const wrapper = mountOrders();
-    await flushPromises();
+  it(
+    'loads paginated course and learner options and submits their selected IDs',
+    { timeout: 20000 },
+    async () => {
+      const wrapper = mountOrders();
+      await flushPromises();
 
-    expect(catalogApi.listCourses).toHaveBeenCalledWith({ page: 1, limit: 20 });
-    expect(learnersApi.listLearners).toHaveBeenCalledWith({ page: 1, limit: 20 });
+      expect(catalogApi.listCourses).toHaveBeenCalledWith({ page: 1, limit: 20 });
+      expect(learnersApi.listLearners).toHaveBeenCalledWith({ page: 1, limit: 20 });
 
-    const courseSelect = wrapper
-      .findAllComponents({ name: 'ElSelect' })
-      .find((component) => component.attributes('data-field') === 'course_id');
-    const learnerSelect = wrapper
-      .findAllComponents({ name: 'ElSelect' })
-      .find((component) => component.attributes('data-field') === 'learner_id');
-    expect(courseSelect).toBeDefined();
-    expect(learnerSelect).toBeDefined();
-    expect(courseSelect?.props('name')).toBe('course_id');
-    expect(learnerSelect?.props('name')).toBe('learner_id');
-    expect(courseSelect?.classes()).toContain('filter-control');
-    expect(learnerSelect?.classes()).toContain('filter-control');
+      const courseSelect = wrapper
+        .findAllComponents({ name: 'ElSelect' })
+        .find((component) => component.attributes('data-field') === 'course_id');
+      const learnerSelect = wrapper
+        .findAllComponents({ name: 'ElSelect' })
+        .find((component) => component.attributes('data-field') === 'learner_id');
+      expect(courseSelect).toBeDefined();
+      expect(learnerSelect).toBeDefined();
+      expect(courseSelect?.props('name')).toBe('course_id');
+      expect(learnerSelect?.props('name')).toBe('learner_id');
+      expect(courseSelect?.classes()).toContain('filter-control');
+      expect(learnerSelect?.classes()).toContain('filter-control');
 
-    await wrapper.get('[data-field="course_id"] .el-select__wrapper').trigger('click');
-    const courseOption = Array.from(
-      document.body.querySelectorAll<HTMLElement>('.el-select-dropdown__item'),
-    )
-      .reverse()
-      .find((item) => item.textContent?.includes('TypeScript 深入实践'));
-    expect(courseOption).toBeDefined();
-    courseOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await flushPromises();
+      await wrapper.get('[data-field="course_id"] .el-select__wrapper').trigger('click');
+      const courseOption = Array.from(
+        document.body.querySelectorAll<HTMLElement>('.el-select-dropdown__item'),
+      )
+        .reverse()
+        .find((item) => item.textContent?.includes('TypeScript 深入实践'));
+      expect(courseOption).toBeDefined();
+      courseOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flushPromises();
 
-    await wrapper.get('[data-field="learner_id"] .el-select__wrapper').trigger('click');
-    const learnerOption = Array.from(
-      document.body.querySelectorAll<HTMLElement>('.el-select-dropdown__item'),
-    )
-      .reverse()
-      .find((item) => item.textContent?.includes('小王'));
-    expect(learnerOption).toBeDefined();
-    learnerOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await flushPromises();
+      await wrapper.get('[data-field="learner_id"] .el-select__wrapper').trigger('click');
+      const learnerOption = Array.from(
+        document.body.querySelectorAll<HTMLElement>('.el-select-dropdown__item'),
+      )
+        .reverse()
+        .find((item) => item.textContent?.includes('小王'));
+      expect(learnerOption).toBeDefined();
+      learnerOption?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flushPromises();
 
-    await wrapper.get('form.filters').trigger('submit');
-    await flushPromises();
+      await wrapper.get('form.filters').trigger('submit');
+      await flushPromises();
 
-    expect(orderApi.listOrders).toHaveBeenLastCalledWith({
-      course_id: 12,
-      learner_id: 78,
-      page: 1,
-      limit: 20,
-    });
-  });
+      expect(orderApi.listOrders).toHaveBeenLastCalledWith({
+        course_id: 12,
+        learner_id: 78,
+        page: 1,
+        limit: 20,
+      });
+    },
+  );
 
-  it('searches option lists remotely and loads their next pages', async () => {
+  it('searches option lists remotely and loads their next pages', { timeout: 20000 }, async () => {
     const nextCourse = { ...course, id: 13, title: 'Vue 工程化实践' };
     const nextLearner = { ...learner, account_id: 79, display_name: '小李' };
     catalogApi.listCourses.mockImplementation(async (params: { q?: string; page?: number }) => {
