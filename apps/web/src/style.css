@@ -2586,8 +2586,22 @@ html[data-theme='night'] .user-menu-card__chip {
 }
 
 /* Rich-editor controls and teleported dialogs share the learner theme. */
-.daily-checkin-dialog { padding: 28px; border-radius: 8px; max-height: calc(100dvh - 64px); overflow-y: auto; }
-.daily-checkin-dialog .el-dialog__title { font-size: 22px; font-weight: 650; }
-.daily-checkin-dialog .el-dialog__header { padding-bottom: 20px; }
-.daily-checkin-dialog .el-dialog__footer { padding-top: 24px; }
-.el-input__inner:focus-visible { outline: none; }
+.daily-checkin-dialog {
+  padding: 28px;
+  border-radius: 8px;
+  max-height: calc(100dvh - 64px);
+  overflow-y: auto;
+}
+.daily-checkin-dialog .el-dialog__title {
+  font-size: 22px;
+  font-weight: 650;
+}
+.daily-checkin-dialog .el-dialog__header {
+  padding-bottom: 20px;
+}
+.daily-checkin-dialog .el-dialog__footer {
+  padding-top: 24px;
+}
+.el-input__inner:focus-visible {
+  outline: none;
+}

@@ -93,6 +93,9 @@ export async function fetchAudit(params: Record<string, unknown>) {
 }
 
 export async function exportCommissionsCsv(params: Record<string, unknown>): Promise<string> {
-  const { data } = await http.get('/distribution/commissions/export', { params, responseType: 'text' });
+  const { data } = await http.get('/distribution/commissions/export', {
+    params,
+    responseType: 'text',
+  });
   return String(data);
 }

@@ -48,7 +48,7 @@ import { deleteLearnerAvatar, uploadLearnerAvatar } from '@/api/learner';
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-const props = defineProps<{
+defineProps<{
   avatarUrl: string | null;
   initial: string;
 }>();
