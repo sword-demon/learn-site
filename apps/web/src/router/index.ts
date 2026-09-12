@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { requireLearnerAuth } from '@/router/guards';
+import { distributionGate, requireLearnerAuth } from '@/router/guards';
 import { finishRouteLoading, startRouteLoading } from '@/router/loading';
 
 const router = createRouter({
@@ -83,7 +83,7 @@ const router = createRouter({
         {
           path: 'me/distribution',
           name: 'distribution',
-          beforeEnter: requireLearnerAuth,
+          beforeEnter: [requireLearnerAuth, distributionGate],
           component: () => import('@/views/DistributionView.vue'),
         },
         {
