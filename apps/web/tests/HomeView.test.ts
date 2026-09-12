@@ -86,7 +86,11 @@ describe('HomeView', () => {
 
   it('ignores a stale category response after returning to all courses', async () => {
     let resolveCategory!: (value: unknown) => void;
-    learnerApi.fetchCategoryCourses.mockReturnValue(new Promise((resolve) => { resolveCategory = resolve; }));
+    learnerApi.fetchCategoryCourses.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCategory = resolve;
+      }),
+    );
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: '/', component: HomeView }],

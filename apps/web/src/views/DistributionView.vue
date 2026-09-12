@@ -50,7 +50,9 @@ async function revoke(id: number): Promise<void> {
     <template v-else>
       <section>
         <h2>分享链接</h2>
-        <el-button type="primary" :loading="creating" @click="createSiteLink">生成全站链接</el-button>
+        <el-button type="primary" :loading="creating" @click="createSiteLink"
+          >生成全站链接</el-button
+        >
         <el-table :data="shares">
           <el-table-column prop="masked_code" label="短码" />
           <el-table-column prop="visit_count" label="访问" />
@@ -67,8 +69,7 @@ async function revoke(id: number): Promise<void> {
         <p>
           待结算 {{ commissions.summary.pending_cents }} 分 / 已结算
           {{ commissions.summary.settled_cents }} 分 / 已撤销
-          {{ commissions.summary.voided_cents }} 分 / 累计
-          {{ commissions.summary.total_cents }} 分
+          {{ commissions.summary.voided_cents }} 分 / 累计 {{ commissions.summary.total_cents }} 分
         </p>
         <el-table :data="commissions.items">
           <el-table-column prop="course_title" label="课程" />
@@ -91,6 +92,12 @@ async function revoke(id: number): Promise<void> {
 </template>
 
 <style scoped>
-.page { padding: 24px; max-width: 960px; margin: 0 auto; }
-section { margin-top: 24px; }
+.page {
+  padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+section {
+  margin-top: 24px;
+}
 </style>

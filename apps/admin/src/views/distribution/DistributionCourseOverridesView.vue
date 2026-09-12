@@ -31,7 +31,7 @@ onMounted(() => void reload());
 <template>
   <main class="page">
     <h1>课程分销覆盖</h1>
-    <el-table :data="rows" v-loading="loading">
+    <el-table v-loading="loading" :data="rows">
       <el-table-column prop="course_id" label="课程" />
       <el-table-column label="开关">
         <template #default="{ row }">
@@ -48,5 +48,7 @@ onMounted(() => void reload());
 </template>
 
 <style scoped>
-.page { padding: 24px; }
+.page {
+  padding: 24px;
+}
 </style>

@@ -109,11 +109,14 @@ describe('ContentTodoDrawer', () => {
     expect(save).toBeDefined();
     await save!.trigger('click');
     await flushPromises();
-    expect(api.triageContentTodo).toHaveBeenCalledWith(21, expect.objectContaining({
-      label: 'missing_example',
-      expected_version: 2,
-      target_course_id: 12,
-    }));
+    expect(api.triageContentTodo).toHaveBeenCalledWith(
+      21,
+      expect.objectContaining({
+        label: 'missing_example',
+        expected_version: 2,
+        target_course_id: 12,
+      }),
+    );
     wrapper.unmount();
   });
 
@@ -124,7 +127,9 @@ describe('ContentTodoDrawer', () => {
       global: { plugins: [installElementPlus] },
     });
     await flushPromises();
-    const approve = wrapper.findAll('button').find((button) => button.text().includes('批准并写回'));
+    const approve = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('批准并写回'));
     expect(approve).toBeDefined();
     await approve!.trigger('click');
     await flushPromises();
@@ -145,7 +150,9 @@ describe('ContentTodoDrawer', () => {
       global: { plugins: [installElementPlus] },
     });
     await flushPromises();
-    const approve = wrapper.findAll('button').find((button) => button.text().includes('批准并写回'));
+    const approve = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('批准并写回'));
     const error = vi.spyOn(ElMessage, 'error').mockImplementation(() => ({}) as never);
     await approve!.trigger('click');
     await flushPromises();

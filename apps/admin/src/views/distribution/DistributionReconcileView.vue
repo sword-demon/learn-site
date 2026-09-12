@@ -72,6 +72,10 @@ async function voidOne(id: number): Promise<void> {
 </template>
 
 <style scoped>
-.page { padding: 24px; }
-.error { color: var(--el-color-danger); }
+.page {
+  padding: 24px;
+}
+.error {
+  color: var(--el-color-danger);
+}
 </style>

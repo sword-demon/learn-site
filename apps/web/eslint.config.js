@@ -25,7 +25,10 @@ export default [
     plugins: { '@typescript-eslint': tseslint },
     rules: {
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' },
+      ],
       'vue/multi-word-component-names': 'off',
       'vue/no-undef-components': 'off',
       // Rich text passes through server-side HtmlSanitizer (apps/api/app/support/HtmlSanitizer.php)
@@ -52,6 +55,9 @@ export default [
       // unplugin-auto-import / unplugin-vue-components generated types.
       'auto-imports.d.ts',
       'components.d.ts',
+      // Build artifacts and node-only scripts; not part of the SPA source.
+      'assets/**',
+      'tools/**',
     ],
   },
   {

@@ -50,8 +50,8 @@ describe('Element Plus theme foundation', () => {
 
   it('loads overlay CSS so dialogs can cover the page instead of flowing after the footer', () => {
     const main = readProjectFile('src/main.ts');
-    expect(main).toContain("element-plus/theme-chalk/el-dialog.css");
-    expect(main).toContain("element-plus/theme-chalk/el-overlay.css");
+    expect(main).toContain('element-plus/theme-chalk/el-dialog.css');
+    expect(main).toContain('element-plus/theme-chalk/el-overlay.css');
   });
 
   it('installs the zh-CN locale at the web entry', () => {

@@ -35,7 +35,14 @@ describe('DistributionView', () => {
 
   it('renders sections without plaintext phones', async () => {
     api.fetchMyDownline.mockResolvedValue({
-      items: [{ learner_id: 2, masked_phone: '138****1234', level: 1, registered_at: '2026-09-10T00:00:00+08:00' }],
+      items: [
+        {
+          learner_id: 2,
+          masked_phone: '138****1234',
+          level: 1,
+          registered_at: '2026-09-10T00:00:00+08:00',
+        },
+      ],
     });
     const wrapper = mount(DistributionView);
     await flushPromises();
@@ -46,7 +53,10 @@ describe('DistributionView', () => {
   });
 
   it('hides detail when the learner detail switch is off', async () => {
-    api.fetchDistributionStatus.mockResolvedValue({ enabled: true, learner_can_view_detail: false });
+    api.fetchDistributionStatus.mockResolvedValue({
+      enabled: true,
+      learner_can_view_detail: false,
+    });
     const wrapper = mount(DistributionView);
     await flushPromises();
     expect(wrapper.text()).toContain('佣金明细当前不可查看');

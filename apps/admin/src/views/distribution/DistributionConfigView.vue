@@ -12,7 +12,7 @@ const errorMsg = ref<string | null>(null);
 const form = ref<DistributionConfigUpdateInput | null>(null);
 
 function toInput(cfg: DistributionConfigDTO): DistributionConfigUpdateInput {
-  const { updated_at: _a, updated_by: _b, ...rest } = cfg;
+  const { updated_at: _updatedAt, updated_by: _updatedBy, ...rest } = cfg;
   return rest;
 }
 
@@ -84,7 +84,14 @@ onMounted(() => void reload());
 </template>
 
 <style scoped>
-.page { max-width: 640px; padding: 24px; }
-.head { margin-bottom: 16px; }
-.error { color: var(--el-color-danger); }
+.page {
+  max-width: 640px;
+  padding: 24px;
+}
+.head {
+  margin-bottom: 16px;
+}
+.error {
+  color: var(--el-color-danger);
+}
 </style>

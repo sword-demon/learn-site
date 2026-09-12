@@ -116,7 +116,7 @@ describe('CourseStartQueueView', () => {
     await flushPromises();
     expect(courseStudentsApi.sendCourseStartReminders).not.toHaveBeenCalled();
 
-    wrapper.findComponent({ name: 'ElTable' }).vm.toggleRowSelection(eligible, true);
+    wrapper.findComponent({ name: 'ElTable' }).vm.$emit('selection-change', [eligible]);
     await flushPromises();
     await wrapper.get('[data-action="send-reminders"]').trigger('click');
     await flushPromises();
