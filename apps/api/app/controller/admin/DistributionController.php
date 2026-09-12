@@ -49,20 +49,20 @@ final class DistributionController
         });
     }
 
-    public function upsertOverride(Request $request, int $courseId): \support\Response
+    public function upsertOverride(Request $request, string $courseId): \support\Response
     {
         return $this->wrap(fn (): array => $this->overrides->upsert(
-            $courseId,
+            $this->parseId($courseId),
             self::readJson($request),
             $this->staffId($request),
         ));
     }
 
-    public function reconcileByOrder(Request $request, int $orderId): \support\Response
+    public function reconcileByOrder(Request $request, string $orderId): \support\Response
     {
         return $this->wrap(function () use ($request, $orderId): array {
             $this->staffId($request);
-            return $this->commissions->getByOrder($orderId);
+            return $this->commissions->getByOrder($this->parseId($orderId));
         });
     }
 
@@ -71,6 +71,7 @@ final class DistributionController
         $page = (int) ($request->get('page', '1'));
         $limit = (int) ($request->get('limit', '20'));
         $filter = [
+            'order_id' => $request->get('order_id'),
             'learner_id' => $request->get('learner_id'),
             'course_id' => $request->get('course_id'),
             'status' => $request->get('status'),
@@ -81,11 +82,11 @@ final class DistributionController
         });
     }
 
-    public function voidCommission(Request $request, int $id): \support\Response
+    public function voidCommission(Request $request, string $id): \support\Response
     {
         $body = self::readJson($request);
         return $this->wrap(fn (): array => $this->commissions->voidByAdmin(
-            $id,
+            $this->parseId($id),
             $this->staffId($request),
             (string) ($body['reason'] ?? ''),
         ));
@@ -96,15 +97,22 @@ final class DistributionController
         $page = max(1, (int) ($request->get('page', '1')));
         $limit = max(1, min(200, (int) ($request->get('limit', '20'))));
         $action = (string) $request->get('action', '');
-        return $this->wrap(function () use ($request, $page, $limit, $action): array {
+        $actorType = (string) $request->get('actor_type', '');
+        return $this->wrap(function () use ($request, $page, $limit, $action, $actorType): array {
             $this->staffId($request);
-            return $this->audits->list($page, $limit, $action !== '' ? $action : null);
+            return $this->audits->list(
+                $page,
+                $limit,
+                $action !== '' ? $action : null,
+                $actorType !== '' ? $actorType : null,
+            );
         });
     }
 
     public function exportCommissions(Request $request): \support\Response
     {
         $filter = [
+            'order_id' => $request->get('order_id'),
             'learner_id' => $request->get('learner_id'),
             'course_id' => $request->get('course_id'),
             'status' => $request->get('status'),
@@ -129,6 +137,14 @@ final class DistributionController
             throw new BusinessException('UNAUTHENTICATED', 'UNAUTHENTICATED');
         }
         return $id;
+    }
+
+    private function parseId(string $id): int
+    {
+        if (!ctype_digit($id) || (int) $id <= 0) {
+            throw new BusinessException('VALIDATION_FAILED', 'INVALID_ID');
+        }
+        return (int) $id;
     }
 
     private function wrap(callable $operation): \support\Response

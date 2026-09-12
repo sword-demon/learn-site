@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\service\BusinessException;
 use App\service\CommissionService;
 use App\service\DistributionConfigService;
 use PHPUnit\Framework\TestCase;
@@ -113,6 +114,36 @@ final class CommissionSettleTest extends TestCase
             ->where('referrer_learner_id', $ids[0])
             ->sum('amount_cents');
         self::assertSame(100, $sum);
+    }
+
+    public function testListForAdminFiltersByOrderId(): void
+    {
+        $ids = $this->chain(2);
+        $this->enableDistribution();
+        $orderId = $this->succeededOrder($ids[1], 50);
+        $svc = new CommissionService();
+        $svc->settleForOrder($orderId);
+        $hit = $svc->listForAdmin(['order_id' => $orderId], 1, 20);
+        self::assertGreaterThan(0, $hit['total']);
+        $miss = $svc->listForAdmin(['order_id' => 99999999], 1, 20);
+        self::assertSame(0, $miss['total']);
+        self::assertSame([], $miss['items']);
+    }
+
+    public function testGetByOrderReturnsEmptyReceiversWhenOrderHasNoCommission(): void
+    {
+        $ids = $this->chain(1);
+        $orderId = $this->succeededOrder($ids[0], 50);
+        $result = (new CommissionService())->getByOrder($orderId);
+        self::assertSame($orderId, $result['order_id']);
+        self::assertSame([], $result['receivers']);
+    }
+
+    public function testGetByOrderMissingOrderThrows(): void
+    {
+        $this->expectException(BusinessException::class);
+        $this->expectExceptionMessage('ORDER_COMMISSION_NOT_FOUND');
+        (new CommissionService())->getByOrder(99999999);
     }
 
     /** @return list<int> */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\support;
 
 use App\service\BusinessException;
+use App\service\DistributionConfigService;
 
 /**
  * DistributionConfigValidator — runs the SC-003 / FR-010 compliance guards
@@ -20,9 +21,11 @@ use App\service\BusinessException;
  */
 final class DistributionConfigValidator
 {
-    public const LEVEL_CAP_HARD_LIMIT = 3;
-    public const COMMISSION_VOID_MIN_REASON_LEN = 5;
-    public const TIMEZONE = 'Asia/Shanghai';
+    // Single source of truth for the compliance constants lives on
+    // DistributionConfigService (T084); the validator mirrors it.
+    public const LEVEL_CAP_HARD_LIMIT = DistributionConfigService::LEVEL_CAP_HARD_LIMIT;
+    public const COMMISSION_VOID_MIN_REASON_LEN = DistributionConfigService::COMMISSION_VOID_MIN_REASON_LEN;
+    public const TIMEZONE = DistributionConfigService::TIMEZONE;
 
     /**
      * @param array<string, mixed> $cfg

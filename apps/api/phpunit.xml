@@ -89,6 +89,23 @@
             <file>tests/DistributionConfigValidatorTest.php</file>
             <file>tests/DistributionConfigServiceTest.php</file>
             <file>tests/DistributionMigrationTest.php</file>
+            <file>tests/DistributionCourseOverrideServiceTest.php</file>
+            <file>tests/LevelCapHardLimitTest.php</file>
+            <file>tests/CommissionSettleTest.php</file>
+            <file>tests/CommissionCapTruncationTest.php</file>
+            <file>tests/CommissionReceiverUniquenessTest.php</file>
+            <file>tests/CommissionReplayTest.php</file>
+            <file>tests/OrderRefundVoidCommissionTest.php</file>
+            <file>tests/BlockedReferrerNoUpgradeTest.php</file>
+            <file>tests/AdminVoidRequiresReasonTest.php</file>
+            <file>tests/DistributionAuditCoverageTest.php</file>
+            <file>tests/DistributionDisableFlowTest.php</file>
+            <file>tests/ShareEntryCreationGateTest.php</file>
+            <file>tests/LearnerCommissionViewTest.php</file>
+            <file>tests/LearnerDownlineViewTest.php</file>
+            <file>tests/ExportCsvMaskingTest.php</file>
+            <file>tests/e2e/ShareEntryFlowE2ETest.php</file>
+            <file>tests/e2e/DistributionE2ETest.php</file>
             <file>tests/DefaultRouteDisabledTest.php</file>
             <file>tests/DistributionAdminGateTest.php</file>
             <file>tests/JobDispatcherSendTest.php</file>

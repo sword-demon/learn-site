@@ -25,6 +25,12 @@ final class DistributionConfigServiceTest extends TestCase
     protected function setUp(): void
     {
         Db::startTrans();
+        // Tests share the dev database: rows committed outside this
+        // transaction (manual admin actions) must not leak into the
+        // per-test audit-count / baseline assertions. In-transaction
+        // deletes are restored by tearDown()'s rollback.
+        Db::name('distribution_audit_log')->where('action', 'config.update')->delete();
+        Db::name('site_settings')->where('key', 'distribution_config')->delete();
         $now = date('Y-m-d H:i:s');
         $this->staffId = (int) Db::name('accounts')->insertGetId([
             'kind' => 'staff',

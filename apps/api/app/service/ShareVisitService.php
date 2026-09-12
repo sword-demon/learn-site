@@ -10,19 +10,22 @@ namespace App\service;
  */
 final class ShareVisitService
 {
-    public function __construct(
-        private readonly ShareEntryService $shares = new ShareEntryService(),
-    ) {
+    /** @var ShareEntryService */
+    private readonly ShareEntryService $shareEntryService;
+
+    public function __construct(ShareEntryService $shareEntryService)
+    {
+        $this->shareEntryService = $shareEntryService;
     }
 
     /** @return array{visitor_token: string, share_entry_id: int, learner_id: int|null, scope: string, course_id: int|null} */
     public function recordVisit(string $shortCode, ?string $visitorToken, ?string $ip, ?string $userAgent): array
     {
-        return $this->shares->recordVisit($shortCode, $visitorToken, $ip, $userAgent);
+        return $this->shareEntryService->recordVisit($shortCode, $visitorToken, $ip, $userAgent);
     }
 
     public function bindVisitorToLearner(int $learnerId, string $visitorToken): int
     {
-        return $this->shares->bindVisitorToLearner($learnerId, $visitorToken);
+        return $this->shareEntryService->bindVisitorToLearner($learnerId, $visitorToken);
     }
 }

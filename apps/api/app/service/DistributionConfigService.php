@@ -28,6 +28,13 @@ final class DistributionConfigService
 {
     private const SETTINGS_KEY = 'distribution_config';
 
+    /** SC-003 — 合规硬约束, 任何管理员不可解除. */
+    public const LEVEL_CAP_HARD_LIMIT = 3;
+    /** 撤销必须给出不低于该长度的理由, 见 CommissionService::voidByAdmin(). */
+    public const COMMISSION_VOID_MIN_REASON_LEN = 5;
+    /** 库内时间一律按此时区落 DATETIME; API/Zod 出参再转 ISO-8601. */
+    public const TIMEZONE = 'Asia/Shanghai';
+
     /** @var array<string, mixed>|null */
     private ?array $cached = null;
     private int $cachedAt = 0;

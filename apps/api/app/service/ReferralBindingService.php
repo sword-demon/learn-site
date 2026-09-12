@@ -45,7 +45,13 @@ final class ReferralBindingService
         if ($this->shares->isVisitorOrEntryBound($visitorToken, $resolved['share_entry_id'])) {
             return null;
         }
-        return $this->bind($newLearnerId, $resolved['referrer_learner_id']);
+        $bound = $this->bind($newLearnerId, $resolved['referrer_learner_id']);
+        if ($bound !== null) {
+            // Mark the visits that produced this binding so share entry
+            // bound_count / attribution stats reflect reality (T023).
+            $this->shares->bindVisitorToLearner($newLearnerId, $visitorToken);
+        }
+        return $bound;
     }
 
     /**

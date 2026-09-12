@@ -12,17 +12,21 @@ use function toIso8601;
 
 final class CommissionService
 {
+    // 佣金状态机: pending → settled (退款窗口结束且未退款) / voided (退款或管理员撤销);
+    // pending_blocked 是推荐人账户不可用时的冻结态, 不升级、不转赠、不转 settled.
     private const STATUS_PENDING = 'pending';
     private const STATUS_SETTLED = 'settled';
     private const STATUS_VOIDED = 'voided';
     private const STATUS_BLOCKED = 'pending_blocked';
 
+    // 单笔订单最多向 LEVEL_CAP_HARD_LIMIT 名推荐人发放佣金, 与 level_cap 共享同一硬上限.
+    private const MAX_RECEIVERS = DistributionConfigService::LEVEL_CAP_HARD_LIMIT;
+
     public function __construct(
         private readonly DistributionConfigService $config = new DistributionConfigService(),
         private readonly ReferralBindingService $referrals = new ReferralBindingService(),
         private readonly DistributionAuditService $audit = new DistributionAuditService(),
-    ) {
-    }
+    ) {}
 
     public function settleForOrder(int $orderId): void
     {
@@ -49,7 +53,7 @@ final class CommissionService
             if ($chain === []) {
                 return;
             }
-            if (count($chain) > 3) {
+            if (count($chain) > self::MAX_RECEIVERS) {
                 $this->audit->record('system', null, 'commission.settle', 'commission', $orderId, null, ['rejected' => 'RECEIVER_COUNT'], '数据完整性硬约束');
                 throw new BusinessException('VALIDATION_FAILED', 'RECEIVER_COUNT_EXCEEDS_HARD_LIMIT');
             }
@@ -137,7 +141,7 @@ final class CommissionService
     public function voidByAdmin(int $commissionId, int $actorId, string $reason): array
     {
         $reason = trim($reason);
-        if (mb_strlen($reason) < 5) {
+        if (mb_strlen($reason) < DistributionConfigService::COMMISSION_VOID_MIN_REASON_LEN) {
             throw new BusinessException('VALIDATION_FAILED', 'VOID_REASON_TOO_SHORT');
         }
         return Db::transaction(function () use ($commissionId, $actorId, $reason) {
@@ -149,7 +153,7 @@ final class CommissionService
                 throw new BusinessException('VALIDATION_FAILED', 'COMMISSION_ALREADY_VOIDED');
             }
             $count = (int) Db::name('commission_records')->where('order_id', (int) $row['order_id'])->count();
-            if ($count > 3) {
+            if ($count > self::MAX_RECEIVERS) {
                 throw new BusinessException('VALIDATION_FAILED', '数据完整性硬约束');
             }
             $now = nowDatetime();
@@ -223,9 +227,9 @@ final class CommissionService
             return ['items' => []];
         }
         $items = [];
-        $this->collectDownline($learnerId, 1, 3, $items);
+        $this->collectDownline($learnerId, 1, DistributionConfigService::LEVEL_CAP_HARD_LIMIT, $items);
         if ($level !== null) {
-            $items = array_values(array_filter($items, fn (array $row): bool => $row['level'] === $level));
+            $items = array_values(array_filter($items, fn(array $row): bool => $row['level'] === $level));
         }
         return ['items' => $items];
     }
@@ -235,7 +239,17 @@ final class CommissionService
     {
         $rows = Db::name('commission_records')->where('order_id', $orderId)->order('level', 'asc')->select()->toArray();
         if ($rows === []) {
-            throw new BusinessException('NOT_FOUND', 'ORDER_COMMISSION_NOT_FOUND');
+            $order = Db::name('orders')->where('id', $orderId)->find();
+            if (!$order) {
+                throw new BusinessException('NOT_FOUND', 'ORDER_COMMISSION_NOT_FOUND');
+            }
+            return [
+                'order_id' => $orderId,
+                'course_id' => (int) $order['course_id'],
+                'order_paid_cents_snapshot' => (int) round(((float) $order['paid_amount']) * 100),
+                'config_snapshot' => $this->config->getConfig(),
+                'receivers' => [],
+            ];
         }
         $first = $rows[0];
         $cfg = json_decode((string) $first['config_snapshot_json'], true);
@@ -259,7 +273,7 @@ final class CommissionService
             'order_id' => $orderId,
             'course_id' => (int) $first['course_id'],
             'order_paid_cents_snapshot' => (int) $first['order_paid_cents_snapshot'],
-            'config_snapshot' => is_array($cfg) ? $cfg : $this->config->getConfig(),
+            'config_snapshot' => is_array($cfg) ? array_merge($this->config->getConfig(), $cfg) : $this->config->getConfig(),
             'receivers' => $receivers,
         ];
     }
@@ -273,6 +287,9 @@ final class CommissionService
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
         $apply = function ($q) use ($filter) {
+            if (!empty($filter['order_id'])) {
+                $q->where('order_id', (int) $filter['order_id']);
+            }
             if (!empty($filter['learner_id'])) {
                 $q->where('referrer_learner_id', (int) $filter['learner_id']);
             }
@@ -299,12 +316,17 @@ final class CommissionService
     {
         $list = $this->listForAdmin($filter, 1, 200);
         $lines = ['id,order_id,course_id,referrer_masked_phone,level,amount_cents,status'];
+        $ids = array_map(static fn (array $row): int => (int) $row['id'], $list['items']);
+        $referrers = $ids === []
+            ? []
+            : Db::name('commission_records')->whereIn('id', $ids)->column('referrer_learner_id', 'id');
         foreach ($list['items'] as $row) {
+            $referrerId = (int) ($referrers[(int) $row['id']] ?? 0);
             $lines[] = implode(',', [
                 $row['id'],
                 $row['order_id'],
                 $row['course_id'],
-                $row['referee_masked_phone'],
+                maskPhone($this->learnerPhone($referrerId)),
                 $row['level'],
                 $row['amount_cents'],
                 $row['status'],

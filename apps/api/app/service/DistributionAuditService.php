@@ -54,7 +54,7 @@ final class DistributionAuditService
     /**
      * @return array{items: list<array<string, mixed>>, total: int, page: int, limit: int}
      */
-    public function list(int $page, int $limit, ?string $action = null): array
+    public function list(int $page, int $limit, ?string $action = null, ?string $actorType = null): array
     {
         $page = max(1, $page);
         $limit = max(1, min(200, $limit));
@@ -63,6 +63,10 @@ final class DistributionAuditService
         if ($action !== null && $action !== '') {
             $totalQ->where('action', $action);
             $listQ->where('action', $action);
+        }
+        if ($actorType === 'admin' || $actorType === 'system') {
+            $totalQ->where('actor_type', $actorType);
+            $listQ->where('actor_type', $actorType);
         }
         $total = (int) $totalQ->count();
         $rows = $listQ->order('id', 'desc')->page($page, $limit)->select()->toArray();
