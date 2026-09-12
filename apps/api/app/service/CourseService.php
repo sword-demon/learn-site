@@ -573,7 +573,10 @@ final class CourseService
         if (!$course) {
             throw new BusinessException('NOT_FOUND', 'COURSE_NOT_FOUND');
         }
-        if ($actorStaffAccountId !== null && $actorStaffAccountId > 0) {
+        // Fail closed: null means an internal caller (no actor to check);
+        // any concrete id — including 0 from an unauthenticated request —
+        // must pass the data-scope check.
+        if ($actorStaffAccountId !== null) {
             $this->assertCourseAccess($course->toArray(), $actorStaffAccountId);
         }
         $chapterRows = Db::name('chapters')->where('course_id', $id)

@@ -56,16 +56,19 @@ final class NotificationController
                     $r['resource_type'] !== null ? (string) $r['resource_type'] : null,
                     $r['resource_id'] !== null ? (int) $r['resource_id'] : null,
                     $aid,
+                    (string) $r['kind'],
                 ),
                 'resource_available' => $this->resourceAvailable(
                     $r['resource_type'] !== null ? (string) $r['resource_type'] : null,
                     $r['resource_id'] !== null ? (int) $r['resource_id'] : null,
                     $aid,
+                    (string) $r['kind'],
                 ),
                 'resource_unavailable_reason' => $this->resourceUnavailableReason(
                     $r['resource_type'] !== null ? (string) $r['resource_type'] : null,
                     $r['resource_id'] !== null ? (int) $r['resource_id'] : null,
                     $aid,
+                    (string) $r['kind'],
                 ),
                 'payload' => $r['payload_json'] !== null ? json_decode((string) $r['payload_json'], true) : null,
                 'read' => $r['read_at'] !== null,
@@ -131,7 +134,7 @@ final class NotificationController
         }
     }
 
-    private function resourceAvailable(?string $type, ?int $id, int $learnerId): bool
+    private function resourceAvailable(?string $type, ?int $id, int $learnerId, ?string $kind = null): bool
     {
         if (in_array($type, ['course_list', 'map_list', 'coupon_list', 'order_list'], true)) {
             return true;
@@ -141,7 +144,13 @@ final class NotificationController
         }
         return match ($type) {
             'question' => $this->questionPath($learnerId, $id) !== null,
-            'course' => Db::name('courses')->where('id', $id)->where('status', 'published')->count() > 0,
+            // course_published fans out to every active learner as a "view
+            // the course page" pointer — published is enough. Learning
+            // reminders promise "go study", so they stay tappable only
+            // while the learner holds access and the course has lessons.
+            'course' => $kind === 'course_published'
+                ? Db::name('courses')->where('id', $id)->where('status', 'published')->count() > 0
+                : $this->courseAvailable($learnerId, $id),
             'lesson' => $this->lessonAvailable($learnerId, $id),
             'learning_map' => Db::name('learning_maps')->where('id', $id)->where('status', 'published')->count() > 0,
             'order' => $this->orderAvailable($learnerId, $id),
@@ -150,7 +159,34 @@ final class NotificationController
         };
     }
 
-    private function resourcePath(?string $type, ?int $id, int $learnerId): ?string
+    /**
+     * A "go study" course entry requires an active entitlement and at
+     * least one effective (enabled lesson under an enabled chapter) so
+     * startup reminders never deep-link into an inaccessible course.
+     */
+    private function courseAvailable(int $learnerId, int $courseId): bool
+    {
+        $published = Db::name('courses')->where('id', $courseId)->where('status', 'published')->count() > 0;
+        if (!$published) {
+            return false;
+        }
+        $hasEntitlement = Db::name('course_entitlements')
+            ->where('learner_id', $learnerId)
+            ->where('course_id', $courseId)
+            ->where('status', 'active')
+            ->count() > 0;
+        if (!$hasEntitlement) {
+            return false;
+        }
+        return Db::name('lessons')->alias('l')
+            ->join('chapters ch', 'ch.id = l.chapter_id')
+            ->where('ch.course_id', $courseId)
+            ->where('l.status', 'enabled')
+            ->where('ch.status', 'enabled')
+            ->count() > 0;
+    }
+
+    private function resourcePath(?string $type, ?int $id, int $learnerId, ?string $kind = null): ?string
     {
         if (in_array($type, ['course_list', 'map_list', 'coupon_list', 'order_list'], true)) {
             return match ($type) {
@@ -160,7 +196,7 @@ final class NotificationController
                 'order_list' => '/me/orders',
             };
         }
-        if (!$this->resourceAvailable($type, $id, $learnerId)) {
+        if (!$this->resourceAvailable($type, $id, $learnerId, $kind)) {
             return match ($type) {
                 'question', 'course', 'lesson' => '/',
                 'learning_map' => '/maps',
@@ -181,9 +217,9 @@ final class NotificationController
         };
     }
 
-    private function resourceUnavailableReason(?string $type, ?int $id, int $learnerId): ?string
+    private function resourceUnavailableReason(?string $type, ?int $id, int $learnerId, ?string $kind = null): ?string
     {
-        if ($this->resourceAvailable($type, $id, $learnerId)) {
+        if ($this->resourceAvailable($type, $id, $learnerId, $kind)) {
             return null;
         }
         return match ($type) {
