@@ -52,9 +52,8 @@ describe('DistributionCourseOverridesView', () => {
       global: { plugins: [installElementPlus] },
     });
     await flushPromises();
-    const button = wrapper.findAll('button').find((item) => item.text() === '切换');
-    expect(button).toBeDefined();
-    await button!.trigger('click');
+    const button = wrapper.get('[data-action="toggle"]');
+    await button.trigger('click');
     await flushPromises();
     expect(api.saveCourseOverride).toHaveBeenCalledWith(12, { enabled: false });
     wrapper.unmount();

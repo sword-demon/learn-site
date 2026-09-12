@@ -42,7 +42,21 @@ describe('DistributionAuditView', () => {
     });
     await flushPromises();
     expect(wrapper.text()).toContain('config.update');
+    expect(wrapper.text()).toContain('更新配置');
     expect(api.fetchAudit).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('filters by action', async () => {
+    const wrapper = mount(DistributionAuditView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    const action = wrapper.find('[data-field="action"]');
+    expect(action.exists()).toBe(true);
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(api.fetchAudit).toHaveBeenCalledTimes(2);
     wrapper.unmount();
   });
 });
