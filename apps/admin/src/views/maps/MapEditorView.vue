@@ -28,6 +28,7 @@ import type {
 import { listCourses } from '@/api/catalog';
 import type { CourseDTO } from '@learn-site/contracts';
 import CourseCoverUpload from '@/views/catalog/CourseCoverUpload.vue';
+import { formatDateTime } from '@/utils/datetime';
 import {
   CircleCheck,
   Collection,
@@ -478,7 +479,7 @@ function publishIssueLabel(issue: MapPublishIssueDTO): string {
               <span class="map-marker"><MapLocation /></span>
               <span class="map-copy">
                 <strong>{{ m.title }}</strong>
-                <small>更新于 {{ m.updated_at }}</small>
+                <small>更新于 {{ formatDateTime(m.updated_at) }}</small>
               </span>
               <el-tag :type="statusType(m.status)" effect="light" size="small">{{
                 statusLabel(m.status)

@@ -145,7 +145,7 @@ describe('LearningFactFunnelView', () => {
     expect(wrapper.text()).not.toContain('弃学');
     expect(wrapper.text()).toContain('订单成功不是完成课程');
     expect(wrapper.text()).toContain('支付成功');
-    expect(wrapper.text()).toContain('2026-09-11T12:00:00+08:00');
+    expect(wrapper.text()).toContain('2026-09-11 12:00:00');
     expect(wrapper.text()).toContain('非实时');
     expect(wrapper.text()).toContain('完成课程');
     expect(wrapper.text()).toContain('访问权生效时刻');

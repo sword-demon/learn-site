@@ -15,6 +15,7 @@ import {
 import { hasPermission } from '@/api/http';
 import { listStaff } from '@/api/org';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'AuditLogView' });
 
@@ -260,7 +261,9 @@ onMounted(() => void reload());
     <p v-else-if="loading" class="notice">加载中…</p>
 
     <el-table v-else v-loading="loading" :data="list?.items ?? []" stripe class="data">
-      <el-table-column prop="created_at" label="时间" min-width="175" />
+      <el-table-column label="时间" min-width="175">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" min-width="100">
         <template #default="{ row }">{{ row.action === 'hide' ? '隐藏' : '恢复' }}</template>
       </el-table-column>

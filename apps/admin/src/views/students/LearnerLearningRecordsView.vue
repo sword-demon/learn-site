@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { listLearnerLessonRecords } from '@/api/learners';
 import AdminListPager from '@/components/AdminListPager.vue';
 import type { LearnerLessonRecordListDTO } from '@learn-site/contracts';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'LearnerLearningRecordsView' });
 
@@ -69,15 +70,17 @@ onMounted(() => {
       <el-table-column prop="course_title" label="课程" min-width="160" />
       <el-table-column prop="lesson_title" label="课节" min-width="180" />
       <el-table-column label="首次打开" min-width="170">
-        <template #default="{ row }">{{ row.opened_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.opened_at) }}</template>
       </el-table-column>
       <el-table-column label="完成状态" min-width="100">
         <template #default="{ row }">{{ row.completed ? '已完成' : '未完成' }}</template>
       </el-table-column>
       <el-table-column label="完成时间" min-width="170">
-        <template #default="{ row }">{{ row.completed_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.completed_at) }}</template>
       </el-table-column>
-      <el-table-column prop="updated_at" label="最近更新" min-width="170" />
+      <el-table-column label="最近更新" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
+      </el-table-column>
       <template #empty><el-empty description="暂无学习记录" :image-size="88" /></template>
     </el-table>
 

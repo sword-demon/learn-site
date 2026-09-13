@@ -4,6 +4,7 @@ import type { DistributionAuditAction, DistributionAuditDTO } from '@learn-site/
 import { fetchAudit } from '@/api/distribution';
 import AdminListPager from '@/components/AdminListPager.vue';
 import './distribution.css';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'DistributionAuditView' });
 
@@ -160,7 +161,9 @@ onMounted(() => void reload());
 
     <el-card class="dist-panel" shadow="never">
       <el-table v-loading="loading" :data="items" stripe empty-text="暂无审计记录">
-        <el-table-column prop="created_at" label="时间" min-width="170" />
+        <el-table-column label="时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="动作" min-width="140">
           <template #default="{ row }">
             <div class="action-cell">
@@ -212,7 +215,9 @@ onMounted(() => void reload());
           <el-descriptions-item label="操作者">{{ actorLabel(detail) }}</el-descriptions-item>
           <el-descriptions-item label="对象">{{ subjectLabel(detail) }}</el-descriptions-item>
           <el-descriptions-item label="原因">{{ detail.reason || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="时间">{{ detail.created_at }}</el-descriptions-item>
+          <el-descriptions-item label="时间">{{
+            formatDateTime(detail.created_at)
+          }}</el-descriptions-item>
         </el-descriptions>
         <section>
           <h3>变更前</h3>

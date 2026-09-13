@@ -9,7 +9,9 @@ import {
   type ContentTodoApproveRequest,
   type ContentTodoCloseRequest,
 } from '@contracts/contentTodo';
+import type { ChapterDTO, LessonDTO } from '@learn-site/contracts';
 import { hasPermission } from '@/api/http';
+import { listChapters, listCourses, listLessons } from '@/api/catalog';
 import {
   approveContentTodoCandidate,
   closeContentTodo,
@@ -37,6 +39,21 @@ const label = ref<ContentTodoLabel | null>(null);
 const targetCourseId = ref<number | null>(null);
 const targetChapterId = ref<number | null>(null);
 const targetLessonId = ref<number | null>(null);
+const optionPageSize = 20;
+const courseOptions = ref<Array<{ id: number; title: string }>>([]);
+const courseOptionsPage = ref(0);
+const courseOptionsTotal = ref(0);
+const courseOptionsLoading = ref(false);
+const courseOptionsQuery = ref('');
+let courseRequestId = 0;
+const chapterOptions = ref<ChapterDTO[]>([]);
+const lessonOptions = ref<LessonDTO[]>([]);
+const chapterLoading = ref(false);
+const lessonLoading = ref(false);
+let catalogSync = 0;
+const hasMoreCourses = computed(
+  () => courseOptionsPage.value * optionPageSize < courseOptionsTotal.value,
+);
 const responseBody = ref('');
 const candidateBody = ref('');
 const notifyMode = ref<NonNullable<ContentTodoApproveRequest['notify_mode']>>('submitter');
@@ -53,6 +70,7 @@ const isOpen = computed(() => {
   const status = detail.value?.workflow_status;
   return status !== 'resolved' && status !== 'closed';
 });
+const disabledPicker = computed(() => !canManage.value || !isOpen.value);
 
 function parsePositiveInt(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -66,6 +84,8 @@ function actionError(err: unknown, fallback: string): string {
   const payload = err as { response?: { data?: { error?: { code?: string; message?: string } } } };
   const code = payload.response?.data?.error?.code;
   const message = payload.response?.data?.error?.message;
+  if (message === ContentTodoErrorCodes.CONTENT_TODO_LABEL_REQUIRED)
+    return '请先选择并保存主标签后再生成候选';
   if (message === ContentTodoErrorCodes.CONTENT_TODO_VERSION_CONFLICT)
     return '待办已被其他人更新, 请刷新后重试';
   if (message === ContentTodoErrorCodes.CONTENT_TODO_CONTENT_CHANGED)
@@ -86,6 +106,117 @@ function applyDetail(next: ContentTodoDetail): void {
   targetLessonId.value = next.target.lesson_id;
   const draft = next.candidates.find((candidate) => candidate.status === 'draft');
   candidateBody.value = draft?.body ?? '';
+  seedCourseOption(next);
+  void syncCatalog(next.target.course_id, next.target.chapter_id);
+}
+
+function courseOptionLabel(course: { id: number; title: string }): string {
+  return `#${course.id} ${course.title}`;
+}
+
+function seedCourseOption(next: ContentTodoDetail): void {
+  const courseId = next.target.course_id ?? next.source.course_id;
+  const title = next.course_title || next.source.course_title;
+  if (!courseId || !title) return;
+  if (courseOptions.value.some((item) => item.id === courseId)) return;
+  courseOptions.value = [{ id: courseId, title }, ...courseOptions.value];
+}
+
+async function loadCourseOptions(
+  query = courseOptionsQuery.value,
+  page = 1,
+  append = false,
+): Promise<void> {
+  const requestId = ++courseRequestId;
+  courseOptionsLoading.value = true;
+  const trimmedQuery = query.trim();
+  courseOptionsQuery.value = trimmedQuery;
+  try {
+    const result = await listCourses({
+      ...(trimmedQuery ? { q: trimmedQuery } : {}),
+      page,
+      limit: optionPageSize,
+    });
+    if (requestId !== courseRequestId) return;
+    const selectedId = targetCourseId.value;
+    const selected = selectedId
+      ? courseOptions.value.find((item) => item.id === selectedId)
+      : undefined;
+    const incoming = result.items.map((item) => ({ id: item.id, title: item.title }));
+    const next = append ? [...courseOptions.value, ...incoming] : incoming;
+    const merged: Array<{ id: number; title: string }> = [];
+    const seen = new Set<number>();
+    for (const item of selected && !append ? [selected, ...next] : next) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      merged.push(item);
+    }
+    courseOptions.value = merged;
+    courseOptionsPage.value = result.page;
+    courseOptionsTotal.value = result.total;
+  } catch {
+    if (requestId !== courseRequestId) return;
+    if (!append) courseOptions.value = [];
+    courseOptionsPage.value = 0;
+    courseOptionsTotal.value = 0;
+  } finally {
+    if (requestId === courseRequestId) courseOptionsLoading.value = false;
+  }
+}
+
+async function syncCatalog(courseId: number | null, chapterId: number | null): Promise<void> {
+  const token = ++catalogSync;
+  if (!courseId) {
+    chapterOptions.value = [];
+    lessonOptions.value = [];
+    return;
+  }
+  chapterLoading.value = true;
+  try {
+    const chapters = await listChapters(courseId);
+    if (token !== catalogSync) return;
+    chapterOptions.value = chapters.items;
+  } catch {
+    if (token !== catalogSync) return;
+    chapterOptions.value = [];
+  } finally {
+    if (token === catalogSync) chapterLoading.value = false;
+  }
+  lessonLoading.value = true;
+  try {
+    const lessons = await listLessons(courseId, chapterId ?? undefined);
+    if (token !== catalogSync) return;
+    lessonOptions.value = lessons.items;
+  } catch {
+    if (token !== catalogSync) return;
+    lessonOptions.value = [];
+  } finally {
+    if (token === catalogSync) lessonLoading.value = false;
+  }
+}
+
+function searchCourses(query: string): void {
+  void loadCourseOptions(query);
+}
+
+function loadMoreCourses(): void {
+  if (courseOptionsLoading.value || !hasMoreCourses.value) return;
+  void loadCourseOptions(courseOptionsQuery.value, courseOptionsPage.value + 1, true);
+}
+
+function onCourseVisibleChange(visible: boolean): void {
+  if (visible && courseOptionsPage.value === 0) void loadCourseOptions();
+}
+
+async function onCourseChange(courseId: number | null): Promise<void> {
+  targetChapterId.value = null;
+  targetLessonId.value = null;
+  await syncCatalog(courseId, null);
+}
+
+async function onChapterChange(chapterId: number | null): Promise<void> {
+  targetLessonId.value = null;
+  await syncCatalog(targetCourseId.value, chapterId);
 }
 
 async function load(): Promise<void> {
@@ -108,10 +239,10 @@ watch(
   { immediate: true },
 );
 
-async function saveTriage(): Promise<void> {
+async function persistTriage(successMessage?: string): Promise<boolean> {
   if (!detail.value || !label.value) {
     ElMessage.warning('请先选择主标签');
-    return;
+    return false;
   }
   try {
     applyDetail(
@@ -123,11 +254,17 @@ async function saveTriage(): Promise<void> {
         expected_version: detail.value.version,
       }),
     );
-    ElMessage.success('分诊已保存');
+    if (successMessage) ElMessage.success(successMessage);
     emit('changed');
+    return true;
   } catch (err: unknown) {
     ElMessage.error(actionError(err, '分诊保存失败'));
+    return false;
   }
+}
+
+async function saveTriage(): Promise<void> {
+  await persistTriage('分诊已保存');
 }
 
 async function respond(): Promise<void> {
@@ -147,11 +284,19 @@ async function respond(): Promise<void> {
 
 async function generate(): Promise<void> {
   if (!detail.value) return;
+  if (!label.value) {
+    ElMessage.warning('请先选择主标签');
+    return;
+  }
+  if (detail.value.label !== label.value || detail.value.workflow_status === 'untriaged') {
+    const saved = await persistTriage();
+    if (!saved) return;
+  }
   try {
     applyDetail(
       await generateContentTodoCandidate(
         detail.value.id,
-        detail.value.label === 'resource_problem' ? { target_kind: 'help_center_candidate' } : {},
+        label.value === 'resource_problem' ? { target_kind: 'help_center_candidate' } : {},
       ),
     );
     ElMessage.success('候选草稿已生成');
@@ -160,6 +305,8 @@ async function generate(): Promise<void> {
     ElMessage.error(actionError(err, '候选生成失败'));
   }
 }
+
+defineExpose({ label, generate });
 
 async function saveCandidate(): Promise<void> {
   if (!detail.value || !draftCandidate.value) return;
@@ -306,13 +453,82 @@ async function openCourseEditor(): Promise<void> {
           </el-select>
         </el-form-item>
         <el-form-item label="目标课程">
-          <el-input-number v-model="targetCourseId" :min="1" :disabled="!canManage || !isOpen" />
+          <el-select
+            v-model="targetCourseId"
+            class="target-select"
+            filterable
+            remote
+            clearable
+            :disabled="disabledPicker"
+            :loading="courseOptionsLoading"
+            :remote-method="searchCourses"
+            placeholder="选择课程"
+            data-field="target_course_id"
+            @visible-change="onCourseVisibleChange"
+            @change="onCourseChange"
+          >
+            <el-option
+              v-for="course in courseOptions"
+              :key="course.id"
+              :label="courseOptionLabel(course)"
+              :value="course.id"
+            />
+            <template #footer>
+              <div v-if="courseOptionsTotal > 0" class="option-footer">
+                <el-button
+                  v-if="hasMoreCourses"
+                  text
+                  type="primary"
+                  size="small"
+                  :loading="courseOptionsLoading"
+                  data-action="load-more-courses"
+                  @click="loadMoreCourses"
+                >
+                  加载更多
+                </el-button>
+                <span v-else>已加载全部</span>
+              </div>
+            </template>
+          </el-select>
         </el-form-item>
         <el-form-item label="目标章节">
-          <el-input-number v-model="targetChapterId" :min="1" :disabled="!canManage || !isOpen" />
+          <el-select
+            v-model="targetChapterId"
+            class="target-select"
+            filterable
+            clearable
+            :disabled="disabledPicker || !targetCourseId"
+            :loading="chapterLoading"
+            placeholder="选择章节"
+            data-field="target_chapter_id"
+            @change="onChapterChange"
+          >
+            <el-option
+              v-for="chapter in chapterOptions"
+              :key="chapter.id"
+              :label="chapter.title"
+              :value="chapter.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="目标课节">
-          <el-input-number v-model="targetLessonId" :min="1" :disabled="!canManage || !isOpen" />
+          <el-select
+            v-model="targetLessonId"
+            class="target-select"
+            filterable
+            clearable
+            :disabled="disabledPicker || !targetCourseId"
+            :loading="lessonLoading"
+            placeholder="选择课节"
+            data-field="target_lesson_id"
+          >
+            <el-option
+              v-for="lesson in lessonOptions"
+              :key="lesson.id"
+              :label="lesson.title"
+              :value="lesson.id"
+            />
+          </el-select>
         </el-form-item>
         <el-button type="primary" :disabled="!canManage || !isOpen" @click="saveTriage">
           保存分诊
@@ -419,5 +635,18 @@ async function openCourseEditor(): Promise<void> {
 }
 .mt-4 {
   margin-top: 16px;
+}
+
+.target-select {
+  width: 100%;
+}
+
+.option-footer {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  color: #829ab1;
+  font-size: 12px;
 }
 </style>

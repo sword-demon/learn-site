@@ -27,6 +27,10 @@ final class DistributionCourseOverrideServiceTest extends TestCase
     protected function setUp(): void
     {
         Db::startTrans();
+        // Shared dev DB: admin UI actions commit course.override.update audit
+        // rows outside this transaction; drop them in-transaction (rollback
+        // restores) so per-test counts stay deterministic.
+        Db::name('distribution_audit_log')->where('action', 'course.override.update')->delete();
         $now = date('Y-m-d H:i:s');
         $this->staffId = (int) Db::name('accounts')->insertGetId([
             'kind' => 'staff',
@@ -127,6 +131,54 @@ final class DistributionCourseOverrideServiceTest extends TestCase
         $this->expectException(BusinessException::class);
         $this->expectExceptionMessage('COURSE_NOT_FOUND');
         $this->service->upsert(99999999, ['enabled' => true], $this->staffId);
+    }
+
+    /**
+     * Regression: the admin overrides list must emit contract-shaped values —
+     * null for "follow global", numbers for configured fields. The raw PDO row
+     * used to leak 'Use global' strings and drop per_learner_course_cap_cents,
+     * which failed the Zod DTO on the admin side.
+     */
+    public function testListReturnsContractShapedNullableFields(): void
+    {
+        $courseId = $this->course();
+        $this->service->upsert($courseId, ['enabled' => true], $this->staffId);
+
+        $item = $this->listItemFor($courseId);
+        self::assertNotNull($item);
+        self::assertNull($item['level1_pct']);
+        self::assertNull($item['level2_pct']);
+        self::assertNull($item['level3_pct']);
+        self::assertNull($item['per_order_cap_cents']);
+        self::assertArrayHasKey('per_learner_course_cap_cents', $item);
+        // upsert() defaults an absent per-learner cap to 0 — an explicit "no
+        // course cap" that is distinct from NULL ("follow global"). Both are
+        // contract-valid (number|null); 0 is what the API promises here.
+        self::assertSame(0, $item['per_learner_course_cap_cents']);
+        self::assertIsInt($item['updated_by']);
+
+        // Configured fields must come back as numbers, never PDO decimal strings.
+        $this->service->upsert($courseId, [
+            'enabled' => true,
+            'level1_pct' => 0.3,
+            'per_order_cap_cents' => 5000,
+        ], $this->staffId);
+        $item = $this->listItemFor($courseId);
+        self::assertNotNull($item);
+        self::assertSame(0.3, $item['level1_pct']);
+        self::assertSame(5000, $item['per_order_cap_cents']);
+        self::assertNull($item['level2_pct']);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function listItemFor(int $courseId): ?array
+    {
+        foreach ($this->service->list(1, 20)['items'] as $row) {
+            if ((int) $row['course_id'] === $courseId) {
+                return $row;
+            }
+        }
+        return null;
     }
 
     public function testListReturnsItemsWithCourseName(): void

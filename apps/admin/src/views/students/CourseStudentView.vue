@@ -11,6 +11,7 @@ import {
   type CourseStudentListDTO,
 } from '@/api/courseStudents';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'CourseStudentView' });
 
@@ -280,17 +281,19 @@ function revokeErrorMessage(error: unknown): string {
         <template #default="{ row }">{{ learningLabel(row.learning_status) }}</template>
       </el-table-column>
       <el-table-column label="最近学习" min-width="170">
-        <template #default="{ row }">{{ row.last_learning_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.last_learning_at) }}</template>
       </el-table-column>
       <el-table-column label="完成时间" min-width="170">
-        <template #default="{ row }">{{ row.completed_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.completed_at) }}</template>
       </el-table-column>
       <el-table-column label="最近登录" min-width="170">
-        <template #default="{ row }">{{ row.last_login_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.last_login_at) }}</template>
       </el-table-column>
-      <el-table-column prop="enrolled_at" label="授权时间" min-width="170" />
+      <el-table-column label="授权时间" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.enrolled_at) }}</template>
+      </el-table-column>
       <el-table-column label="撤销时间" min-width="170">
-        <template #default="{ row }">{{ row.revoked_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.revoked_at) }}</template>
       </el-table-column>
       <el-table-column label="撤销原因" min-width="180">
         <template #default="{ row }">{{ row.revoked_reason || '—' }}</template>

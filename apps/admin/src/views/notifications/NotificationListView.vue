@@ -5,6 +5,7 @@ import type { AdminNotificationListItemDTO } from '@learn-site/contracts';
 import { getNotification, listNotifications, retryNotificationFanOut } from '@/api/notifications';
 import NotificationComposeDialog from '@/views/notifications/NotificationComposeDialog.vue';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'NotificationListView' });
 
@@ -87,7 +88,7 @@ async function openDetail(row: AdminNotificationListItemDTO): Promise<void> {
     const detail = await getNotification(row.id);
     detailTitle.value = detail.title;
     detailBody.value = detail.body;
-    detailMeta.value = `${typeLabel(detail.type)} · ${detail.recipient_summary} · ${detail.created_at}`;
+    detailMeta.value = `${typeLabel(detail.type)} · ${detail.recipient_summary} · ${formatDateTime(detail.created_at)}`;
     detailOpen.value = true;
   } catch (err) {
     errorMessage.value = (err as Error).message || '加载详情失败';
@@ -168,7 +169,9 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="sender_login" label="发送人" width="120" />
-        <el-table-column prop="created_at" label="发送时间" width="180" />
+        <el-table-column label="发送时间" width="180">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="120" align="center">
           <template #default="{ row }">
             <el-button

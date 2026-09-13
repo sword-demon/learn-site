@@ -23,8 +23,17 @@ vi.mock('@/api/coupons', () => couponsApi);
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { courseId: 42 } }),
   useRouter: () => ({ replace: vi.fn() }),
+  // 注意：这里导出的 RouterLink 只对 `import { RouterLink } from 'vue-router'` 生效。
+  // 模板里的 <router-link> 走运行时 resolveComponent，必须在 mount 时用
+  // global.stubs 注册，否则 Vue 会打印 "Failed to resolve component: router-link"。
   RouterLink: { template: '<a><slot /></a>' },
 }));
+
+/** 模板 <router-link> 的全局替身，交给每个 mount 的 global.stubs 使用。 */
+const RouterLinkStub = { template: '<a><slot /></a>' };
+
+/** 统一的挂载选项：补齐 <router-link> 替身，消除组件解析告警。 */
+const MOUNT_OPTIONS = { global: { stubs: { RouterLink: RouterLinkStub } } };
 
 import CheckoutView from '@/views/checkout/CheckoutView.vue';
 
@@ -99,7 +108,7 @@ beforeEach(() => {
 
 describe('CheckoutView coupon integration', () => {
   it('loads checkout options and includes coupon discount row', async () => {
-    const wrapper = mount(CheckoutView);
+    const wrapper = mount(CheckoutView, MOUNT_OPTIONS);
     await flushPromises();
     expect(couponsApi.fetchCheckoutCoupons).toHaveBeenCalledWith(42);
     const html = wrapper.html();
@@ -110,7 +119,7 @@ describe('CheckoutView coupon integration', () => {
 
   it('clears a missing coupon and shows a friendly submission error', async () => {
     learnerApi.createCourseOrder.mockRejectedValueOnce(new Error('COUPON_NOT_FOUND'));
-    const wrapper = mount(CheckoutView);
+    const wrapper = mount(CheckoutView, MOUNT_OPTIONS);
     await flushPromises();
 
     const vm = wrapper.vm as unknown as {
@@ -136,7 +145,7 @@ describe('CheckoutView coupon integration', () => {
       enabled: true,
       enabled_channels: ['alipay'],
     });
-    const wrapper = mount(CheckoutView);
+    const wrapper = mount(CheckoutView, MOUNT_OPTIONS);
     await flushPromises();
 
     expect(wrapper.get('[data-action="pay-wechat"]').classes()).toContain('is-disabled');
@@ -146,7 +155,7 @@ describe('CheckoutView coupon integration', () => {
   });
 
   it('sends the selected alipay channel when submitting', async () => {
-    const wrapper = mount(CheckoutView);
+    const wrapper = mount(CheckoutView, MOUNT_OPTIONS);
     await flushPromises();
 
     const vm = wrapper.vm as unknown as {
@@ -163,7 +172,7 @@ describe('CheckoutView coupon integration', () => {
   });
 
   it('clears a coupon that becomes ineligible after refresh', async () => {
-    const wrapper = mount(CheckoutView);
+    const wrapper = mount(CheckoutView, MOUNT_OPTIONS);
     await flushPromises();
 
     const vm = wrapper.vm as unknown as {
@@ -178,6 +187,32 @@ describe('CheckoutView coupon integration', () => {
     await vm.loadCoupons();
 
     expect(vm.selectedCouponId).toBeNull();
+    wrapper.unmount();
+  });
+
+  // 回归：单选组用哨兵值 0 表示「不使用」。Element Plus 2.14 用 isNil 判断 value
+  // 缺省，`:value="null"` 会被误判成未传 value 并打印 label 弃用告警。
+  it('maps the no-coupon sentinel to a null coupon id', async () => {
+    const wrapper = mount(CheckoutView, MOUNT_OPTIONS);
+    await flushPromises();
+
+    // 模板层：渲染出的单选 input 带哨兵值 0，而不是被省略的 null
+    expect(wrapper.get('[data-action="no-coupon"] input').attributes('value')).toBe('0');
+
+    const vm = wrapper.vm as unknown as {
+      selectedCouponId: number | null;
+      couponRadioValue: number;
+    };
+
+    // 读取方向：未选券时单选组读到哨兵；选中真实券后同步为券 id
+    expect(vm.couponRadioValue).toBe(0);
+    vm.selectedCouponId = 501;
+    expect(vm.couponRadioValue).toBe(501);
+    // 写回方向：命中哨兵即清空业务值；真实券 id 原样写入
+    vm.couponRadioValue = 0;
+    expect(vm.selectedCouponId).toBeNull();
+    vm.couponRadioValue = 501;
+    expect(vm.selectedCouponId).toBe(501);
     wrapper.unmount();
   });
 });

@@ -6,7 +6,7 @@
       :aria-label="course.title"
     >
       <img v-if="course.cover_url" :src="course.cover_url" :alt="course.title" loading="lazy" />
-      <el-icon v-else :size="40" aria-label="暂无封面"><Picture /></el-icon>
+      <img v-else src="/assets/stitch-course-hero.jpg" :alt="course.title" loading="lazy" />
       <el-tag
         v-if="course.preview_available"
         class="preview-tag"
@@ -15,6 +15,7 @@
         size="small"
         >可试看</el-tag
       >
+      <el-tag v-if="session.loggedIn && course.viewer_authorized" class="owned-tag" type="success" effect="dark" size="small">已购买</el-tag>
     </router-link>
     <div class="course-card__body">
       <h3>
@@ -111,10 +112,12 @@ async function toggleFavorite(): Promise<void> {
   border-radius: 8px;
   background: var(--card);
   overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.2s, box-shadow 0.2s;
 }
 .course-card:hover {
   border-color: var(--seal);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(20, 70, 60, 0.14);
 }
 .course-card__cover {
   position: relative;

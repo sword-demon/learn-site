@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus';
 import type { SiteIntro, SiteProfileUpdateInput } from '@learn-site/contracts';
 import { fetchSiteProfile, updateSiteProfile } from '@/api/site';
 import ContentEditor from '@/components/course/ContentEditor.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'SiteProfileView' });
 
@@ -133,7 +134,9 @@ onMounted(() => void reload());
           placeholder="维护供搜索引擎与生成式引擎理解站点的内容信息"
         />
       </el-form-item>
-      <p v-if="profile?.updated_at" class="muted">最近更新：{{ profile.updated_at }}</p>
+      <p v-if="profile?.updated_at" class="muted">
+        最近更新：{{ formatDateTime(profile.updated_at) }}
+      </p>
       <div class="actions">
         <el-button class="btn" :disabled="submitting" @click="reset">撤销修改</el-button>
         <el-button class="btn btn-primary" native-type="submit" :disabled="submitting">

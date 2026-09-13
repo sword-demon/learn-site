@@ -19,6 +19,7 @@ import {
 import { uploadBannerImage, type UploadCoverInput, type UploadCoverResult } from '@/api/covers';
 import CourseCoverUpload from '@/views/catalog/CourseCoverUpload.vue';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'BannerListView' });
 
@@ -256,13 +257,6 @@ async function onDelete(row: AdminBannerDTO): Promise<void> {
   } catch (error) {
     ElMessage.error(readError(error, '删除失败'));
   }
-}
-
-function formatDateTime(value: string): string {
-  return value
-    .replace('T', ' ')
-    .replace(/\+\d{2}:\d{2}$/, '')
-    .slice(0, 19);
 }
 
 onMounted(() => void reload());

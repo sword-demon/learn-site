@@ -44,6 +44,8 @@ describe('DistributionConfigView', () => {
     });
     await flushPromises();
     expect(wrapper.text()).toContain('合规硬约束');
+    // 保存动作条:按钮与合规说明同栏,不再悬空在卡片外。
+    expect(wrapper.text()).toContain('记入分销审计');
     wrapper.unmount();
   });
 

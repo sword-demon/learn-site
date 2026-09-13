@@ -368,8 +368,11 @@ async function completeLesson(): Promise<void> {
     const progress = await learningProgress.completeDocument(delivery.value.kind);
     completed.value = progress.completed;
     if (progress.completed) await refreshNextAction();
-  } catch {
-    completionError.value = '完成状态提交失败，请稍后重试。';
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    completionError.value = code === 'LESSON_LOCKED'
+      ? '试看内容仅供浏览，开始学习后才能标记完成。'
+      : '完成状态提交失败，请稍后重试。';
   } finally {
     completionPending.value = false;
   }

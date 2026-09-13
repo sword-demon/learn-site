@@ -7,6 +7,7 @@ import type {
   LearningFactFunnelWindowDays,
 } from '@learn-site/contracts';
 import { fetchLearningFactFunnel } from '@/api/learningFactFunnel';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'LearningFactFunnelView' });
 
@@ -89,7 +90,7 @@ watch(
       <p class="muted">
         每个学员从课程访问权生效时刻起算, 到生效时刻加 {{ report.window_days }} 个自然日结束.
         访问权生效之后才计首次打开课节; 打开后产生完成课节才计有效进度; 学习记录完成才计完成课程.
-        数据截止 {{ report.generated_at }} · 非实时
+        数据截止 {{ formatDateTime(report.generated_at) }} · 非实时
       </p>
       <el-empty v-if="emptyFunnel" description="窗口内没有课程访问权生效" />
       <el-row v-else :gutter="12">

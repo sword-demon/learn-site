@@ -234,4 +234,19 @@ describe('LessonView', () => {
     expect(progressApi.completeDocument).toHaveBeenCalledWith('markdown');
     expect(wrapper.text()).toContain('本节已完成');
   });
+
+  it('explains that preview lessons must be started before completion', async () => {
+    learnerApi.fetchLesson.mockResolvedValue({ kind: 'markdown', html: '<p>试看</p>' });
+    progressApi.completeDocument.mockRejectedValue(
+      Object.assign(new Error('LESSON_LOCKED'), { code: 'LESSON_LOCKED' }),
+    );
+    const wrapper = mount(LessonView, {
+      global: { stubs: { RouterLink: { template: '<a><slot /></a>' }, QuestionPanel: true } },
+    });
+    await flushPromises();
+    await wrapper.get('[data-action="complete-lesson"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('试看内容仅供浏览，开始学习后才能标记完成');
+  });
 });

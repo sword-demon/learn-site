@@ -11,6 +11,7 @@ import {
   type ActivationCodeStatus,
 } from '@/api/activationCodes';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 const route = useRoute();
 const router = useRouter();
@@ -201,7 +202,9 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column prop="expires_at" label="过期时间" width="180">
-        <template #default="{ row }">{{ row.expires_at ?? '不过期' }}</template>
+        <template #default="{ row }">{{
+          row.expires_at ? formatDateTime(row.expires_at) : '不过期'
+        }}</template>
       </el-table-column>
       <el-table-column label="兑换学员" min-width="160">
         <template #default="{ row }">
@@ -212,9 +215,11 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column prop="redeemed_at" label="兑换时间" width="180">
-        <template #default="{ row }">{{ row.redeemed_at ?? '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.redeemed_at) }}</template>
       </el-table-column>
-      <el-table-column prop="created_at" label="生成时间" width="180" />
+      <el-table-column label="生成时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
           <el-button

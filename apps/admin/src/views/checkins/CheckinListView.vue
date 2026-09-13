@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import type { AdminCheckinListItemDTO } from '@learn-site/contracts';
 import { deleteCheckin, getCheckin, listCheckins } from '@/api/checkins';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'CheckinListView' });
 
@@ -74,14 +75,6 @@ async function confirmDelete(row: AdminCheckinListItemDTO): Promise<void> {
     if ((err as string) === 'cancel') return;
     ElMessage.error((err as Error).message || '删除失败');
   }
-}
-
-function formatDateTime(value: string): string {
-  if (!value) return '—';
-  return value
-    .replace('T', ' ')
-    .replace(/\+\d{2}:\d{2}$/, '')
-    .slice(0, 19);
 }
 
 onMounted(() => {

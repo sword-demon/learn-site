@@ -17,6 +17,7 @@ import type {
 } from '@learn-site/contracts';
 import { ChatDotRound, Close, Promotion } from '@element-plus/icons-vue';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'QuestionListView' });
 
@@ -188,7 +189,7 @@ const authorLabel = (message: QuestionMessageDTO): string => {
   return '学员';
 };
 
-const formattedAt = (value: string): string => (value ? value.replace('T', ' ').slice(0, 16) : '');
+const formattedAt = formatDateTime;
 
 function statusType(status: QuestionStatus): 'warning' | 'success' | 'info' {
   if (status === 'pending') return 'warning';

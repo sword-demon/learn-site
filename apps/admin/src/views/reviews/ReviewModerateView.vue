@@ -21,6 +21,7 @@ import { ChatLineSquare } from '@element-plus/icons-vue';
 import ReviewReplyNode from './ReviewReplyNode.vue';
 import AdminListPager from '@/components/AdminListPager.vue';
 import { buildReviewReplyTree } from './reviewTree';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'ReviewModerateView' });
 
@@ -209,7 +210,7 @@ watch([courseId, visibility], () => {
 
 const ratingStars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-const formattedAt = (s: string): string => (s ? s.replace('T', ' ').slice(0, 16) : '');
+const formattedAt = formatDateTime;
 
 onMounted(loadCourses);
 </script>

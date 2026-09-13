@@ -9,6 +9,7 @@ import type {
 } from '@learn-site/contracts';
 import { getFeedback, listFeedback, updateFeedbackStatus } from '@/api/courseFeedback';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'CourseFeedbackView' });
 
@@ -45,14 +46,6 @@ function statusLabel(value: CourseFeedbackStatus): string {
 
 function statusTagType(value: CourseFeedbackStatus): 'warning' | 'success' {
   return value === 'pending' ? 'warning' : 'success';
-}
-
-function formatTimestamp(value: string | null): string {
-  if (!value) return '—';
-  return value
-    .replace('T', ' ')
-    .replace(/(?:Z|[+-]\d{2}:\d{2})$/, '')
-    .slice(0, 19);
 }
 
 async function reload(): Promise<void> {
@@ -232,10 +225,10 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column label="提交时间" width="180">
-          <template #default="{ row }">{{ formatTimestamp(row.created_at) }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
         <el-table-column label="处理时间" width="180">
-          <template #default="{ row }">{{ formatTimestamp(row.processed_at) }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.processed_at) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="92" align="right" fixed="right">
           <template #default="{ row }">
@@ -293,11 +286,11 @@ onMounted(() => {
             </div>
             <div>
               <dt>提交时间</dt>
-              <dd>{{ formatTimestamp(detail.created_at) }}</dd>
+              <dd>{{ formatDateTime(detail.created_at) }}</dd>
             </div>
             <div>
               <dt>处理时间</dt>
-              <dd>{{ formatTimestamp(detail.processed_at) }}</dd>
+              <dd>{{ formatDateTime(detail.processed_at) }}</dd>
             </div>
             <div v-if="detail.processed_by_staff_id">
               <dt>处理员工</dt>

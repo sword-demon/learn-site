@@ -150,16 +150,20 @@ final class DistributionCourseOverrideService
 
         $result = [];
         foreach ($rows as $row) {
+            // Raw PDO rows: decimal columns arrive as strings and unset fields
+            // are NULL. The admin Zod DTO requires number|null here — never a
+            // string sentinel — so cast every optional field explicitly.
             $result[] = [
                 'course_id' => (int) $row['course_id'],
                 'course_name' => (string) ($titles[(int) $row['course_id']] ?? 'Deleted Course'),
                 'enabled' => (bool) $row['enabled'],
-                'level1_pct' => $row['level1_pct'] ?? 'Use global',
-                'level2_pct' => $row['level2_pct'] ?? 'Use global',
-                'level3_pct' => $row['level3_pct'] ?? 'Use global',
-                'per_order_cap_cents' => $row['per_order_cap_cents'] ?? 'Use global',
-                'updated_by' => $row['updated_by_staff_id'],
-                'updated_at' => $row['updated_at'],
+                'level1_pct' => $row['level1_pct'] === null ? null : (float) $row['level1_pct'],
+                'level2_pct' => $row['level2_pct'] === null ? null : (float) $row['level2_pct'],
+                'level3_pct' => $row['level3_pct'] === null ? null : (float) $row['level3_pct'],
+                'per_order_cap_cents' => $row['per_order_cap_cents'] === null ? null : (int) $row['per_order_cap_cents'],
+                'per_learner_course_cap_cents' => $row['per_learner_course_cap_cents'] === null ? null : (int) $row['per_learner_course_cap_cents'],
+                'updated_by' => (int) $row['updated_by_staff_id'],
+                'updated_at' => (string) $row['updated_at'],
             ];
         }
 

@@ -26,6 +26,7 @@ import {
 import { listCategoriesFlat, listCourses } from '@/api/catalog';
 import { listLearners } from '@/api/learners';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime, nowWallClock, toIso8601 } from '@/utils/datetime';
 
 defineOptions({ name: 'CouponListView' });
 
@@ -45,24 +46,21 @@ interface Draft {
   per_learner_use_limit: number;
 }
 
-const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
-
 function toDatetimeLocal(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Date(date.getTime() + SHANGHAI_OFFSET_MS).toISOString().slice(0, 19).replace('T', ' ');
+  const formatted = formatDateTime(iso);
+  return formatted === '—' ? '' : formatted;
 }
 
 function fromDatetimeLocal(value: string): string {
-  return `${value.trim().replace(' ', 'T')}+08:00`;
+  return toIso8601(value);
 }
 
 function nowIsoLocal(): string {
-  return toDatetimeLocal(new Date().toISOString());
+  return nowWallClock();
 }
 
 function futureIsoLocal(days: number): string {
-  return toDatetimeLocal(new Date(Date.now() + days * 86_400_000).toISOString());
+  return formatDateTime(Date.now() + days * 86_400_000);
 }
 
 function emptyDraft(): Draft {
@@ -1052,10 +1050,12 @@ onMounted(load);
         <el-table-column label="状态" width="100">
           <template #default="{ row }">{{ instanceStatusLabel(row.status) }}</template>
         </el-table-column>
-        <el-table-column prop="created_at" label="领取/发放时间" min-width="170" />
+        <el-table-column label="领取/发放时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column prop="expires_at" label="到期时间" min-width="170" />
         <el-table-column label="使用时间" min-width="170">
-          <template #default="{ row }">{{ row.used_at || '—' }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.used_at) }}</template>
         </el-table-column>
         <template #empty>
           <el-empty description="尚无领取或发放记录" :image-size="72" />

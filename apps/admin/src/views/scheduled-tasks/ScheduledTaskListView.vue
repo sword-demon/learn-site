@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import type { AdminScheduledTaskDTO } from '@learn-site/contracts';
 import { listScheduledTasks, runScheduledTask } from '@/api/scheduledTasks';
 import ScheduledTaskEditDialog from '@/views/scheduled-tasks/ScheduledTaskEditDialog.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'ScheduledTaskListView' });
 
@@ -110,7 +111,7 @@ onMounted(() => {
         </el-table-column>
         <el-table-column prop="next_run_at" label="下次执行" min-width="160">
           <template #default="{ row }">
-            {{ row.next_run_at ?? '—' }}
+            {{ formatDateTime(row.next_run_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">

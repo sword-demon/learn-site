@@ -11,6 +11,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'home', component: () => import('@/views/home/HomeView.vue') },
         { path: 'maps', name: 'maps', component: () => import('@/views/maps/MapListView.vue') },
+        { path: 'courses', name: 'courses', component: () => import('@/views/catalog/CoursesView.vue') },
         {
           path: 'maps/:id',
           name: 'map-detail',

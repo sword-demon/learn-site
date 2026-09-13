@@ -9,7 +9,10 @@ import {
   type OpsSourceType,
   type OpsState,
 } from '@contracts/opsInbox';
+import type { StaffDTO } from '@learn-site/contracts';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime, parseDateTime, toIso8601 } from '@/utils/datetime';
+import { listStaff } from '@/api/org';
 import { transitionOpsInbox } from '@/api/opsInbox';
 import { useOpsInboxPolling } from '@/composables/useOpsInboxPolling';
 import ContentTodoDrawer from './ContentTodoDrawer.vue';
@@ -20,6 +23,20 @@ const router = useRouter();
 const route = useRoute();
 const contentTodoId = ref<number | null>(null);
 const contentTodoVisible = ref(false);
+const assignOpen = ref(false);
+const assignTarget = ref<OpsException | null>(null);
+const assignStaffId = ref<number | null>(null);
+const assigning = ref(false);
+const optionPageSize = 20;
+const staffOptions = ref<StaffDTO[]>([]);
+const staffOptionsPage = ref(0);
+const staffOptionsTotal = ref(0);
+const staffOptionsLoading = ref(false);
+const staffOptionsQuery = ref('');
+let staffRequestId = 0;
+const hasMoreStaff = computed(
+  () => staffOptionsPage.value * optionPageSize < staffOptionsTotal.value,
+);
 
 function parsePositiveInt(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -139,35 +156,112 @@ async function acknowledge(row: OpsException): Promise<void> {
 }
 async function snooze(row: OpsException): Promise<void> {
   try {
-    const result = await ElMessageBox.prompt('请输入到期时间（ISO 8601）', '搁置事项', {
-      inputValue: new Date(Date.now() + 86400000).toISOString(),
-      inputValidator: (value) => {
-        const time = Date.parse(value);
-        return Number.isFinite(time) && time > Date.now() + 60000
-          ? true
-          : '到期时间需晚于当前时间 60 秒';
+    const result = await ElMessageBox.prompt(
+      '请输入到期时间（北京时间, 例 2026-09-14 15:30:00）',
+      '搁置事项',
+      {
+        inputValue: formatDateTime(Date.now() + 86_400_000),
+        inputValidator: (value) => {
+          const time = parseDateTime(value);
+          return Number.isFinite(time) && time > Date.now() + 60000
+            ? true
+            : '到期时间需晚于当前时间 60 秒';
+        },
+        type: 'warning',
       },
-      type: 'warning',
+    );
+    await transitionOpsInbox(row.id, {
+      to_state: 'snoozed',
+      snooze_until: toIso8601(result.value),
     });
-    await transitionOpsInbox(row.id, { to_state: 'snoozed', snooze_until: result.value });
     items.value = items.value.filter((item) => item.id !== row.id);
     ElMessage.success('已搁置');
   } catch {
     return;
   }
 }
-async function assign(row: OpsException): Promise<void> {
+function staffOptionLabel(staff: StaffDTO): string {
+  const name = staff.display_name || staff.login;
+  return `#${staff.account_id} ${name}（${staff.login}）`;
+}
+
+async function loadStaffOptions(
+  query = staffOptionsQuery.value,
+  page = 1,
+  append = false,
+): Promise<void> {
+  const requestId = ++staffRequestId;
+  staffOptionsLoading.value = true;
+  const trimmedQuery = query.trim();
+  staffOptionsQuery.value = trimmedQuery;
   try {
-    const result = await ElMessageBox.prompt('请输入员工账号 ID', '指派事项', {
-      inputValidator: (value) =>
-        /^\d+$/.test(value) && Number(value) > 0 ? true : '请输入有效员工 ID',
-      type: 'warning',
+    const result = await listStaff({
+      status: 'active',
+      ...(trimmedQuery ? { search: trimmedQuery } : {}),
+      page,
+      limit: optionPageSize,
     });
-    await transitionOpsInbox(row.id, { to_state: 'assigned', assignee_id: Number(result.value) });
+    if (requestId !== staffRequestId) return;
+    staffOptions.value = append ? [...staffOptions.value, ...result.items] : result.items;
+    staffOptionsPage.value = result.page;
+    staffOptionsTotal.value = result.total;
+  } catch {
+    if (requestId !== staffRequestId) return;
+    if (!append) staffOptions.value = [];
+    staffOptionsPage.value = 0;
+    staffOptionsTotal.value = 0;
+  } finally {
+    if (requestId === staffRequestId) staffOptionsLoading.value = false;
+  }
+}
+
+function searchStaff(query: string): void {
+  void loadStaffOptions(query);
+}
+
+function loadMoreStaff(): void {
+  if (staffOptionsLoading.value || !hasMoreStaff.value) return;
+  void loadStaffOptions(staffOptionsQuery.value, staffOptionsPage.value + 1, true);
+}
+
+function onStaffVisibleChange(visible: boolean): void {
+  if (visible && staffOptionsPage.value === 0) void loadStaffOptions();
+}
+
+function openAssign(row: OpsException): void {
+  assignTarget.value = row;
+  assignStaffId.value = null;
+  staffOptions.value = [];
+  staffOptionsPage.value = 0;
+  staffOptionsTotal.value = 0;
+  staffOptionsQuery.value = '';
+  assignOpen.value = true;
+  void loadStaffOptions('', 1);
+}
+
+function closeAssign(): void {
+  assignOpen.value = false;
+  assignTarget.value = null;
+  assignStaffId.value = null;
+}
+
+async function confirmAssign(): Promise<void> {
+  const row = assignTarget.value;
+  const staffId = assignStaffId.value;
+  if (!row || staffId === null || staffId <= 0) {
+    ElMessage.warning('请选择要指派的员工');
+    return;
+  }
+  assigning.value = true;
+  try {
+    await transitionOpsInbox(row.id, { to_state: 'assigned', assignee_id: staffId });
     items.value = items.value.filter((item) => item.id !== row.id);
     ElMessage.success('已指派');
+    closeAssign();
   } catch {
-    return;
+    ElMessage.error('指派失败');
+  } finally {
+    assigning.value = false;
   }
 }
 async function onCommand(command: string, row: OpsException): Promise<void> {
@@ -185,8 +279,10 @@ async function onCommand(command: string, row: OpsException): Promise<void> {
   }
   if (command === 'resolve') await acknowledge(row);
   else if (command === 'snooze') await snooze(row);
-  else if (command === 'assign') await assign(row);
+  else if (command === 'assign') openAssign(row);
 }
+
+defineExpose({ assignStaffId, confirmAssign });
 function applyFilter(): void {
   filters.page = 1;
   void reload();
@@ -203,43 +299,65 @@ function filterSource(source: string): void {
 
 <template>
   <div class="page ops-inbox-page">
-    <div class="filter-bar">
-      <el-select
-        v-model="filters.source_type"
-        clearable
-        placeholder="异常类型"
-        @change="applyFilter"
-        ><el-option
-          v-for="source in OpsSourceTypeSchema.options"
-          :key="source"
-          :label="sourceLabel(source)"
-          :value="source"
-      /></el-select>
-      <el-select v-model="filters.state" placeholder="状态" @change="applyFilter"
-        ><el-option
-          v-for="state in ['open', 'retrying', 'snoozed', 'assigned', 'resolved']"
-          :key="state"
-          :label="stateLabel(state as OpsState)"
-          :value="state"
-      /></el-select>
-      <el-input-number
-        v-model="filters.age_min_hours"
-        :min="0"
-        :max="720"
-        controls-position="right"
-        placeholder="最少积压小时"
-        @change="applyFilter"
-      />
-      <el-select v-model="filters.sort_by" @change="applyFilter"
-        ><el-option label="业务权重" value="weight" /><el-option
-          label="积压年龄"
-          value="age_seconds"
-      /></el-select>
-      <el-select v-model="filters.sort_dir" @change="applyFilter"
-        ><el-option label="降序" value="desc" /><el-option label="升序" value="asc"
-      /></el-select>
-      <el-checkbox v-model="filters.content_only" @change="applyFilter">仅内容待办</el-checkbox>
-    </div>
+    <el-form class="filter-form" inline @submit.prevent>
+      <el-form-item label="异常类型">
+        <el-select
+          v-model="filters.source_type"
+          class="filter-control"
+          clearable
+          placeholder="全部类型"
+          @change="applyFilter"
+        >
+          <el-option
+            v-for="source in OpsSourceTypeSchema.options"
+            :key="source"
+            :label="sourceLabel(source)"
+            :value="source"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="状态">
+        <el-select
+          v-model="filters.state"
+          class="filter-control"
+          placeholder="状态"
+          @change="applyFilter"
+        >
+          <el-option
+            v-for="state in ['open', 'retrying', 'snoozed', 'assigned', 'resolved']"
+            :key="state"
+            :label="stateLabel(state as OpsState)"
+            :value="state"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="最少积压">
+        <el-input-number
+          v-model="filters.age_min_hours"
+          class="filter-control"
+          :min="0"
+          :max="720"
+          controls-position="right"
+          placeholder="小时"
+          @change="applyFilter"
+        />
+      </el-form-item>
+      <el-form-item label="排序">
+        <el-select v-model="filters.sort_by" class="filter-control" @change="applyFilter">
+          <el-option label="业务权重" value="weight" />
+          <el-option label="积压年龄" value="age_seconds" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="方向">
+        <el-select v-model="filters.sort_dir" class="filter-control-sm" @change="applyFilter">
+          <el-option label="降序" value="desc" />
+          <el-option label="升序" value="asc" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-checkbox v-model="filters.content_only" @change="applyFilter">仅内容待办</el-checkbox>
+      </el-form-item>
+    </el-form>
     <el-alert v-if="listError" :title="listError" type="error" show-icon class="mb-3" />
     <el-alert
       v-if="degraded"
@@ -285,17 +403,19 @@ function filterSource(source: string): void {
       >
       <el-table-column label="操作" width="180" fixed="right"
         ><template #default="{ row }"
-          ><el-button link type="primary" @click="go(row)">跳转处理</el-button
-          ><el-dropdown trigger="click" @command="(command: string) => onCommand(command, row)"
-            ><el-button link>操作</el-button
-            ><template #dropdown
-              ><el-dropdown-menu
-                ><el-dropdown-item command="resolve">标记为已处理</el-dropdown-item
-                ><el-dropdown-item command="snooze">搁置到...</el-dropdown-item
-                ><el-dropdown-item command="assign">指派给...</el-dropdown-item></el-dropdown-menu
-              ></template
-            ></el-dropdown
-          ></template
+          ><div class="row-actions">
+            <el-button link type="primary" @click="go(row)">跳转处理</el-button
+            ><el-dropdown trigger="click" @command="(command: string) => onCommand(command, row)"
+              ><el-button link>操作</el-button
+              ><template #dropdown
+                ><el-dropdown-menu
+                  ><el-dropdown-item command="resolve">标记为已处理</el-dropdown-item
+                  ><el-dropdown-item command="snooze">搁置到...</el-dropdown-item
+                  ><el-dropdown-item command="assign">指派给...</el-dropdown-item></el-dropdown-menu
+                ></template
+              ></el-dropdown
+            >
+          </div></template
         ></el-table-column
       >
     </el-table>
@@ -311,5 +431,114 @@ function filterSource(source: string): void {
       :total="total"
       @change="reload"
     />
+    <el-dialog
+      v-model="assignOpen"
+      title="指派事项"
+      width="480px"
+      destroy-on-close
+      @closed="closeAssign"
+    >
+      <p class="assign-hint">从在职员工列表中选择处理人，支持搜索姓名或登录名。</p>
+      <el-select
+        v-model="assignStaffId"
+        class="assign-select"
+        filterable
+        remote
+        clearable
+        :loading="staffOptionsLoading"
+        :remote-method="searchStaff"
+        placeholder="选择员工"
+        data-field="assignee_id"
+        @visible-change="onStaffVisibleChange"
+      >
+        <el-option
+          v-for="staff in staffOptions"
+          :key="staff.account_id"
+          :label="staffOptionLabel(staff)"
+          :value="staff.account_id"
+        />
+        <template #footer>
+          <div v-if="staffOptionsTotal > 0" class="option-footer">
+            <el-button
+              v-if="hasMoreStaff"
+              text
+              type="primary"
+              size="small"
+              :loading="staffOptionsLoading"
+              data-action="load-more-staff"
+              @click="loadMoreStaff"
+            >
+              加载更多
+            </el-button>
+            <span v-else>已加载全部</span>
+          </div>
+        </template>
+      </el-select>
+      <template #footer>
+        <el-button @click="closeAssign">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="assigning"
+          data-action="confirm-assign"
+          @click="confirmAssign"
+        >
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
+
+<style scoped>
+/* 行内操作按钮:dropdown 包裹会破坏 el-button 的兄弟间距与基线对齐,统一用 flex。 */
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0 16px;
+  min-width: 0;
+}
+
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.filter-form :deep(.el-form-item__label) {
+  color: #52667a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.filter-control {
+  width: 168px;
+}
+
+.filter-control-sm {
+  width: 112px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.assign-hint {
+  margin: 0 0 12px;
+  color: #6b7c93;
+  font-size: 13px;
+}
+
+.assign-select {
+  width: 100%;
+}
+
+.option-footer {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  color: #829ab1;
+  font-size: 12px;
+}
+</style>

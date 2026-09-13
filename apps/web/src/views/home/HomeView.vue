@@ -1,8 +1,9 @@
 <template>
   <main class="page home-page">
-    <header class="home-heading">
-      <h1>{{ intro?.title || '拾阶学社' }}</h1>
-      <p>{{ intro?.subtitle || '拾级而上，日进一阶。' }}</p>
+    <header class="home-heading hero">
+      <p class="hero-kicker">LEARN · BUILD · GROW</p>
+      <h1>欢迎来到{{ intro?.title || '拾阶学社' }}</h1>
+      <p>{{ intro?.subtitle || '拾级而上，日进一阶。用系统课程，把每一次好奇变成真正的能力。' }}</p>
     </header>
     <el-skeleton v-if="loading" animated :rows="6" />
     <el-alert
@@ -50,67 +51,13 @@
         <p v-else class="muted">暂时没有可继续的学习行动</p>
       </section>
 
-      <section class="course-discovery" aria-label="课程列表">
-        <header class="discovery-heading">
-          <h2>发现课程</h2>
-          <nav class="category-nav" aria-label="课程分类">
-            <el-button
-              text
-              class="category-nav__button"
-              :class="{ on: selectedId === null }"
-              :aria-pressed="selectedId === null"
-              data-action="all-categories"
-              @click="selectCategory(null)"
-              >全部课程</el-button
-            >
-            <el-button
-              v-for="category in categories"
-              :key="category.id"
-              text
-              class="category-nav__button"
-              :class="{ on: rootId === category.id }"
-              :aria-pressed="rootId === category.id"
-              :data-category-id="category.id"
-              @click="selectCategory(category.id)"
-              >{{ category.name }}</el-button
-            >
-          </nav>
-        </header>
-        <div v-if="selectedId !== null" class="category-detail">
-          <el-tree-select
-            :model-value="selectedId"
-            :data="categories"
-            :props="{ label: 'name', value: 'id', children: 'children' }"
-            node-key="id"
-            check-strictly
-            filterable
-            :render-after-expand="false"
-            aria-label="选择课程分类"
-            placeholder="选择课程分类"
-            @update:model-value="selectCategory"
-          />
-          <span class="muted">{{ categoryPath.join(' / ') }}</span>
-        </div>
-        <el-skeleton v-if="listLoading" animated :rows="5" />
-        <el-alert
-          v-else-if="listError"
-          title="课程列表暂时读不到。"
-          type="error"
-          :closable="false"
-          show-icon
-        />
-        <el-empty
-          v-else-if="courses.length === 0"
-          description="这一类暂时还没有课程，换个分类看看吧"
-        />
-        <div v-else class="course-grid">
-          <CourseEntryRow
-            v-for="course in courses"
-            :key="course.id"
-            :course="course"
-            :show-favorite="session.loggedIn"
-          />
-        </div>
+      <section v-if="paidCourses.length" class="home-section">
+        <header class="discovery-heading"><div><span class="section-kicker">CURATED FOR YOU</span><h2>精选付费课程</h2></div><router-link to="/courses">全部课程 <el-icon><ArrowRight /></el-icon></router-link></header>
+        <div class="course-grid compact"><CourseEntryRow v-for="course in paidCourses" :key="course.id" :course="course" :show-favorite="session.loggedIn" /></div>
+      </section>
+      <section v-if="freeCourses.length" class="home-section">
+        <header class="discovery-heading"><div><span class="section-kicker">START FOR FREE</span><h2>免费入门课程</h2></div><router-link to="/courses?price=free">查看全部 <el-icon><ArrowRight /></el-icon></router-link></header>
+        <div class="course-grid compact"><CourseEntryRow v-for="course in freeCourses" :key="course.id" :course="course" :show-favorite="session.loggedIn" /></div>
       </section>
 
       <section
@@ -144,6 +91,7 @@
         </div>
       </section>
       <HomeBannerCarousel v-if="banners.length > 0" :banners="banners" />
+      <section class="why-us home-section"><header class="discovery-heading"><div><span class="section-kicker">WHY US</span><h2>为什么选择我们</h2></div></header><div class="why-grid"><article v-for="item in advantages" :key="item.title"><strong>{{ item.number }}</strong><h3>{{ item.title }}</h3><p>{{ item.text }}</p></article></div></section>
     </template>
   </main>
 </template>
@@ -186,6 +134,9 @@ const selectedPath = computed(() =>
 const rootId = computed(() => selectedPath.value[0]?.id);
 const categoryPath = computed(() => selectedPath.value.map((node) => node.name));
 const courses = ref<CourseListItemDTO[]>([]);
+const paidCourses = computed(() => courses.value.filter((c) => c.price_mode !== 'free').slice(0, 6));
+const freeCourses = computed(() => courses.value.filter((c) => c.price_mode === 'free').slice(0, 6));
+const advantages = [{ number: '01', title: '路径清晰', text: '从基础到进阶，每一步都有方向。' }, { number: '02', title: '内容扎实', text: '把复杂知识拆成可执行的学习动作。' }, { number: '03', title: '持续陪伴', text: '课程、问答与进度记录，陪你学下去。' }];
 const action = ref<Awaited<ReturnType<typeof fetchNextAction>>['action']>(null);
 const actionState = ref<LearnerNextActionDTO['state'] | null>(null);
 const actionLoading = ref(false);
@@ -246,6 +197,17 @@ onMounted(async () => {
 .home-heading {
   margin-bottom: 32px;
 }
+.hero { padding: 52px 56px; border-radius: 20px; color: #fff; background: linear-gradient(120deg, #123c45, #087f78); box-shadow: 0 18px 40px #0b4b4b22; }
+.hero h1 { font-size: clamp(34px, 5vw, 58px); letter-spacing: -.04em; }
+.hero p { color: #d5f4ed; max-width: 620px; }
+.hero-kicker,.section-kicker { font-size: 11px; letter-spacing: .18em; font-weight: 700; color: var(--gold); }
+.home-section { margin-top: 56px; }
+.course-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.why-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.why-grid article { padding:24px; border:1px solid var(--line); border-radius:14px; background:var(--paper-2); }
+.why-grid strong { color:var(--seal); font-size:28px; }
+.why-grid h3 { margin:18px 0 8px; }
+.why-grid p { color:var(--ink-2); margin:0; }
 .home-heading h1 {
   margin: 0 0 6px;
   font-size: 30px;

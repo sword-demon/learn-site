@@ -19,6 +19,7 @@ import { listCourses, type ListCoursesParams } from '@/api/catalog';
 import { listLearners } from '@/api/learners';
 import AdminListPager from '@/components/AdminListPager.vue';
 import './distribution.css';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'DistributionReconcileView' });
 
@@ -470,7 +471,9 @@ onMounted(() => void reload());
             }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" min-width="170" />
+        <el-table-column label="创建时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button text type="primary" @click="openOrder(row.order_id)">按订单</el-button>

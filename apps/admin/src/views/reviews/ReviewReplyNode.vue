@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { ReviewReplyTreeNode } from './reviewTree';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'ReviewReplyNode' });
 
@@ -30,7 +31,7 @@ function submitHide(id: number): void {
   hideReason.value = '';
 }
 
-const formattedAt = (value: string): string => (value ? value.replace('T', ' ').slice(0, 16) : '');
+const formattedAt = formatDateTime;
 </script>
 
 <template>

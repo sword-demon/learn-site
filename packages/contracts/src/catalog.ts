@@ -211,6 +211,7 @@ export const CourseListItemDTO = z.object({
   sale_end_at: z.string().nullable(),
   preview_available: z.boolean(),
   learner_count: z.number().int().nonnegative(),
+  viewer_authorized: z.boolean().optional(),
 });
 export type CourseListItemDTO = z.infer<typeof CourseListItemDTO>;
 

@@ -147,8 +147,13 @@ onMounted(() => void reload());
             <el-radio-button :value="3">三级</el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-alert title="合规硬约束" type="error" :closable="false" show-icon />
-        <p v-if="levelCapIllegal" class="dist-muted">级别上限只能是 1 到 3.</p>
+        <el-alert title="合规硬约束" type="error" :closable="false" show-icon>
+          {{
+            levelCapIllegal
+              ? '级别上限只能是 1 到 3, 请修正后再保存.'
+              : '级别上限由法规限定, 最高三级; 保存时会整体校验比例与封顶.'
+          }}
+        </el-alert>
         <div class="pct-grid">
           <el-form-item label="一级比例">
             <el-input-number v-model="pct.level1" :min="0" :max="100" :step="0.1" :precision="2" />
@@ -227,9 +232,14 @@ onMounted(() => void reload());
         </dl>
       </el-card>
 
-      <div class="actions">
-        <el-button type="primary" :loading="submitting" native-type="submit">保存</el-button>
-      </div>
+      <el-card class="dist-panel" shadow="never">
+        <div class="actions-bar">
+          <p class="dist-muted">
+            保存前会整体校验合规硬约束(级别上限 ≤ 3、比例与封顶合法), 变更写入后记入分销审计.
+          </p>
+          <el-button type="primary" :loading="submitting" native-type="submit">保存</el-button>
+        </div>
+      </el-card>
     </el-form>
   </main>
 </template>
@@ -270,8 +280,11 @@ onMounted(() => void reload());
   font-size: 14px;
 }
 
-.actions {
+.actions-bar {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
 }
 </style>

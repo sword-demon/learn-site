@@ -11,6 +11,7 @@ import {
   togglePaymentWhitelist,
 } from '@/api/paymentWhitelist';
 import type { PaymentWhitelistEntryDTO } from '@/api/paymentWhitelist';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'PaymentWhitelistView' });
 
@@ -142,7 +143,9 @@ onMounted(() => void load());
         </template>
       </el-table-column>
       <el-table-column prop="note" label="备注" min-width="180" />
-      <el-table-column prop="created_at" label="创建时间" min-width="180" />
+      <el-table-column label="创建时间" min-width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="100">
         <template #default="{ row }">
           <el-button link type="danger" data-action="remove" @click="remove(row)">移除</el-button>

@@ -602,6 +602,11 @@ async function saveDraft(): Promise<void> {
     activeTab.value = 'basic';
     return;
   }
+  if (form.price_mode === 'paid' && Number(form.sale_price) > 0 && Number(form.sale_price) >= Number(form.list_price)) {
+    ElMessage.warning('销售价必须低于列表价，请检查价格设置');
+    activeTab.value = 'basic';
+    return;
+  }
   if (!form.intro_rich_text.trim() || form.intro_rich_text === '<p><br></p>') {
     ElMessage.warning('请填写富文本简介');
     activeTab.value = 'basic';

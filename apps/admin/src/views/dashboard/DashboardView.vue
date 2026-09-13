@@ -67,7 +67,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" min-width="180" />
+        <el-table-column label="创建时间" min-width="180">
+          <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+        </el-table-column>
       </el-table>
     </section>
   </section>
@@ -81,6 +83,7 @@ import * as echarts from 'echarts';
 import type { ECharts, EChartsOption } from 'echarts';
 import type { DashboardSummaryDTO } from '@learn-site/contracts';
 import { fetchDashboard } from '@/api/dashboard';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'DashboardView' });
 

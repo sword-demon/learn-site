@@ -12,6 +12,7 @@ import { listLearners, type LearnerAccountDTO } from '@/api/learners';
 import type { CourseDTO } from '@learn-site/contracts';
 import { Document, RefreshRight, Search, Tickets, User } from '@element-plus/icons-vue';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'OrderListView' });
 
@@ -495,7 +496,9 @@ onMounted(() => {
               }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="created_at" label="创建时间" min-width="175" />
+          <el-table-column label="创建时间" min-width="175">
+            <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+          </el-table-column>
           <template #empty><el-empty description="暂无订单记录" :image-size="88" /></template>
         </el-table>
         <AdminListPager
@@ -573,9 +576,9 @@ onMounted(() => {
               }}{{ selected.provider_ref ? ` / ${selected.provider_ref}` : '' }}
             </dd>
             <dt>支付成功时间</dt>
-            <dd>{{ selected.succeeded_at ?? '—' }}</dd>
+            <dd>{{ formatDateTime(selected.succeeded_at) }}</dd>
             <dt>创建时间</dt>
-            <dd>{{ selected.created_at }}</dd>
+            <dd>{{ formatDateTime(selected.created_at) }}</dd>
             <template v-if="selected.failed_reason">
               <dt>失败原因</dt>
               <dd class="failure">{{ selected.failed_reason }}</dd>

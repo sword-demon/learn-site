@@ -9,9 +9,13 @@ const api = vi.hoisted(() => ({
   fetchOpsInbox: vi.fn(),
   transitionOpsInbox: vi.fn(),
 }));
+const orgApi = vi.hoisted(() => ({
+  listStaff: vi.fn(),
+}));
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 
 vi.mock('@/api/opsInbox', () => api);
+vi.mock('@/api/org', () => orgApi);
 vi.mock('@/views/ops-inbox/ContentTodoDrawer.vue', () => ({
   default: {
     name: 'ContentTodoDrawer',
@@ -61,6 +65,27 @@ describe('OpsInboxView', () => {
       state: 'resolved',
       updated_at: '2026-09-05T16:00:00+08:00',
     });
+    orgApi.listStaff.mockResolvedValue({
+      items: [
+        {
+          account_id: 9,
+          login: 'ops-owner',
+          display_name: '运营甲',
+          is_super_admin: false,
+          department_id: 1,
+          department_name: '运营',
+          department_status: 'enabled',
+          account_status: 'active',
+          must_change_password: false,
+          last_login_at: '2026-09-13 10:00:00',
+          created_at: '2026-09-01 10:00:00',
+          updated_at: '2026-09-13 10:00:00',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
   });
 
   it('renders rows and navigates through the row deep link', async () => {
@@ -70,8 +95,24 @@ describe('OpsInboxView', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('订单 #123 支付状态未知');
+    expect(wrapper.find('.filter-form').exists()).toBe(true);
+    expect(wrapper.findAll('.filter-form .el-form-item').length).toBeGreaterThanOrEqual(5);
     await wrapper.get('button').trigger('click');
     expect(router.push).toHaveBeenCalledWith({ name: 'orders', query: { id: '123' } });
+    wrapper.unmount();
+  });
+
+  it('keeps both row action buttons inside one aligned flex container', async () => {
+    const wrapper = mount(OpsInboxView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+
+    // 操作列曾出现「跳转处理」与 dropdown 包裹的「操作」垂直错位且无间距,
+    // 现统一装进 .row-actions flex 容器。
+    const actions = wrapper.get('.row-actions');
+    expect(actions.findAll('button').length).toBe(2);
+    expect(actions.find('.el-dropdown').exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -153,9 +194,62 @@ describe('OpsInboxView', () => {
     wrapper.unmount();
   });
 
+  it('assigns from the paged staff picker instead of a raw account id prompt', async () => {
+    const wrapper = mount(OpsInboxView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('.el-dropdown .el-button').trigger('click');
+    await flushPromises();
+    const assign = document.body.querySelectorAll('.el-dropdown-menu__item')[2];
+    await (assign as HTMLElement).click();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('从在职员工列表中选择处理人');
+    expect(orgApi.listStaff).toHaveBeenCalledWith({ status: 'active', page: 1, limit: 20 });
+
+    const vm = wrapper.vm as unknown as {
+      assignStaffId: number | null;
+      confirmAssign: () => Promise<void>;
+    };
+    vm.assignStaffId = 9;
+    await vm.confirmAssign();
+    await flushPromises();
+    expect(api.transitionOpsInbox).toHaveBeenCalledWith(row.id, {
+      to_state: 'assigned',
+      assignee_id: 9,
+    });
+    wrapper.unmount();
+  });
+
+  it('prefills wall-clock Beijing time and submits ISO to the API', async () => {
+    let capturedOptions:
+      { inputValue?: string; inputValidator?: (value: string) => true | string } | undefined;
+    vi.spyOn(ElMessageBox, 'prompt').mockImplementation(async (_message, _title, options) => {
+      capturedOptions = options as typeof capturedOptions;
+      return { value: '2026-09-14 15:30:00' } as never;
+    });
+    const wrapper = mount(OpsInboxView, {
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    await wrapper.get('.el-dropdown .el-button').trigger('click');
+    await flushPromises();
+    const snooze = document.body.querySelectorAll('.el-dropdown-menu__item')[1];
+    await (snooze as HTMLElement).click();
+    await flushPromises();
+
+    expect(String(capturedOptions?.inputValue)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(api.transitionOpsInbox).toHaveBeenCalledWith(row.id, {
+      to_state: 'snoozed',
+      snooze_until: '2026-09-14T15:30:00+08:00',
+    });
+    wrapper.unmount();
+  });
+
   it('rejects a snooze date before calling the API', async () => {
     vi.spyOn(ElMessageBox, 'prompt').mockImplementation(async (_message, _title, options) => {
-      const result = options?.inputValidator?.('2020-01-01T00:00:00.000Z');
+      const result = options?.inputValidator?.('2020-01-01 00:00:00');
       expect(result).toBe('到期时间需晚于当前时间 60 秒');
       throw 'cancel';
     });

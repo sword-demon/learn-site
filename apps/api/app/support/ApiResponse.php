@@ -77,7 +77,7 @@ final class ApiResponse
         array $details = [],
     ): Response {
         $status = self::STATUS_BY_CODE[$code] ?? 400;
-        $error = ['code' => $code, 'message' => $message];
+        $error = ['code' => $code, 'message' => ErrorCodeMap::message($message, $message)];
         foreach ($details as $key => $value) {
             if ($key !== 'code' && $key !== 'message') {
                 $error[$key] = $value;

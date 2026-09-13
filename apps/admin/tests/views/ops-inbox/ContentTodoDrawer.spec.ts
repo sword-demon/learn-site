@@ -16,10 +16,16 @@ const api = vi.hoisted(() => ({
   rejectContentTodoCandidate: vi.fn(),
   closeContentTodo: vi.fn(),
 }));
+const catalogApi = vi.hoisted(() => ({
+  listCourses: vi.fn(),
+  listChapters: vi.fn(),
+  listLessons: vi.fn(),
+}));
 const permission = vi.hoisted(() => ({ allowed: true }));
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock('@/api/contentTodo', () => api);
+vi.mock('@/api/catalog', () => catalogApi);
 vi.mock('@/api/http', () => ({ hasPermission: () => permission.allowed }));
 vi.mock('vue-router', () => ({ useRouter: () => router }));
 
@@ -94,6 +100,31 @@ describe('ContentTodoDrawer', () => {
       workflow_status: 'resolved',
       result_type: 'content_updated',
     });
+    catalogApi.listCourses.mockResolvedValue({
+      items: [{ id: 12, title: '内容待办课程' }],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    catalogApi.listChapters.mockResolvedValue({
+      items: [{ id: 4, course_id: 12, title: '第一章 入门', sort: 1, status: 'enabled' }],
+    });
+    catalogApi.listLessons.mockResolvedValue({
+      items: [
+        {
+          id: 8,
+          chapter_id: 4,
+          title: '1.1 环境准备',
+          sort: 1,
+          status: 'enabled',
+          content_type: 'markdown',
+          body_markdown: null,
+          asset_id: null,
+          is_preview: false,
+          duration_seconds: 0,
+        },
+      ],
+    });
   });
 
   it('loads a todo and saves triage', async () => {
@@ -105,6 +136,12 @@ describe('ContentTodoDrawer', () => {
 
     expect(wrapper.text()).toContain('公开问答');
     expect(wrapper.text()).toContain('请补充一个例子。');
+    expect(catalogApi.listChapters).toHaveBeenCalledWith(12);
+    expect(catalogApi.listLessons).toHaveBeenCalledWith(12, 4);
+    expect(wrapper.find('[data-field="target_course_id"]').exists()).toBe(true);
+    expect(wrapper.find('[data-field="target_chapter_id"]').exists()).toBe(true);
+    expect(wrapper.find('[data-field="target_lesson_id"]').exists()).toBe(true);
+    expect(wrapper.findAll('.el-input-number').length).toBe(0);
     const save = wrapper.findAll('button').find((button) => button.text() === '保存分诊');
     expect(save).toBeDefined();
     await save!.trigger('click');
@@ -117,6 +154,43 @@ describe('ContentTodoDrawer', () => {
         target_course_id: 12,
       }),
     );
+    wrapper.unmount();
+  });
+
+  it('saves triage before generating a candidate on an untriaged todo', async () => {
+    const untriaged = {
+      ...detail,
+      label: null,
+      workflow_status: 'untriaged' as const,
+      candidates: [],
+    };
+    api.fetchContentTodo.mockResolvedValue(untriaged);
+    api.triageContentTodo.mockResolvedValue({
+      ...untriaged,
+      label: 'error',
+      workflow_status: 'triaged',
+      version: 3,
+    });
+    api.generateContentTodoCandidate.mockResolvedValue({
+      ...untriaged,
+      label: 'error',
+      workflow_status: 'awaiting_approval',
+      version: 3,
+    });
+    const wrapper = mount(ContentTodoDrawer, {
+      props: { visible: true, todoId: 21 },
+      global: { plugins: [installElementPlus] },
+    });
+    await flushPromises();
+    const vm = wrapper.vm as unknown as { label: string | null; generate: () => Promise<void> };
+    vm.label = 'error';
+    await vm.generate();
+    await flushPromises();
+    expect(api.triageContentTodo).toHaveBeenCalledWith(
+      21,
+      expect.objectContaining({ label: 'error', expected_version: 2 }),
+    );
+    expect(api.generateContentTodoCandidate).toHaveBeenCalledWith(21, {});
     wrapper.unmount();
   });
 

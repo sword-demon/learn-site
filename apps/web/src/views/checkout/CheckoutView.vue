@@ -87,12 +87,12 @@
             <el-skeleton v-if="couponsLoading" animated :rows="2" />
             <el-radio-group
               v-else
-              v-model="selectedCouponId"
+              v-model="couponRadioValue"
               class="checkout-payment__coupon-list"
               data-testid="coupon-options"
             >
               <el-radio
-                :value="null"
+                :value="NO_COUPON_VALUE"
                 class="checkout-payment__coupon-option"
                 data-action="no-coupon"
               >
@@ -251,6 +251,29 @@ const couponsLoading = ref(false);
 const couponOptions = ref<CouponOption[]>([]);
 const basePrice = ref(0);
 const selectedCouponId = ref<number | null>(null);
+
+/**
+ * 「不使用优惠券」在单选组里的哨兵值。
+ *
+ * 为什么不用 null：Element Plus 2.14 的 el-radio 用 `isPropAbsent`（lodash isNil）
+ * 判断 value 是否缺省，显式 `:value="null"` 会被误判为「未传 value」并回落到已弃用的
+ * label 语义，从而打印 `[el-radio] label act as value is about to be deprecated`。
+ * 优惠券 id 是自增正整数，0 不会与真实券冲突，因此用它承载「不使用」。
+ */
+const NO_COUPON_VALUE = 0;
+
+/**
+ * 单选组专用代理：把哨兵值 0 与业务语义 null 互转，
+ * 保证组件其余逻辑与下单请求继续使用 `selectedCouponId: number | null`。
+ */
+const couponRadioValue = computed<number>({
+  // 读出：null 统一渲染成「不使用」哨兵，避免单选组出现无选中态
+  get: () => selectedCouponId.value ?? NO_COUPON_VALUE,
+  // 写回：命中哨兵即还原为 null，其余原样写入券 id
+  set: (value: number) => {
+    selectedCouponId.value = value === NO_COUPON_VALUE ? null : value;
+  },
+});
 
 let pollTimer: number | null = null;
 

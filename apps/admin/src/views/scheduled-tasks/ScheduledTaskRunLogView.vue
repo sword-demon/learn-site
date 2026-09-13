@@ -11,6 +11,7 @@ import {
   type AdminScheduledTask,
 } from '@/api/scheduledTasks';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'ScheduledTaskRunLogView' });
 
@@ -223,7 +224,9 @@ onMounted(async () => {
         <el-table-column label="结果" width="100">
           <template #default="{ row }">{{ statusLabel(row.status) }}</template>
         </el-table-column>
-        <el-table-column prop="started_at" label="开始时间" min-width="160" />
+        <el-table-column label="开始时间" min-width="160">
+          <template #default="{ row }">{{ formatDateTime(row.started_at) }}</template>
+        </el-table-column>
         <el-table-column prop="duration_ms" label="耗时(ms)" width="110" />
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
@@ -268,9 +271,11 @@ onMounted(async () => {
           <el-descriptions-item label="耗时">{{
             formatDuration(detail.duration_ms)
           }}</el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ detail.started_at }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{
+            formatDateTime(detail.started_at)
+          }}</el-descriptions-item>
           <el-descriptions-item label="结束时间">{{
-            detail.finished_at ?? '—'
+            formatDateTime(detail.finished_at)
           }}</el-descriptions-item>
         </el-descriptions>
 

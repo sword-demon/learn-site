@@ -12,3 +12,10 @@
     0 0 10px #38bdf8,
     0 0 5px #38bdf8;
 }
+
+/* 列表页:分页组件与表格底部保持间距(全后台统一,含 AdminListPager 与裸 el-pagination)。
+   AdminListPager 按类名命中 —— 部分页面的表格与分页之间隔着抽屉/空态节点,相邻选择器不可靠。 */
+.admin-list-pager,
+.el-table + .el-pagination {
+  margin-top: 16px;
+}

@@ -10,6 +10,7 @@ import {
   type LearnerListDTO,
 } from '@/api/learners';
 import AdminListPager from '@/components/AdminListPager.vue';
+import { formatDateTime } from '@/utils/datetime';
 
 defineOptions({ name: 'LearnerListView' });
 
@@ -187,9 +188,11 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column prop="last_login_at" label="最近登录" min-width="175">
-        <template #default="{ row }">{{ row.last_login_at || '—' }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.last_login_at) }}</template>
       </el-table-column>
-      <el-table-column prop="created_at" label="创建时间" min-width="175" />
+      <el-table-column label="创建时间" min-width="175">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
       <el-table-column label="操作" min-width="320" fixed="right">
         <template #default="{ row }">
           <div class="actions">
